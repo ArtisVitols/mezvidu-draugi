@@ -46,7 +46,7 @@ export function makeBlobShadow(size = 1.2) {
     c.width = c.height = 64;
     const g = c.getContext('2d');
     const grd = g.createRadialGradient(32, 32, 2, 32, 32, 32);
-    grd.addColorStop(0, 'rgba(0,0,0,0.45)');
+    grd.addColorStop(0, 'rgba(0,0,0,0.3)');
     grd.addColorStop(1, 'rgba(0,0,0,0)');
     g.fillStyle = grd; g.fillRect(0, 0, 64, 64);
     shadowTex = new THREE.CanvasTexture(c);
@@ -85,6 +85,6 @@ export function angleLerp(a, b, t) {
 const matCache = new Map();
 export function mat(color, opts = {}) {
   const k = color + JSON.stringify(opts);
-  if (!matCache.has(k)) matCache.set(k, new THREE.MeshLambertMaterial({ color, ...opts }));
+  if (!matCache.has(k)) matCache.set(k, new THREE.MeshStandardMaterial({ color, roughness: 0.85, metalness: 0, ...opts }));
   return matCache.get(k);
 }

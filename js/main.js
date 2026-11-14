@@ -99,8 +99,9 @@ function startPreview() {
   const scene = new THREE.Scene();
   scene.add(new THREE.HemisphereLight('#ffffff', '#88aa66', 1.8));
   const d = new THREE.DirectionalLight('#ffffff', 1.4); d.position.set(2, 4, 3); scene.add(d);
-  const cam = new THREE.PerspectiveCamera(35, w / h, 0.1, 50);
-  cam.position.set(0, 1.3, 4.6); cam.lookAt(0, 0.95, 0);
+  const cam = new THREE.PerspectiveCamera(30, w / h, 0.1, 50);
+  cam.position.set(0, 1.1, 3.6); cam.lookAt(0, 0.85, 0);
+  r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.1;
   pv = { r, scene, cam, av: null, t: 0, run: true };
   refreshPreview();
   const loop = () => {

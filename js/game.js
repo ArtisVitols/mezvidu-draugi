@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotPos, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE } from './world.js';
 import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop } from './characters.js';
 import { Controls } from './controls.js';
+import { Sky } from 'three/addons/objects/Sky.js';
 import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS } from './data.js';
 import { writeSave } from './save.js';
 import { makeTextSprite, angleLerp, clamp, lerp, smoothstep } from './util.js';
@@ -49,19 +50,54 @@ export class Game {
   // ======================= Inicializācija =======================
   init() {
     const canvas = $('game');
+    let q = 'high';
+    try { q = localStorage.getItem('mezvidi_quality') || 'high'; } catch (e) { /* */ }
+    this.quality = q;
+    const hi = q === 'high';
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, hi ? 1.5 : 1));
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 0.62;
     this.scene = new THREE.Scene();
-    const sky = new THREE.Color('#9fd4ff');
-    this.scene.background = sky;
-    this.scene.fog = new THREE.Fog(sky, 70, 210);
-    this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 400);
-    this.scene.add(new THREE.HemisphereLight('#dff1ff', '#4a6a2a', 1.6));
-    const sun = new THREE.DirectionalLight('#fff4dd', 1.6);
-    sun.position.set(60, 100, 40);
+    this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 450);
+
+    // reālistiskas debesis + apkārtnes apgaismojums no tām
+    this.sunDir = new THREE.Vector3().setFromSphericalCoords(1, THREE.MathUtils.degToRad(90 - 38), THREE.MathUtils.degToRad(140));
+    const mkSky = (scale) => {
+      const sk = new Sky();
+      sk.scale.setScalar(scale);
+      const u = sk.material.uniforms;
+      u.turbidity.value = 2.5; u.rayleigh.value = 2.2; u.mieCoefficient.value = 0.004; u.mieDirectionalG.value = 0.8;
+      u.sunPosition.value.copy(this.sunDir);
+      return sk;
+    };
+    this.sky = mkSky(380);
+    this.scene.add(this.sky);
+    const pmrem = new THREE.PMREMGenerator(this.renderer);
+    const envScene = new THREE.Scene();
+    envScene.add(mkSky(500));
+    this.scene.environment = pmrem.fromScene(envScene, 0, 0.1, 1000).texture;
+    pmrem.dispose();
+    this.scene.fog = new THREE.Fog(new THREE.Color('#a9c6dc'), 100, 360);
+
+    this.scene.add(new THREE.HemisphereLight('#cfe3f5', '#4a5a30', 0.5));
+    const sun = new THREE.DirectionalLight('#fff1d6', 3.2);
+    sun.position.copy(this.sunDir).multiplyScalar(120);
     this.scene.add(sun);
+    this.scene.add(sun.target);
+    this.sun = sun;
+    if (hi) {
+      this.renderer.shadowMap.enabled = true;
+      this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      sun.castShadow = true;
+      sun.shadow.mapSize.set(2048, 2048);
+      const sc = sun.shadow.camera;
+      sc.left = -45; sc.right = 45; sc.top = 45; sc.bottom = -45; sc.near = 1; sc.far = 260;
+      sun.shadow.bias = -0.0004;
+      sun.shadow.normalBias = 0.04;
+    }
     window.addEventListener('resize', () => this.onResize());
 
     this.world = new World(WORLD_SEED);
@@ -169,13 +205,14 @@ export class Game {
     this.gardenKeys = [];
     this.gardenSigns = [];
     const soilG = new THREE.BoxGeometry(2.1, 0.16, 2.1);
-    const soilM = new THREE.MeshLambertMaterial({ color: '#6b4423' });
+    const soilM = new THREE.MeshStandardMaterial({ color: '#4a3220', roughness: 1 });
     GARDEN_SLOTS.forEach((s, slot) => {
       this.gardenCrops[slot] = [];
       this.gardenKeys[slot] = [];
       for (let i = 0; i < 6; i++) {
         const p = plotPos(slot, i);
         const soil = new THREE.Mesh(soilG, soilM);
+        soil.receiveShadow = true;
         soil.position.set(p.x, VILLAGE_Y + 0.05, p.z);
         this.scene.add(soil);
         this.gardenCrops[slot][i] = null;
@@ -685,6 +722,7 @@ export class Game {
     }
 
     this.updateCamera(dt);
+    this.updateSun(dt);
     this.updateRemotes(dt);
     this.updateWorldObjects(dt, t);
     this.updateRace(dt, t);
@@ -901,6 +939,35 @@ export class Game {
     this.camera.lookAt(tx, ty, tz);
   }
 
+  updateSun(dt) {
+    const p = this.me.pos;
+    const sx = Math.round(p.x / 4) * 4, sz = Math.round(p.z / 4) * 4;
+    this.sun.target.position.set(sx, p.y, sz);
+    this.sun.position.set(sx + this.sunDir.x * 120, p.y + this.sunDir.y * 120, sz + this.sunDir.z * 120);
+    this.sky.position.copy(this.camera.position);
+    // ja telefons ir lēns, samazinām izšķirtspēju
+    if (this.fpsCheck == null) this.fpsCheck = { t: 0, n: 0, done: false };
+    const f = this.fpsCheck;
+    if (!f.done) {
+      f.t += dt; f.n++;
+      if (f.t > 6) {
+        f.done = true;
+        const fps = f.n / f.t;
+        if (fps < 28 && this.renderer.getPixelRatio() > 1) {
+          this.renderer.setPixelRatio(1);
+          this.onResize();
+        }
+        if (fps < 22 && this.renderer.shadowMap.enabled) {
+          // ļoti lēns telefons: izslēdzam ēnas uzreiz
+          this.renderer.shadowMap.enabled = false;
+          this.sun.castShadow = false;
+          this.scene.traverse((o) => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => { m.needsUpdate = true; }); });
+          toast('Spēle raustījās — ēnas izslēgtas. Izvēlnē ☰ var mainīt grafiku.', '', 5000);
+        }
+      }
+    }
+  }
+
   updateRemotes(dt) {
     const k = 1 - Math.exp(-dt * 12);
     for (const r of this.remotes.values()) {
@@ -960,7 +1027,7 @@ export class Game {
     // sēnes
     if (doCull) {
       this.world.mushrooms.forEach((m, i) => {
-        const vis = !(this.picked[m.id] > t) && Math.abs(m.x - cx) < 70 && Math.abs(m.z - cz) < 70;
+        const vis = !(this.picked[m.id] > t) && Math.abs(m.x - cx) < 50 && Math.abs(m.z - cz) < 50;
         this.mushMeshes[i].visible = vis;
       });
     }
@@ -1579,6 +1646,14 @@ export class Game {
       b.append(el('button', { className: 'pbtn', onclick: () => {
         try { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); } catch (e) { /* */ }
       } }, '⛶ Pilnekrāns'));
+      b.append(' ');
+      b.append(el('button', { className: 'pbtn', onclick: () => {
+        const nq = this.quality === 'high' ? 'low' : 'high';
+        try { localStorage.setItem('mezvidi_quality', nq); } catch (e) { /* */ }
+        toast(nq === 'high' ? 'Augsta grafika ieslēgsies pēc pārlādes' : 'Zema grafika ieslēgsies pēc pārlādes');
+        this.persist();
+        if (this.net.offline) setTimeout(() => location.reload(), 800);
+      } }, this.quality === 'high' ? '🎨 Grafika: Augsta' : '🎨 Grafika: Zema'));
       b.append(' ');
       b.append(el('button', { className: 'pbtn', onclick: () => { this.persist(); toast('💾 Saglabāts!', 'good'); } }, '💾 Saglabāt'));
       b.append(' ');

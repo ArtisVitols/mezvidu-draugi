@@ -1,7 +1,37 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { mat, makeBlobShadow } from './util.js';
 
-const S = (r, w = 10, h = 8) => new THREE.SphereGeometry(r, w, h);
+// Apvieno vienas locītavas detaļas ar vienādu materiālu vienā meshā (mazāk zīmēšanas izsaukumu)
+export function optimizeRig(root, skip = new Set()) {
+  const groups = [];
+  root.traverse((o) => { if (!o.isMesh) groups.push(o); });
+  for (const g of groups) {
+    const buckets = new Map();
+    for (const c of g.children) {
+      if (!c.isMesh || c.children.length || skip.has(c) || c.material.transparent) continue;
+      if (!buckets.has(c.material)) buckets.set(c.material, []);
+      buckets.get(c.material).push(c);
+    }
+    for (const [m, list] of buckets) {
+      if (list.length < 2) continue;
+      const geos = list.map((c) => {
+        c.updateMatrix();
+        let geo = c.geometry.index ? c.geometry.toNonIndexed() : c.geometry.clone();
+        for (const k of Object.keys(geo.attributes)) if (k !== 'position' && k !== 'normal') geo.deleteAttribute(k);
+        return geo.applyMatrix4(c.matrix);
+      });
+      const merged = mergeGeometries(geos);
+      if (!merged) continue;
+      for (const c of list) g.remove(c);
+      const mm = new THREE.Mesh(merged, m);
+      mm.castShadow = true;
+      g.add(mm);
+    }
+  }
+}
+
+const S = (r, w = 16, h = 12) => new THREE.SphereGeometry(r, w, h);
 const lighten = (hex, k) => '#' + new THREE.Color(hex).lerp(new THREE.Color('#ffffff'), k).getHexString();
 const darken = (hex, k) => '#' + new THREE.Color(hex).lerp(new THREE.Color('#000000'), k).getHexString();
 
@@ -12,211 +42,297 @@ function mesh(geo, color, x = 0, y = 0, z = 0, parent) {
   return m;
 }
 
-// ---------------- Spēlētāju dzīvnieki (staigā uz divām kājām) ----------------
-export function buildAnimal({ animal = 'lacis', fur = '#8b5a2b', shirt = '#d23b3b', hat = null }) {
-  const root = new THREE.Group();
-  const body = new THREE.Group(); // viss, kas šūpojas
-  root.add(body);
-  const light = lighten(fur, 0.55);
-  const isBird = animal === 'pile' || animal === 'puce';
-  const legColor = animal === 'pile' ? '#f39a1e' : animal === 'puce' ? '#d9a13a' : fur;
+// ---------------- Spēlētāju dzīvnieki (reālistiskākas proporcijas, staigā uz divām kājām) ----------------
+const HIP = 0.7;
+const SPECIES = {
+  lacis: { bulk: 1.3, head: [1.08, 0.98, 1.0], legC: null },
+  lapsa: { bulk: 0.95, head: [0.95, 0.9, 1.0], sock: '#2a2420', chest: '#f4efe6' },
+  zakis: { bulk: 0.95, head: [0.92, 1.0, 1.05], feet: 1.5 },
+  kakis: { bulk: 0.9, head: [1.0, 0.92, 0.95] },
+  cuka:  { bulk: 1.25, head: [1.05, 0.95, 1.05], skin: 0.6 },
+  suns:  { bulk: 1.05, head: [0.98, 0.95, 1.05] },
+  varde: { bulk: 1.05, head: [1.35, 0.72, 1.1], skin: 0.35, feet: 1.6 },
+  pile:  { bulk: 1.05, head: [0.9, 0.95, 1.0], bird: true, legC: '#e8901e' },
+  udrs:  { bulk: 1.0, head: [1.0, 0.9, 1.05] },
+  apsis: { bulk: 1.2, head: [0.95, 0.88, 1.1] },
+  puce:  { bulk: 1.2, head: [1.12, 1.05, 0.95], bird: true, legC: '#c9a13a' },
+  bebrs: { bulk: 1.25, head: [1.0, 0.95, 1.05] },
+};
+const CAP = (r, len, seg = 12) => new THREE.CapsuleGeometry(r, len, 5, seg);
+// ekstremitāte, kas karājas uz leju no locītavas
+const LIMB = (r, len) => { const g = CAP(r, len); g.translate(0, -(len / 2 + r * 0.6), 0); return g; };
 
-  // kājas
-  const legG = new THREE.CylinderGeometry(0.1, 0.09, 0.45, 8); legG.translate(0, -0.22, 0);
-  const footG = new THREE.BoxGeometry(0.2, 0.1, 0.3);
-  const legs = [];
-  for (const s of [-1, 1]) {
-    const hip = new THREE.Group();
-    hip.position.set(s * 0.16, 0.55, 0);
-    mesh(isBird ? new THREE.CylinderGeometry(0.05, 0.05, 0.45, 6).translate(0, -0.22, 0) : legG, legColor, 0, 0, 0, hip);
-    mesh(footG, isBird ? legColor : darken(fur, 0.25), 0, -0.47, 0.06, hip);
-    body.add(hip);
-    legs.push(hip);
+export function buildAnimal({ animal = 'lacis', fur = '#8b5a2b', shirt = '#d23b3b', hat = null }) {
+  const P = SPECIES[animal] || SPECIES.lacis;
+  const rough = P.skin != null ? P.skin : 0.95;
+  const F = (c) => mat(c, { roughness: rough });
+  const add = (geo, color, x, y, z, parent, m) => {
+    const o = new THREE.Mesh(geo, m || F(color));
+    o.position.set(x, y, z); o.castShadow = true;
+    parent.add(o); return o;
+  };
+  const light = P.chest || lighten(fur, 0.45);
+  const dark = darken(fur, 0.35);
+  const B = P.bulk;
+  const root = new THREE.Group();
+  const body = new THREE.Group(); body.position.y = HIP; root.add(body);
+
+  // iegurnis + mugura
+  add(S(0.18, 18, 14), fur, 0, 0.03, 0, body).scale.set(B, 0.85, 0.9 * B);
+  const spine = new THREE.Group(); spine.position.y = 0.06; body.add(spine);
+  const torso = add(CAP(0.165, 0.27, 18), fur, 0, 0.23, 0, spine);
+  torso.scale.set(B, 1, 0.82 * B);
+  if (P.bird || animal === 'varde') add(S(0.12, 16, 12), light, 0, 0.24, 0.07 * B, spine).scale.set(0.9 * B, 1.25, 0.6);
+  else add(S(0.06, 12, 10), light, 0, 0.4, 0.085, spine).scale.set(1.1, 0.9, 0.6);
+  // apģērbs: veste/krekls vai šalle putniem
+  if (!P.bird) {
+    // krekls ar noapaļotiem pleciem (rotācijas virsma)
+    const prof = [[0.19, -0.17], [0.19, -0.06], [0.184, 0.03], [0.166, 0.1], [0.135, 0.15], [0.1, 0.185], [0.075, 0.2]]
+      .map(([r, y]) => new THREE.Vector2(r, y));
+    const sh = add(new THREE.LatheGeometry(prof, 24), shirt, 0, 0.22, 0, spine, mat(shirt, { roughness: 0.8, side: THREE.DoubleSide }));
+    sh.scale.set(B, 1, 0.84 * B);
+    const col = add(new THREE.TorusGeometry(0.075, 0.02, 8, 20), shirt, 0, 0.425, 0, spine, mat(shirt, { roughness: 0.8 }));
+    col.rotation.x = Math.PI / 2; col.scale.set(B, 0.82 * B, 1);
+  } else {
+    const sc = add(new THREE.TorusGeometry(0.085, 0.03, 8, 20), shirt, 0, 0.42, 0, spine, mat(shirt, { roughness: 0.9 }));
+    sc.rotation.x = Math.PI / 2;
+    add(CAP(0.03, 0.12), shirt, 0.05, 0.33, 0.1, spine, mat(shirt, { roughness: 0.9 })).rotation.z = 0.2;
   }
-  // rumpis + krekls
-  const torso = mesh(S(0.36, 12, 10), fur, 0, 0.88, 0, body);
-  torso.scale.set(1, 1.15, 0.85);
-  const shirtM = mesh(new THREE.CylinderGeometry(0.34, 0.38, 0.42, 12), shirt, 0, 0.86, 0, body);
-  shirtM.scale.set(1.04, 1, 0.9);
-  const belly = mesh(S(0.22, 10, 8), light, 0, 1.0, 0.24, body);
-  belly.scale.set(1, 0.7, 0.4);
-  // rokas
-  const armG = new THREE.CylinderGeometry(0.08, 0.07, 0.4, 8); armG.translate(0, -0.2, 0);
+  // kakls un galva
+  add(new THREE.CylinderGeometry(0.065, 0.08, P.bird ? 0.2 : 0.12, 12), fur, 0, P.bird ? 0.47 : 0.43, 0.01, spine);
+  const head = new THREE.Group();
+  head.position.set(0, animal === 'varde' ? 0.47 : P.bird ? 0.62 : 0.56, 0.02);
+  spine.add(head);
+  const skull = add(S(0.15, 24, 18), fur, 0, 0, 0, head);
+  skull.scale.set(...P.head);
+  const eyeM = mat('#120c08', { roughness: 0.15 });
+  const nose = (x, y, z, r = 0.022, c = '#1a1412') => add(S(r, 10, 8), c, x, y, z, head, mat(c, { roughness: 0.35 }));
+  const eyes = (x, y, z, r = 0.02) => { for (const s of [-1, 1]) add(S(r, 10, 8), '#000', s * x, y, z, head, eyeM); };
+  const ears = (geo, color, x, y, z, rz = 0, rx = 0, sc = [1, 1, 1]) => {
+    for (const s of [-1, 1]) { const e = add(geo, color, s * x, y, z, head); e.rotation.set(rx, 0, -s * rz); e.scale.set(...sc); }
+  };
+  const muzzle = (len, r, color, y = -0.04, z = 0.1) => {
+    const m = add(CAP(r, len, 12), color, 0, y, z + len / 2, head);
+    m.rotation.x = Math.PI / 2 - 0.15; return m;
+  };
+  let tail = null;
+  const tailRoot = new THREE.Group(); tailRoot.position.set(0, 0.04, -0.14 * B); body.add(tailRoot);
+  switch (animal) {
+    case 'lacis':
+      muzzle(0.06, 0.06, lighten(fur, 0.25)); nose(0, -0.02, 0.22, 0.026); eyes(0.06, 0.04, 0.125);
+      ears(S(0.045, 12, 10), fur, 0.105, 0.115, -0.01, 0, 0, [1, 1, 0.55]);
+      tail = add(S(0.04), fur, 0, 0, -0.02, tailRoot);
+      break;
+    case 'lapsa': {
+      const m = add(new THREE.ConeGeometry(0.07, 0.2, 14), fur, 0, -0.04, 0.2, head); m.rotation.x = Math.PI / 2 + 0.1;
+      add(new THREE.ConeGeometry(0.05, 0.16, 12), light, 0, -0.065, 0.19, head).rotation.x = Math.PI / 2 + 0.25;
+      nose(0, -0.035, 0.3, 0.018); eyes(0.058, 0.03, 0.12, 0.017);
+      ears(new THREE.ConeGeometry(0.055, 0.14, 12), fur, 0.085, 0.15, -0.01, 0.2, -0.1, [1, 1, 0.45]);
+      ears(new THREE.ConeGeometry(0.025, 0.05, 8), '#2a2420', 0.098, 0.205, -0.01, 0.2, -0.1, [1, 1, 0.45]);
+      tail = new THREE.Group();
+      add(S(0.09, 16, 12), fur, 0, -0.02, -0.2, tail).scale.set(0.9, 0.9, 2.6);
+      add(S(0.06, 12, 10), '#f4efe6', 0, -0.05, -0.44, tail).scale.set(1, 1, 1.4);
+      tail.rotation.x = 0.7; tailRoot.add(tail);
+      break;
+    }
+    case 'zakis':
+      muzzle(0.03, 0.055, light, -0.05, 0.08); nose(0, -0.03, 0.17, 0.016, '#c78a8a'); eyes(0.07, 0.03, 0.115, 0.022);
+      ears(LIMB(0.03, 0.2).rotateX(Math.PI), fur, 0.045, 0.1, -0.03, 0.12, -0.15, [1, 1, 0.42]);
+      ears(LIMB(0.018, 0.17).rotateX(Math.PI), '#d9a5a8', 0.045, 0.11, -0.022, 0.12, -0.15, [1, 1, 0.3]);
+      tail = add(S(0.055), '#f4f2ee', 0, 0, -0.02, tailRoot);
+      break;
+    case 'kakis':
+      muzzle(0.02, 0.05, light, -0.045, 0.1); nose(0, -0.025, 0.165, 0.014, '#c97a7a'); eyes(0.06, 0.03, 0.12, 0.02);
+      ears(new THREE.ConeGeometry(0.05, 0.1, 4), fur, 0.085, 0.13, 0, 0.3, -0.1, [1, 1, 0.5]);
+      for (const s of [-1, 1]) for (const k of [-1, 1]) {
+        const w = add(new THREE.CylinderGeometry(0.0015, 0.0015, 0.16, 3), '#ddd', s * 0.08, -0.045 + k * 0.012, 0.16, head); w.rotation.z = Math.PI / 2 + s * k * 0.12;
+      }
+      tail = new THREE.Group();
+      { const t1 = add(LIMB(0.03, 0.28), fur, 0, 0, 0, tail); t1.rotation.x = -2.2; }
+      tailRoot.add(tail);
+      break;
+    case 'cuka': {
+      const sn = add(new THREE.CylinderGeometry(0.06, 0.065, 0.08, 18), lighten(fur, 0.15), 0, -0.03, 0.155, head); sn.rotation.x = Math.PI / 2;
+      for (const s of [-1, 1]) add(S(0.012, 8, 6), '#7a3a44', s * 0.022, -0.03, 0.197, head);
+      eyes(0.07, 0.04, 0.12, 0.016);
+      ears(new THREE.ConeGeometry(0.06, 0.12, 12), fur, 0.09, 0.12, 0.03, 0.5, 0.6, [1, 1, 0.35]);
+      tail = add(new THREE.TorusGeometry(0.035, 0.01, 6, 12, 5), fur, 0, 0, -0.02, tailRoot);
+      break;
+    }
+    case 'suns':
+      muzzle(0.08, 0.055, lighten(fur, 0.2)); nose(0, -0.02, 0.255, 0.022); eyes(0.06, 0.04, 0.12, 0.02);
+      ears(S(0.07, 14, 10), dark, 0.13, 0.0, -0.01, 0.15, 0, [0.35, 1.1, 0.75]);
+      tail = new THREE.Group(); { const t = add(LIMB(0.03, 0.22), fur, 0, 0, 0, tail); t.rotation.x = -2.4; } tailRoot.add(tail);
+      break;
+    case 'varde': {
+      for (const s of [-1, 1]) {
+        add(S(0.055, 14, 12), fur, s * 0.1, 0.09, 0.07, head);
+        add(S(0.035, 12, 10), '#e8c84a', s * 0.11, 0.11, 0.105, head, mat('#e8c84a', { roughness: 0.2 }));
+        add(S(0.02, 10, 8), '#000', s * 0.115, 0.115, 0.13, head, eyeM);
+      }
+      const mo = add(new THREE.TorusGeometry(0.15, 0.006, 6, 24, Math.PI), '#2a4a1c', 0, -0.03, 0.03, head); mo.rotation.set(Math.PI / 2, Math.PI, 0); mo.scale.set(1.25, 1.05, 1);
+      for (let i = 0; i < 5; i++) add(S(0.02, 8, 6), darken(fur, 0.3), Math.sin(i * 2.3) * 0.12, 0.3 - i * 0.05, -0.1 + Math.cos(i) * 0.03, spine);
+      break;
+    }
+    case 'pile': {
+      const bill = add(S(0.07, 14, 10), '#e8901e', 0, -0.03, 0.15, head, mat('#e8901e', { roughness: 0.5 })); bill.scale.set(0.8, 0.28, 1.25);
+      eyes(0.075, 0.035, 0.1, 0.016);
+      tail = add(new THREE.ConeGeometry(0.07, 0.14, 10), fur, 0, 0.04, -0.06, tailRoot); tail.rotation.x = -2.0;
+      break;
+    }
+    case 'puce': {
+      add(new THREE.ConeGeometry(0.025, 0.06, 8), '#3a3020', 0, -0.03, 0.15, head).rotation.x = 1.9;
+      for (const s of [-1, 1]) {
+        add(new THREE.CircleGeometry(0.06, 18), light, s * 0.06, 0.02, 0.135, head).rotation.y = s * 0.35;
+        add(S(0.03, 12, 10), '#e8a020', s * 0.06, 0.025, 0.14, head, mat('#e8a020', { roughness: 0.2 }));
+        add(S(0.016, 8, 6), '#000', s * 0.06, 0.025, 0.165, head, eyeM);
+      }
+      ears(new THREE.ConeGeometry(0.03, 0.08, 8), fur, 0.1, 0.14, 0, 0.35, 0, [1, 1, 0.5]);
+      break;
+    }
+    case 'udrs':
+      muzzle(0.03, 0.065, light, -0.05, 0.09); nose(0, -0.02, 0.19, 0.022); eyes(0.065, 0.035, 0.12, 0.018);
+      ears(S(0.03, 10, 8), fur, 0.11, 0.08, -0.02, 0, 0, [1, 1, 0.55]);
+      tail = new THREE.Group(); { const t = add(new THREE.ConeGeometry(0.06, 0.45, 12), fur, 0, -0.22, 0, tail); t.rotation.x = Math.PI; } tail.rotation.x = 2.3; tailRoot.add(tail);
+      break;
+    case 'apsis':
+      muzzle(0.07, 0.05, '#e8e6e0'); nose(0, -0.03, 0.235, 0.02); eyes(0.06, 0.035, 0.12, 0.016);
+      for (const s of [-1, 1]) add(S(0.06, 12, 10), '#1c1c1c', s * 0.06, 0.04, 0.06, head).scale.set(0.5, 0.6, 1.5);
+      add(S(0.05, 12, 10), '#f0f0ea', 0, 0.09, 0.05, head).scale.set(0.6, 0.5, 2.2);
+      ears(S(0.03, 10, 8), '#222', 0.11, 0.08, -0.03, 0, 0, [1, 1, 0.55]);
+      break;
+    case 'bebrs':
+      muzzle(0.03, 0.065, lighten(fur, 0.2), -0.05, 0.09); nose(0, -0.02, 0.19, 0.022); eyes(0.065, 0.04, 0.12, 0.018);
+      add(new THREE.BoxGeometry(0.05, 0.04, 0.012), '#f0d070', 0, -0.1, 0.165, head);
+      ears(S(0.03, 10, 8), fur, 0.11, 0.09, -0.02, 0, 0, [1, 1, 0.55]);
+      tail = add(S(0.12, 14, 10), '#3a2814', 0, -0.06, -0.18, tailRoot); tail.scale.set(0.9, 0.18, 1.6);
+      break;
+  }
+
+  // rokas ar elkoņiem (putniem — spārni)
   const arms = [];
   for (const s of [-1, 1]) {
     const sh = new THREE.Group();
-    sh.position.set(s * 0.38, 1.1, 0);
-    sh.rotation.z = s * 0.25;
-    mesh(armG, isBird ? fur : shirt, 0, 0, 0, sh).scale.set(1.2, 0.45, 1.2);
-    mesh(armG, fur, 0, -0.12, 0, sh).scale.set(1, 0.75, 1);
-    mesh(S(0.09, 8, 6), isBird ? fur : light, 0, -0.43, 0, sh);
-    body.add(sh);
-    arms.push(sh);
-  }
-  // galva
-  const head = new THREE.Group();
-  head.position.set(0, 1.5, 0);
-  body.add(head);
-  const headR = animal === 'varde' ? 0.36 : 0.34;
-  const skull = mesh(S(headR, 14, 12), fur, 0, 0, 0, head);
-  if (animal === 'varde') skull.scale.set(1.15, 0.8, 1);
-  const eyeG = S(0.055, 8, 6), eyeW = S(0.085, 8, 6);
-  const eyeY = animal === 'varde' ? 0.24 : 0.06, eyeZ = animal === 'varde' ? 0.14 : 0.29, eyeX = animal === 'varde' ? 0.17 : 0.13;
-  for (const s of [-1, 1]) {
-    mesh(eyeW, '#ffffff', s * eyeX, eyeY, eyeZ, head).scale.set(animal === 'puce' ? 1.6 : 1, animal === 'puce' ? 1.6 : 1, 0.6);
-    mesh(eyeG, '#151515', s * eyeX, eyeY, eyeZ + 0.05, head).scale.setScalar(animal === 'puce' ? 1.3 : 1);
-  }
-  // ausis un purni
-  const earsAt = (geo, color, x, y, z, rz = 0, rx = 0, sc = [1, 1, 1]) => {
-    for (const s of [-1, 1]) {
-      const e = mesh(geo, color, s * x, y, z, head);
-      e.rotation.set(rx, 0, -s * rz);
-      e.scale.set(...sc);
+    sh.position.set(s * (0.15 * B + 0.02), 0.33, 0);
+    spine.add(sh);
+    const el = new THREE.Group();
+    if (P.bird) {
+      const w = add(S(0.1, 14, 10), fur, 0, -0.14, -0.02, sh); w.scale.set(0.3, 1.3, 0.75);
+      el.position.y = -0.26; sh.add(el);
+    } else {
+      add(LIMB(0.056 * Math.sqrt(B), 0.13), fur, 0, 0, 0, sh);
+      add(new THREE.CylinderGeometry(0.066 * Math.sqrt(B), 0.064 * Math.sqrt(B), 0.08, 14), shirt, 0, -0.05, 0, sh, mat(shirt, { roughness: 0.8 }));
+      el.position.y = -0.2; sh.add(el);
+      add(LIMB(0.05 * Math.sqrt(B), 0.12), P.sock || fur, 0, 0, 0, el);
+      add(S(0.048, 12, 10), P.sock || (animal === 'varde' ? fur : lighten(fur, 0.15)), 0, -0.2, 0.01, el).scale.set(0.9, 1, 0.8);
     }
-  };
-  const snout = (color, z = 0.3, y = -0.08, sc = [1, 0.75, 0.8]) => {
-    const m = mesh(S(0.15, 10, 8), color, 0, y, z, head); m.scale.set(...sc);
-    mesh(S(0.05, 6, 6), '#222', 0, y + 0.05, z + 0.12, head);
-    return m;
-  };
-  let tail = null;
-  switch (animal) {
-    case 'lacis':
-      earsAt(S(0.1, 8, 6), fur, 0.24, 0.26, 0, 0, 0, [1, 1, 0.6]);
-      snout(light);
-      tail = mesh(S(0.09), fur, 0, 0.7, -0.32, body);
-      break;
-    case 'udrs':
-      earsAt(S(0.07, 8, 6), fur, 0.25, 0.18, 0, 0, 0, [1, 1, 0.6]);
-      snout(light, 0.28, -0.1, [1.2, 0.7, 0.8]);
-      tail = mesh(new THREE.ConeGeometry(0.1, 0.6, 8), fur, 0, 0.55, -0.4, body); tail.rotation.x = -1.2;
-      break;
-    case 'apsis':
-      earsAt(S(0.07, 8, 6), '#333', 0.24, 0.2, 0, 0, 0, [1, 1, 0.6]);
-      mesh(new THREE.BoxGeometry(0.1, 0.05, 0.5), '#ffffff', 0, 0.3, 0.05, head).rotation.x = 0.5;
-      snout('#e8e8e8', 0.3, -0.08, [0.9, 0.7, 1.1]);
-      break;
-    case 'puce':
-      earsAt(new THREE.ConeGeometry(0.07, 0.2, 6), fur, 0.2, 0.3, 0, 0.3);
-      mesh(new THREE.ConeGeometry(0.06, 0.15, 6), '#e0a020', 0, -0.06, 0.33, head).rotation.x = 1.9;
-      break;
-    case 'lapsa':
-      earsAt(new THREE.ConeGeometry(0.1, 0.26, 6), fur, 0.19, 0.3, 0, 0.25);
-      { const sn = mesh(new THREE.ConeGeometry(0.13, 0.3, 8), light, 0, -0.08, 0.36, head); sn.rotation.x = Math.PI / 2;
-        mesh(S(0.045, 6, 6), '#222', 0, -0.08, 0.52, head); }
-      tail = new THREE.Group();
-      mesh(S(0.16, 10, 8), fur, 0, 0, -0.2, tail).scale.set(1, 1, 2.2);
-      mesh(S(0.1, 8, 6), '#ffffff', 0, 0, -0.52, tail);
-      tail.position.set(0, 0.6, -0.25); tail.rotation.x = 0.5; body.add(tail);
-      break;
-    case 'zakis':
-      earsAt(S(0.08, 8, 6), fur, 0.11, 0.48, -0.02, 0.12, 0, [0.8, 3, 0.5]);
-      earsAt(S(0.05, 8, 6), '#f2b5c0', 0.11, 0.48, 0.02, 0.12, 0, [0.6, 2.4, 0.3]);
-      snout(light, 0.29, -0.1, [0.9, 0.6, 0.6]);
-      tail = mesh(S(0.12), '#ffffff', 0, 0.65, -0.32, body);
-      break;
-    case 'kakis':
-      earsAt(new THREE.ConeGeometry(0.1, 0.2, 4), fur, 0.18, 0.3, 0, 0.3);
-      snout(light, 0.3, -0.1, [0.8, 0.6, 0.6]);
-      for (const s of [-1, 1]) for (const k of [-1, 1]) {
-        const w = mesh(new THREE.BoxGeometry(0.22, 0.01, 0.01), '#333', s * 0.18, -0.08 + k * 0.03, 0.3, head); w.rotation.z = s * k * 0.15;
-      }
-      tail = mesh(new THREE.CylinderGeometry(0.05, 0.04, 0.7, 6), fur, 0, 0.75, -0.4, body); tail.rotation.x = -0.7;
-      break;
-    case 'cuka':
-      earsAt(new THREE.ConeGeometry(0.1, 0.18, 4), fur, 0.2, 0.26, 0.05, 0.6, 0.4);
-      { const sn = mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.12, 12), lighten(fur, 0.2), 0, -0.06, 0.33, head); sn.rotation.x = Math.PI / 2;
-        for (const s of [-1, 1]) mesh(S(0.025, 6, 6), '#8a3a4a', s * 0.04, -0.06, 0.4, head); }
-      tail = mesh(new THREE.TorusGeometry(0.06, 0.02, 6, 10), fur, 0, 0.7, -0.33, body);
-      break;
-    case 'suns':
-      earsAt(S(0.1, 8, 6), darken(fur, 0.35), 0.3, 0.02, -0.02, 0.2, 0, [0.5, 1.4, 0.8]);
-      snout(light, 0.3, -0.1, [1, 0.75, 1.1]);
-      tail = mesh(new THREE.CylinderGeometry(0.05, 0.03, 0.4, 6), fur, 0, 0.75, -0.36, body); tail.rotation.x = -0.9;
-      break;
-    case 'varde':
-      { const m = mesh(new THREE.TorusGeometry(0.16, 0.015, 6, 16, Math.PI), '#1d4a17', 0, -0.06, 0.3, head); m.rotation.z = Math.PI; }
-      break;
-    case 'pile':
-      { const b = mesh(new THREE.BoxGeometry(0.22, 0.06, 0.2), '#f39a1e', 0, -0.06, 0.38, head); b.scale.set(1, 1, 1); }
-      tail = mesh(new THREE.ConeGeometry(0.1, 0.2, 6), fur, 0, 0.8, -0.34, body); tail.rotation.x = -2;
-      break;
-    case 'bebrs':
-      earsAt(S(0.07, 8, 6), fur, 0.24, 0.22, 0, 0, 0, [1, 1, 0.6]);
-      snout(light);
-      mesh(new THREE.BoxGeometry(0.1, 0.08, 0.02), '#ffffff', 0, -0.2, 0.36, head);
-      tail = mesh(new THREE.BoxGeometry(0.3, 0.06, 0.5), '#5a3a1a', 0, 0.35, -0.45, body);
-      break;
+    arms.push({ sh, el, side: s });
   }
-  // vaigu sārtums
-  if (!isBird && animal !== 'varde') for (const s of [-1, 1]) mesh(S(0.05, 6, 6), '#ff9aa8', s * 0.22, -0.06, 0.24, head).scale.set(1, 0.6, 0.4);
+  // kājas ar ceļgaliem
+  const legs = [];
+  const legColor = P.legC || fur;
+  for (const s of [-1, 1]) {
+    const hip = new THREE.Group();
+    hip.position.set(s * 0.095 * B, 0, 0);
+    body.add(hip);
+    if (P.bird) add(LIMB(0.032, 0.22), legColor, 0, 0, 0, hip, mat(legColor, { roughness: 0.5 }));
+    else add(LIMB(0.088 * Math.sqrt(B), 0.17), fur, 0, 0, 0, hip);
+    const knee = new THREE.Group(); knee.position.y = -0.3; hip.add(knee);
+    add(LIMB(P.bird ? 0.025 : 0.066 * Math.sqrt(B), 0.21), P.sock || legColor, 0, 0, 0, knee);
+    const foot = add(S(0.06, 14, 10), P.sock || (P.bird ? legColor : darken(fur, 0.15)), 0, -0.345, 0.05, knee);
+    foot.scale.set(P.bird ? 1.4 : 1, 0.5, (P.feet || 1) * 1.7);
+    if (P.bird) foot.material = mat(legColor, { roughness: 0.5 });
+    legs.push({ hip, knee });
+  }
 
-  const shadow = makeBlobShadow(1.1);
+  const shadow = makeBlobShadow(0.9);
   shadow.position.y = 0.03;
   root.add(shadow);
-
   const hatHolder = new THREE.Group();
-  hatHolder.position.y = animal === 'varde' ? 0.27 : 0.3;
+  hatHolder.position.y = 0.13 * P.head[1];
+  hatHolder.scale.setScalar(0.58 * Math.max(P.head[0], 1));
   head.add(hatHolder);
 
+  // poza, uz kuru vienmērīgi tuvojamies (nav lēcienu starp stāvokļiem)
+  const pose = { hip: [0, 0], knee: [0.05, 0.05], sh: [0, 0], shZ: [0, 0], el: [-0.15, -0.15], spX: 0.02, spY: 0, bY: HIP, bX: 0, hX: 0, hY: 0 };
+  const tgt = JSON.parse(JSON.stringify(pose));
   const av = {
-    root, body, head, legs, arms, tail, shadow, hatHolder,
-    phase: 0, emoteSprite: null,
+    root, body, head, spine, legs, arms, tail, shadow, hatHolder,
+    phase: Math.random() * 6, t: Math.random() * 10, emoteSprite: null,
     setHat(id) {
       while (hatHolder.children.length) hatHolder.remove(hatHolder.children[0]);
-      if (id) hatHolder.add(buildHat(id));
+      if (id) { const h = buildHat(id); h.traverse((o) => { if (o.isMesh) o.castShadow = true; }); hatHolder.add(h); }
     },
-    // stāvokļi: idle, walk, run, jump, swim, sit
     animate(dt, state, speed = 0) {
-      const b = this;
+      this.t += dt;
+      const T = tgt;
+      let k = 1 - Math.exp(-dt * 10);
+      T.spY = 0; T.hX = 0; T.bX = 0; T.shZ[0] = -0.07; T.shZ[1] = 0.07;
       if (state === 'walk' || state === 'run') {
-        b.phase += dt * (state === 'run' ? 13 : 9);
-        const k = state === 'run' ? 0.9 : 0.6;
-        const s = Math.sin(b.phase);
-        b.legs[0].rotation.x = s * k; b.legs[1].rotation.x = -s * k;
-        b.arms[0].rotation.x = -s * k; b.arms[1].rotation.x = s * k;
-        b.body.position.y = Math.abs(Math.cos(b.phase)) * 0.07;
-        b.body.rotation.x = state === 'run' ? 0.12 : 0.04;
-        b.body.rotation.z = 0;
+        const run = state === 'run';
+        this.phase += dt * (run ? 10.5 : 7);
+        const amp = run ? 0.7 : 0.42;
+        for (let i = 0; i < 2; i++) {
+          const ph = this.phase + i * Math.PI, s = Math.sin(ph), c = Math.cos(ph);
+          T.hip[i] = -s * amp;
+          T.knee[i] = Math.max(0, c) * amp * (run ? 1.9 : 1.3) + 0.08;
+          T.sh[1 - i] = -s * amp * 0.75;
+          T.el[1 - i] = run ? -1.25 : -0.3 - Math.max(0, -s) * 0.25;
+        }
+        T.bY = HIP - Math.abs(Math.sin(this.phase)) * (run ? 0.05 : 0.025) - (run ? 0.04 : 0);
+        T.spX = run ? 0.22 : 0.06;
+        T.spY = Math.sin(this.phase) * 0.07;
+        T.hX = -T.spX * 0.6;
+        k = 1 - Math.exp(-dt * 22);
       } else if (state === 'jump') {
-        b.legs[0].rotation.x = 0.6; b.legs[1].rotation.x = -0.3;
-        b.arms[0].rotation.x = -2.6; b.arms[1].rotation.x = -2.6;
-        b.body.position.y = 0;
-        b.body.rotation.x = 0;
+        T.hip = [-0.7, 0.15]; T.knee = [1.0, 0.35]; T.sh = [-0.6, 0.35]; T.shZ = [-0.35, 0.35]; T.el = [-0.7, -0.5];
+        T.bY = HIP; T.spX = 0.1;
       } else if (state === 'swim') {
-        b.phase += dt * 6;
-        const s = Math.sin(b.phase);
-        b.legs[0].rotation.x = s * 0.5; b.legs[1].rotation.x = -s * 0.5;
-        b.arms[0].rotation.x = -1.5 + s * 1.2; b.arms[1].rotation.x = -1.5 - s * 1.2;
-        b.body.rotation.x = 0.9;
-        b.body.position.y = 0;
+        this.phase += dt * 4;
+        const s = Math.sin(this.phase);
+        T.hip = [s * 0.4, -s * 0.4]; T.knee = [0.3, 0.3];
+        T.sh = [-2.4 + s * 0.6, -2.4 - s * 0.6]; T.el = [-0.3, -0.3];
+        T.bX = 1.25; T.bY = HIP - 0.55; T.spX = -0.1; T.hX = -0.9;
       } else if (state === 'sit') {
-        b.legs[0].rotation.x = -1.5; b.legs[1].rotation.x = -1.5;
-        b.arms[0].rotation.x = -1.1; b.arms[1].rotation.x = -1.1;
-        b.body.rotation.x = 0; b.body.position.y = 0;
+        T.hip = [-1.45, -1.45]; T.knee = [1.35, 1.35]; T.sh = [-0.9, -0.9]; T.shZ = [-0.15, 0.15]; T.el = [-0.55, -0.55];
+        T.bY = HIP - 0.42; T.spX = 0.05;
+        k = 1 - Math.exp(-dt * 20);
       } else if (state === 'pet') {
-        b.phase += dt * 8;
-        b.arms[1].rotation.x = -1.4 + Math.sin(b.phase) * 0.3; b.arms[0].rotation.x = 0;
-        b.legs[0].rotation.x = 0; b.legs[1].rotation.x = 0;
-        b.body.rotation.x = 0.25;
+        this.phase += dt * 6;
+        T.hip = [-0.5, -0.2]; T.knee = [0.9, 0.5]; T.bY = HIP - 0.12; T.spX = 0.45;
+        T.sh = [-0.2, -1.0 + Math.sin(this.phase) * 0.15]; T.el = [-0.2, -0.3]; T.hX = 0.2;
       } else if (state === 'wave') {
-        b.phase += dt * 10;
-        b.arms[1].rotation.x = -2.8; b.arms[1].rotation.z = 0.25 + Math.sin(b.phase) * 0.4;
-        b.legs[0].rotation.x *= 0.8; b.legs[1].rotation.x *= 0.8;
-        b.body.rotation.x = 0;
+        this.phase += dt * 9;
+        T.hip = [0, 0]; T.knee = [0.05, 0.05]; T.bY = HIP; T.spX = 0;
+        T.sh = [0, -0.4]; T.shZ = [-0.07, 2.5]; T.el = [-0.15, 0]; T.hY = 0.15;
+        T.shZ[1] = 2.4 + Math.sin(this.phase) * 0.25;
       } else {
-        b.phase += dt * 2;
-        const d = 1 - Math.min(1, dt * 10);
-        b.legs[0].rotation.x *= d; b.legs[1].rotation.x *= d;
-        b.arms[0].rotation.x = Math.sin(b.phase) * 0.05; b.arms[1].rotation.x = -Math.sin(b.phase) * 0.05;
-        b.arms[1].rotation.z = 0.25;
-        b.body.position.y = Math.sin(b.phase) * 0.015;
-        b.body.rotation.x *= d;
+        // stāvēšana: elpošana un apkārtnes vērošana
+        T.hip = [0, 0]; T.knee = [0.05, 0.05]; T.sh = [0.03, 0.03]; T.el = [-0.18, -0.18];
+        T.bY = HIP + Math.sin(this.t * 1.8) * 0.004; T.spX = 0.02 + Math.sin(this.t * 1.8) * 0.01;
+        T.hY = Math.sin(this.t * 0.35) * 0.35 * Math.max(0, Math.sin(this.t * 0.13));
       }
-      if (state !== 'wave') b.arms[1].rotation.z = 0.25;
-      if (b.tail) b.tail.rotation.y = Math.sin(b.phase * 0.7) * 0.3;
+      const L = (a, b) => a + (b - a) * k;
+      for (let i = 0; i < 2; i++) {
+        pose.hip[i] = L(pose.hip[i], T.hip[i]); pose.knee[i] = L(pose.knee[i], T.knee[i]);
+        pose.sh[i] = L(pose.sh[i], T.sh[i]); pose.shZ[i] = L(pose.shZ[i], T.shZ[i]); pose.el[i] = L(pose.el[i], T.el[i]);
+        this.legs[i].hip.rotation.x = pose.hip[i];
+        this.legs[i].knee.rotation.x = pose.knee[i];
+        this.arms[i].sh.rotation.x = pose.sh[i];
+        this.arms[i].sh.rotation.z = pose.shZ[i];
+        this.arms[i].el.rotation.x = pose.el[i];
+      }
+      for (const key of ['spX', 'spY', 'bY', 'bX', 'hX', 'hY']) pose[key] = L(pose[key], T[key]);
+      this.body.position.y = pose.bY;
+      this.body.rotation.x = pose.bX;
+      this.spine.rotation.x = pose.spX;
+      this.spine.rotation.y = pose.spY;
+      this.head.rotation.x = pose.hX;
+      this.head.rotation.y = pose.hY - pose.spY * 0.8;
+      if (this.tail) this.tail.rotation.y = Math.sin(this.t * (state === 'idle' ? 1.5 : 4)) * 0.25;
     },
   };
+  optimizeRig(root);
   av.setHat(hat);
   return av;
 }
@@ -311,7 +427,7 @@ export function buildNPC(type) {
     case 'ezis': {
       scale = 0.7;
       const b = mesh(new THREE.IcosahedronGeometry(0.35, 1), '#4a3a2a', 0, 0.28, -0.05, body); b.scale.set(1, 0.75, 1.25);
-      b.material = new THREE.MeshLambertMaterial({ color: '#4a3a2a', flatShading: true });
+      b.material = new THREE.MeshStandardMaterial({ color: '#4a3a2a', flatShading: true });
       for (let i = 0; i < 16; i++) {
         const a = i / 16 * Math.PI * 2, r = 0.32;
         const sp = mesh(new THREE.ConeGeometry(0.05, 0.22, 4), '#2e241a', Math.cos(a) * r * 0.8, 0.38 + Math.sin(i * 1.7) * 0.08, Math.sin(a) * r - 0.05, body);
@@ -362,6 +478,8 @@ export function buildNPC(type) {
       break;
     }
   }
+  body.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  optimizeRig(body, new Set(legs));
   const shadow = makeBlobShadow(type === 'stirna' || type === 'mezacuka' ? 1.6 : 0.9);
   shadow.position.y = 0.03;
   root.add(shadow);
@@ -405,8 +523,9 @@ export function buildKart(color = '#e02a2a') {
     wheels.push(w);
   }
   const seat = new THREE.Group();
-  seat.position.set(0, 0.0, -0.25);
+  seat.position.set(0, 0.12, -0.3);
   g.add(seat);
+  g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   const shadow = makeBlobShadow(2.6);
   shadow.position.y = 0.04;
   g.add(shadow);
@@ -440,6 +559,8 @@ export function buildCart(color = '#3c9a4a', iceCream = false) {
     const cols = ['#f07b1a', '#e0302a', '#5fae4a', '#f2c12e', '#7a4a22'];
     for (let i = 0; i < 8; i++) mesh(S(0.14, 8, 6), cols[i % 5], -1.0 + i * 0.28, 1.6, 0.35 - (i % 2) * 0.3, g);
   }
+  g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  optimizeRig(g);
   return g;
 }
 
@@ -457,6 +578,8 @@ export function buildMushroom(def) {
     }
   }
   g.scale.setScalar(1.4);
+  g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  optimizeRig(g);
   return g;
 }
 
@@ -469,7 +592,7 @@ export function buildStar() {
   }
   const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.15, bevelEnabled: true, bevelSize: 0.04, bevelThickness: 0.04, bevelSegments: 1 });
   geo.center();
-  return new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color: '#ffd21a', emissive: '#a07000' }));
+  return new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: '#ffd21a', emissive: '#a07000' }));
 }
 
 // ---------------- Augi dārzā ----------------
