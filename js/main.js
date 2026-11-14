@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import { ANIMALS, FUR_COLORS, SHIRT_COLORS } from './data.js';
-import { loadSave, writeSave, lastProfileName, listProfiles } from './save.js';
-import { buildAnimal } from './characters.js';
-import { Net, randomCode } from './net.js';
-import { Game } from './game.js';
-import { $, initAudio } from './ui.js';
-import { VERSION, BUILD_DATE } from './version.js';
+import { ANIMALS, FUR_COLORS, SHIRT_COLORS } from './data.js?v=1.3.2';
+import { loadSave, writeSave, lastProfileName, listProfiles } from './save.js?v=1.3.2';
+import { buildAnimal } from './characters.js?v=1.3.2';
+import { Net, randomCode } from './net.js?v=1.3.2';
+import { Game } from './game.js?v=1.3.2';
+import { $, initAudio } from './ui.js?v=1.3.2';
+import { VERSION, BUILD_DATE } from './version.js?v=1.3.2';
 
 const EMOJI = { lacis: '🐻', lapsa: '🦊', zakis: '🐰', kakis: '🐱', cuka: '🐷', suns: '🐶', varde: '🐸', pile: '🦆' };
 let save = null;
@@ -24,6 +24,18 @@ function show(id) {
 }
 
 $('version').textContent = `Versija ${VERSION} · ${BUILD_DATE}`;
+
+// Ja serverī jau ir jaunāka versija (telefons rāda vecu kešu), pārlādējam ar jaunu adresi
+fetch(`js/version.js?t=${Date.now()}`, { cache: 'no-store' }).then((r) => r.text()).then((t) => {
+  const m = t.match(/VERSION = '([^']+)'/);
+  if (!m || m[1] === VERSION) return;
+  let tried = '';
+  try { tried = sessionStorage.getItem('mezvidi_reload') || ''; sessionStorage.setItem('mezvidi_reload', m[1]); } catch (e) { /* */ }
+  if (tried === m[1]) return;
+  const q = new URLSearchParams(location.search);
+  q.set('v', m[1]);
+  location.replace(location.pathname + '?' + q.toString());
+}).catch(() => {});
 
 // ---------- 1. vārds ----------
 $('in-name').value = lastProfileName();

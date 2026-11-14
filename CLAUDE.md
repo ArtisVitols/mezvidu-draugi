@@ -8,9 +8,13 @@ Static site: plain HTML + ES modules, no build step. three.js r160 and PeerJS 1.
 - Repo: https://github.com/ArtisVitols/mezvidu-draugi (public; GitHub Pages serves `main` / root)
 
 ## Release rules (always follow)
-1. **Bump the version** in `js/version.js` (`VERSION`, `BUILD_DATE`) before every deploy.
-   Semver-ish: minor for features or visual overhauls, patch for small fixes.
-   The version shows on the name screen and in the in-game ☰ menu.
+1. **Bump the version** before every deploy with `node tools/bump-version.mjs X.Y.Z`
+   (minor for features or visual overhauls, patch for small fixes). The script updates `js/version.js`
+   and adds `?v=X.Y.Z` to every relative import and to the `index.html` script/css links, so phones load new files
+   instead of cached ones. Never hand-edit those `?v=` tags, and give new modules imports in the same
+   `from './x.js?v=…'` form. All imports of one module must use the same URL, or it loads twice.
+   The version shows on the name screen and in the in-game ☰ menu. On start, `main.js` fetches `js/version.js`
+   with no-store and reloads with `?v=<new>` if the server has a newer version than the cached page.
 2. Add an entry to `CHANGELOG.md`.
 3. Commit, push to `main`, then wait until Pages serves the new files, e.g.
    `curl -s https://artisvitols.github.io/mezvidu-draugi/js/version.js`.
@@ -31,6 +35,7 @@ Static site: plain HTML + ES modules, no build step. three.js r160 and PeerJS 1.
 | `js/save.js` | localStorage saves per player name (`mezvidi_save_v1_<name>`) |
 | `js/data.js` | Game data: animals, crops, mushrooms, hats, quests, NPC types |
 | `js/version.js` | Version shown in the UI |
+| `tools/bump-version.mjs` | Sets the version and cache-busting `?v=` tags |
 
 ## Conventions / gotchas
 - Code comments and UI strings are in Latvian; keep it that way.

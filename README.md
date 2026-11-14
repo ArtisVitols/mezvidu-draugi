@@ -4,7 +4,7 @@ Kopīga 3D piedzīvojumu spēle telefona pārlūkam līdz 4 draugiem. Viss latvi
 
 ▶️ **Spēlēt:** https://artisvitols.github.io/mezvidu-draugi/
 
-Pašreizējā versija: **1.3.1** (redzama sākuma ekrānā un ☰ izvēlnē). Izmaiņas: [CHANGELOG.md](CHANGELOG.md).
+Pašreizējā versija: **1.3.2** (redzama sākuma ekrānā un ☰ izvēlnē). Izmaiņas: [CHANGELOG.md](CHANGELOG.md).
 
 ## Kā spēlēt
 1. Atver spēles saiti telefonā (vislabāk guļus).
@@ -35,7 +35,7 @@ Katra spēlētāja progress (monētas, soma, dārzs, zvaigznes, uzdevumi, cepure
 - Tīrs HTML + JavaScript, [three.js](https://threejs.org) 3D grafikai, [PeerJS](https://peerjs.com) (WebRTC) tiešiem savienojumiem.
 - Nav sava servera: saimnieka telefons ir „serveris”. PeerJS bezmaksas serviss palīdz tikai savienoties.
 - Pasaule ģenerēta procedurāli no fiksētas sēklas (`WORLD_SEED`), tāpēc tā katram ir vienāda. Visi 3D modeļi un faktūras tiek uzzīmēti kodā — nav ārēju attēlu failu.
-- Versija: `js/version.js`.
+- Versija: `js/version.js`; jaunu versiju iestata ar `node tools/bump-version.mjs X.Y.Z`.
 
 ### Publicēšana GitHub Pages
 Repozitorijā: **Settings → Pages → Deploy from a branch → `main` / root**. Saite būs

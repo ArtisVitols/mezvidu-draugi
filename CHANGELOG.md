@@ -1,5 +1,9 @@
 # Izmaiņu žurnāls
 
+## 1.3.2 — 2026-11-14
+- Telefoni vairs nerāda veco versiju no kešatmiņas: visiem failiem ir versijas atzīme, un spēle,
+  ja serverī ir jaunāka versija, pati pārlādējas.
+
 ## 1.3.1 — 2026-11-14
 - Spēles versija redzama sākuma ekrānā (vārda ievadē) un ☰ izvēlnē.
 - Atjaunināta dokumentācija (README, CLAUDE.md, šis žurnāls).
