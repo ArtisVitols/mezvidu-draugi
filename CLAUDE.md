@@ -37,6 +37,17 @@ Static site: plain HTML + ES modules, no build step. three.js r160 and PeerJS 1.
 | `js/version.js` | Version shown in the UI |
 | `tools/bump-version.mjs` | Sets the version and cache-busting `?v=` tags |
 
+## World size & rendering budget
+- `SIZE` 960 m terrain, `SEG` 384 (2.5 m cells), playable circle `PLAY_RADIUS` 420 m (edge rises into hills from `EDGE`).
+- Terrain is 8×8 tiles with normals from the global height grid.
+- Trees are grouped into `LOD_CH` (80 m) chunks in `world.lodChunks`. Near chunks (<100 m) show full instanced trees;
+  far chunks show impostors: crossed quads textured from an atlas rendered at startup by `makeImpostorAtlas`
+  (needs `world.build(scene, renderer)`).
+- Small details (rocks, flowers, reeds, lilies) use `world.chunked(...)` with a max view distance.
+- `world.updateVisibility(camX, camZ)` runs every 0.3 s from the game loop.
+- Grass is a GPU field around the player, sampling height and ground-colour textures.
+- Minimap: `mapBase` is a canvas of the whole world; the HUD minimap shows ~130 m around the player, and tapping it opens the full map.
+
 ## Conventions / gotchas
 - Code comments and UI strings are in Latvian; keep it that way.
 - Performance matters (phones): use instancing and chunk instanced meshes for frustum culling,

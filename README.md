@@ -4,7 +4,7 @@ Kopīga 3D piedzīvojumu spēle telefona pārlūkam līdz 4 draugiem. Viss latvi
 
 ▶️ **Spēlēt:** https://artisvitols.github.io/mezvidu-draugi/
 
-Pašreizējā versija: **1.3.2** (redzama sākuma ekrānā un ☰ izvēlnē). Izmaiņas: [CHANGELOG.md](CHANGELOG.md).
+Pašreizējā versija: **1.4.0** (redzama sākuma ekrānā un ☰ izvēlnē). Izmaiņas: [CHANGELOG.md](CHANGELOG.md).
 
 ## Kā spēlēt
 1. Atver spēles saiti telefonā (vislabāk guļus).
@@ -23,6 +23,7 @@ Datorā: WASD / bultiņas, atstarpe, E, peles vilkšana.
 - 🧺 Tirgus: Ūdrs Ojārs (sēklas), Āpsis Arnolds (uzpērk ražu), Pūce Paula (cepures, kartinga krāsas), Bebrs Bruno ar saldējuma ratiņiem
 - 🏎️ Kartinga trase ar turbo bultām — 3 apļu sacīkstes ar draugiem un robotiem
 - 🦌 Meža dzīvnieki: stirnas, zaķi, eži, mežacūkas, vāveres, stārķi — tos var paglaudīt
+- 🗺️ Liela pasaule (~840 m diametrā) — pieskaries minikartei, lai redzētu visu karti
 - 🌲 Dabiska pasaule: egļu, priežu, bērzu un ozolu meži, kas šūpojas vējā, pļavas ar ziediem, ezeri ar niedrēm un ūdensrozēm, guļbūvju ciemats
 - ⭐ 15 zelta zvaigznes paslēptas kalnu virsotnēs
 - 📜 Uzdevumi ar balvām

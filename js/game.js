@@ -1,13 +1,13 @@
 import * as THREE from 'three';
-import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotPos, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE } from './world.js?v=1.3.2';
-import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop } from './characters.js?v=1.3.2';
-import { Controls } from './controls.js?v=1.3.2';
+import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotPos, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.4.0';
+import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop } from './characters.js?v=1.4.0';
+import { Controls } from './controls.js?v=1.4.0';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS } from './data.js?v=1.3.2';
-import { writeSave } from './save.js?v=1.3.2';
-import { VERSION, BUILD_DATE } from './version.js?v=1.3.2';
-import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.3.2';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.3.2';
+import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS } from './data.js?v=1.4.0';
+import { writeSave } from './save.js?v=1.4.0';
+import { VERSION, BUILD_DATE } from './version.js?v=1.4.0';
+import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.4.0';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.4.0';
 
 const ANIM = ['idle', 'walk', 'run', 'jump', 'swim', 'sit', 'pet', 'wave'];
 const MUSH_RESPAWN = 120000;
@@ -103,7 +103,7 @@ export class Game {
 
     this.world = new World(WORLD_SEED);
     this.world.lowQ = !hi;
-    this.world.build(this.scene);
+    this.world.build(this.scene, this.renderer);
 
     this.buildMushrooms();
     this.buildStars();
@@ -113,7 +113,7 @@ export class Game {
     this.buildMinimap();
 
     // mans tēls
-    const sp = this.save.pos && Math.hypot(this.save.pos.x, this.save.pos.z) < 175 && this.world.getHeight(this.save.pos.x, this.save.pos.z) > WATER_Y
+    const sp = this.save.pos && Math.hypot(this.save.pos.x, this.save.pos.z) < PLAY_RADIUS - 5 && this.world.getHeight(this.save.pos.x, this.save.pos.z) > WATER_Y
       ? this.save.pos : SPAWN;
     this.me = {
       pos: new THREE.Vector3(sp.x, this.world.getHeight(sp.x, sp.z), sp.z),
@@ -262,51 +262,53 @@ export class Game {
     }
   }
 
+  // Kartes pamatattēls visai pasaulei; minikarte rāda apkārtni ap spēlētāju, pieskaroties — visu karti
   buildMinimap() {
+    const MS = 420, R = PLAY_RADIUS + 10;
+    this.mapR = R; this.mapS = MS;
     const c = document.createElement('canvas');
-    c.width = c.height = 140;
+    c.width = c.height = MS;
     const g = c.getContext('2d');
-    const img = g.createImageData(140, 140);
+    const img = g.createImageData(MS, MS);
     const W = this.world;
-    for (let py = 0; py < 140; py++) for (let px = 0; px < 140; px++) {
-      const x = -180 + px / 140 * 360, z = -180 + py / 140 * 360;
+    for (let py = 0; py < MS; py++) for (let px = 0; px < MS; px++) {
+      const x = -R + (px + 0.5) / MS * 2 * R, z = -R + (py + 0.5) / MS * 2 * R;
       const h = W.getHeight(x, z);
       let col;
-      if (h < WATER_Y) col = [59, 143, 217];
-      else if (h < 1) col = [230, 213, 154];
+      if (h < WATER_Y) col = h < -1.5 ? [44, 110, 170] : [59, 143, 205];
+      else if (h < 0.9) col = [222, 205, 150];
       else if (W.trackDist(x, z) < TRACK_WIDTH / 2) col = [90, 90, 96];
-      else if (h > 26) col = [150, 150, 140];
-      else if (W.forest(x, z) > 0.12) col = [60, 110, 45];
-      else col = [111, 178, 74];
-      if (Math.hypot(x, z) > 182) col = [120, 120, 110];
-      const k = (py * 140 + px) * 4;
+      else if (W.roadDist(x, z).d < 2.5) col = [160, 130, 90];
+      else if (h > 18) col = [150, 148, 132];
+      else if (W.forest(x, z) > 0.12) col = [52, 100, 42];
+      else col = [111, 170, 72];
+      // vieglas ēnas pēc slīpuma
+      const sh = Math.max(-25, Math.min(25, (W.getHeight(x - 2, z - 2) - h) * 9));
+      col = col.map((v) => Math.max(0, Math.min(255, v + sh)));
+      if (Math.hypot(x, z) > PLAY_RADIUS) col = [95, 110, 80];
+      const k = (py * MS + px) * 4;
       img.data[k] = col[0]; img.data[k + 1] = col[1]; img.data[k + 2] = col[2]; img.data[k + 3] = 255;
     }
     g.putImageData(img, 0, 0);
     this.mapBase = c;
     this.mapCtx = $('minimap').getContext('2d');
+    $('minimap').addEventListener('click', () => this.openBigMap());
   }
 
-  drawMinimap() {
-    const g = this.mapCtx;
-    g.drawImage(this.mapBase, 0, 0);
-    const toPx = (x, z) => [(x + 180) / 360 * 140, (z + 180) / 360 * 140];
-    // zvaigznes
+  mapMarkers(g, toPx, big) {
     g.fillStyle = '#ffe14a';
     this.world.stars.forEach((s) => {
       if (this.save.stars.includes(s.id)) return;
       const [px, py] = toPx(s.x, s.z);
-      g.fillRect(px - 1.5, py - 1.5, 3, 3);
+      g.beginPath(); g.arc(px, py, big ? 3.5 : 2, 0, 6.3); g.fill();
     });
-    // ciemats un kartings
-    g.font = '10px sans-serif';
-    g.fillText('🏡', 64, 75);
-    const [kx, ky] = toPx(this.world.kartSpot.x, this.world.kartSpot.z);
-    g.fillText('🏎️', kx - 5, ky + 4);
-    for (const [id, r] of this.remotes) {
+    g.font = (big ? 16 : 11) + 'px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    const [vx, vy] = toPx(0, 0); g.fillText('🏡', vx, vy);
+    const [kx, ky] = toPx(this.world.kartSpot.x, this.world.kartSpot.z); g.fillText('🏎️', kx, ky);
+    for (const [, r] of this.remotes) {
       const [px, py] = toPx(r.pos.x, r.pos.z);
       g.fillStyle = PLAYER_DOT[(r.prof.slot || 0) % 4];
-      g.beginPath(); g.arc(px, py, 3.5, 0, 6.3); g.fill();
+      g.beginPath(); g.arc(px, py, big ? 5 : 3.5, 0, 6.3); g.fill();
       g.strokeStyle = '#fff'; g.lineWidth = 1; g.stroke();
     }
     const [mx, my] = toPx(this.me.pos.x, this.me.pos.z);
@@ -314,10 +316,37 @@ export class Game {
     g.save();
     g.translate(mx, my);
     g.rotate(-h + Math.PI);
+    const k = big ? 1.4 : 1;
     g.fillStyle = '#fff';
-    g.beginPath(); g.moveTo(0, -6); g.lineTo(4.5, 5); g.lineTo(-4.5, 5); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(0, -6 * k); g.lineTo(4.5 * k, 5 * k); g.lineTo(-4.5 * k, 5 * k); g.closePath(); g.fill();
     g.strokeStyle = '#d00'; g.lineWidth = 1.5; g.stroke();
     g.restore();
+  }
+
+  drawMinimap() {
+    const g = this.mapCtx, R = this.mapR, MS = this.mapS;
+    const VIEW = 130; // metri no centra līdz minikartes malai
+    const cx = this.me.pos.x, cz = this.me.pos.z;
+    const scale = 140 / (2 * VIEW);
+    const toPx = (x, z) => [70 + (x - cx) * scale, 70 + (z - cz) * scale];
+    g.fillStyle = '#5f6e50'; g.fillRect(0, 0, 140, 140);
+    const sp = MS / (2 * R); // pikseļi uz metru pamatattēlā
+    g.drawImage(this.mapBase, (cx - VIEW + R) * sp, (cz - VIEW + R) * sp, 2 * VIEW * sp, 2 * VIEW * sp, 0, 0, 140, 140);
+    this.mapMarkers(g, toPx, false);
+  }
+
+  openBigMap() {
+    showPanel('🗺️ Karte', (b) => {
+      const c = document.createElement('canvas');
+      c.width = c.height = 420;
+      c.style.cssText = 'width:min(78vw,62vh);height:min(78vw,62vh);display:block;margin:0 auto;border-radius:12px';
+      b.append(c);
+      const g = c.getContext('2d');
+      g.drawImage(this.mapBase, 0, 0, 420, 420);
+      const R = this.mapR;
+      this.mapMarkers(g, (x, z) => [(x + R) / (2 * R) * 420, (z + R) / (2 * R) * 420], true);
+      b.append(el('div', { style: 'text-align:center;font-size:13px;margin-top:6px;opacity:0.75' }, '⭐ — zvaigznes · 🏡 — ciemats · 🏎️ — kartings'));
+    });
   }
 
   // ======================= HUD =======================
@@ -734,7 +763,9 @@ export class Game {
     this.updateWorldObjects(dt, t);
     this.updateRace(dt, t);
     this.updateEffects(dt);
-    this.world.updateClouds(dt);
+    this.world.updateClouds(dt, this.camera.position);
+    this.timers.vis = (this.timers.vis || 0) - dt;
+    if (this.timers.vis <= 0) { this.timers.vis = 0.3; this.world.updateVisibility(this.camera.position.x, this.camera.position.z); }
     if (this.world.grassCenter) this.world.grassCenter.set(this.me.pos.x, this.me.pos.z);
 
     this.timers.action -= dt;

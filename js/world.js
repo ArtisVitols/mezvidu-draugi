@@ -1,20 +1,22 @@
 import * as THREE from 'three';
-import { makeNoise2D, mulberry32 } from './noise.js?v=1.3.2';
-import { MUSHROOMS } from './data.js?v=1.3.2';
+import { makeNoise2D, mulberry32 } from './noise.js?v=1.4.0';
+import { MUSHROOMS } from './data.js?v=1.4.0';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mat, smoothstep, lerp, makeTextSprite, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.3.2';
-import { optimizeRig } from './characters.js?v=1.3.2';
+import { mat, smoothstep, lerp, makeTextSprite, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.4.0';
+import { optimizeRig } from './characters.js?v=1.4.0';
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
-export const SIZE = 420;
-export const SEG = 168;
+export const SIZE = 960;
+export const SEG = 384;
 export const CELL = SIZE / SEG;
 export const HALF = SIZE / 2;
 export const WATER_Y = 0;
 export const VILLAGE_Y = 4;
 export const TRACK_Y = 3;
-export const PLAY_RADIUS = 180;
+export const PLAY_RADIUS = 420;
+const EDGE = PLAY_RADIUS - 12; // no šejienes reljefs ceļas mežainos pakalnos
+const LOD_CH = 80; // apgabala izmērs detalizācijas līmeņiem
 export const TRACK_WIDTH = 12;
 export const TRACK_N = 400;
 
@@ -65,11 +67,16 @@ export class World {
       const a = sp[(i - 1 + TRACK_N) % TRACK_N], b = sp[(i + 1) % TRACK_N];
       return new THREE.Vector3(b.x - a.x, 0, b.z - a.z).normalize();
     });
+    this.trackBox = { x0: Math.min(...sp.map((p) => p.x)), x1: Math.max(...sp.map((p) => p.x)), z0: Math.min(...sp.map((p) => p.z)), z1: Math.max(...sp.map((p) => p.z)) };
     const s0 = sp[0], t0 = this.trackTan[0];
     this.roadEnd = { x: s0.x - t0.z * -14, z: s0.z + t0.x * -14 };
   }
 
   trackDist(x, z) {
+    // ātra pārbaude: ja tālu no trases taisnstūra, precīzs attālums nav vajadzīgs
+    const b = this.trackBox;
+    const bx = Math.max(b.x0 - x, 0, x - b.x1), bz = Math.max(b.z0 - z, 0, z - b.z1);
+    if (bx > 40 || bz > 40) return Math.hypot(bx, bz);
     let best = 1e9;
     const p = this.trackPts;
     for (let i = 0; i < TRACK_N; i += 2) {
@@ -115,8 +122,11 @@ export class World {
     const n = this.noise;
     // maigi pauguri, nevis lieli kalni
     let h = n(x * 0.0045, z * 0.0045) * 6.5 + n(x * 0.013 + 31, z * 0.013 - 17) * 2.6 + n(x * 0.04 - 7, z * 0.04 + 3) * 0.5;
+    // lieli apgabali: līdzenumi, paugurainas vietas un zemienes ar ezeriem
+    const reg = n(x * 0.0017 + 500, z * 0.0017 - 700);
     const hv = n(x * 0.008 + 200, z * 0.008 - 300);
-    if (hv > 0) h += hv * hv * 14;
+    if (hv > 0) h += hv * hv * 14 * (1 + Math.max(0, reg) * 1.3);
+    h += reg * 3.2;
     return h + 1.6;
   }
 
@@ -128,7 +138,7 @@ export class World {
     h = lerp(h, lerp(VILLAGE_Y, TRACK_Y, rd.t), 1 - smoothstep(3, 9, rd.d));
     const td = this.trackDist(x, z);
     h = lerp(h, TRACK_Y - 0.05, 1 - smoothstep(TRACK_WIDTH / 2 + 3, TRACK_WIDTH / 2 + 16, td));
-    if (d > 168) h += Math.min(22, (d - 168) * (d - 168) * 0.045);
+    if (d > EDGE) h += Math.min(22, (d - EDGE) * (d - EDGE) * 0.045);
     return h;
   }
 
@@ -190,7 +200,8 @@ export class World {
   }
 
   // ---------- būvēšana ----------
-  build(scene) {
+  build(scene, renderer = null) {
+    this.renderer = renderer;
     scene.add(this.group);
     this.buildTerrain();
     this.buildWater();
@@ -230,8 +241,8 @@ export class World {
       }
       const r = Math.hypot(x, z);
       if (r < 30) c.lerp(P.village, 0.4);
-      if (h > 13 && r < 172) c.lerp(P.rock, Math.min(0.6, (h - 13) / 10));
-      if (r > 172) c.lerp(P.forestG, 0.8);
+      if (h > 13 && r < EDGE + 4) c.lerp(P.rock, Math.min(0.6, (h - 13) / 10));
+      if (r > EDGE + 4) c.lerp(P.forestG, 0.8);
       const rd = this.roadDist(x, z).d;
       if (rd < 3.4) c.lerp(P.road, (1 - smoothstep(1.8, 3.4, rd)) * (0.85 + v2 * 0.15));
     }
@@ -239,23 +250,11 @@ export class World {
   }
 
   buildTerrain() {
-    const geo = new THREE.PlaneGeometry(SIZE, SIZE, SEG, SEG);
-    geo.rotateX(-Math.PI / 2);
-    const pos = geo.attributes.position;
-    const colors = new Float32Array(pos.count * 3);
-    const c = new THREE.Color();
-    const n = SEG + 1;
-    for (let i = 0; i < pos.count; i++) {
-      const ix = i % n, iz = Math.floor(i / n);
-      const x = -HALF + ix * CELL, z = -HALF + iz * CELL;
-      const h = this.heights[iz * n + ix];
-      pos.setY(i, h);
-      this.groundColor(x, z, h, c);
-      colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
-    }
-    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    geo.computeVertexNormals();
-    // smalka zāles/zemes faktūra divos mērogos, kas sareizinās ar krāsām
+    // reljefs sadalīts 8×8 flīzēs, lai neredzamās nezīmētu; normāles no kopējā augstumu režģa (bez šuvēm)
+    const n = SEG + 1, H = this.heights;
+    const TILES = 8, TS = SEG / TILES, TW = SIZE / TILES;
+    const c = new THREE.Color(), nv = new THREE.Vector3();
+    const hAt = (ix, iz) => H[Math.max(0, Math.min(SEG, iz)) * n + Math.max(0, Math.min(SEG, ix))];
     const detail = canvasTexture(512, 512, (g, w, h) => {
       g.fillStyle = '#cfcfcf'; g.fillRect(0, 0, w, h);
       for (let k = 0; k < 120; k++) {
@@ -274,12 +273,35 @@ export class World {
       }
     });
     detail.wrapS = detail.wrapT = THREE.RepeatWrapping;
-    detail.repeat.set(80, 80);
+    detail.repeat.set(TW / 5.25, TW / 5.25);
     detail.anisotropy = 8;
-    const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, map: detail, roughness: 1, metalness: 0 }));
-    m.receiveShadow = true;
-    this.group.add(m);
-    this.terrain = m;
+    const material = new THREE.MeshStandardMaterial({ vertexColors: true, map: detail, roughness: 1, metalness: 0 });
+    this.terrainTiles = [];
+    for (let tz = 0; tz < TILES; tz++) for (let tx = 0; tx < TILES; tx++) {
+      const geo = new THREE.PlaneGeometry(TW, TW, TS, TS);
+      geo.rotateX(-Math.PI / 2);
+      const pos = geo.attributes.position, nor = geo.attributes.normal;
+      const colors = new Float32Array(pos.count * 3);
+      const ox = -HALF + tx * TW + TW / 2, oz = -HALF + tz * TW + TW / 2;
+      for (let i = 0; i < pos.count; i++) {
+        const ix = tx * TS + (i % (TS + 1)), iz = tz * TS + Math.floor(i / (TS + 1));
+        const x = -HALF + ix * CELL, z = -HALF + iz * CELL;
+        const h = H[iz * n + ix];
+        pos.setY(i, h);
+        nv.set(hAt(ix - 1, iz) - hAt(ix + 1, iz), 2 * CELL, hAt(ix, iz - 1) - hAt(ix, iz + 1)).normalize();
+        nor.setXYZ(i, nv.x, nv.y, nv.z);
+        this.groundColor(x, z, h, c);
+        colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
+      }
+      geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+      geo.computeBoundingSphere();
+      const m = new THREE.Mesh(geo, material);
+      m.position.set(ox, 0, oz);
+      m.receiveShadow = true;
+      this.group.add(m);
+      this.terrainTiles.push(m);
+    }
+    this.terrain = this.terrainTiles[0];
   }
 
   buildWater() {
@@ -667,7 +689,7 @@ export class World {
     });
 
     // ceļa zīme
-    g.traverse((o) => { if (o.isMesh && !o.isInstancedMesh && o !== this.terrain && o !== this.water) { o.castShadow = true; o.receiveShadow = true; } });
+    g.traverse((o) => { if (o.isMesh && !o.isInstancedMesh && !this.terrainTiles.includes(o) && o !== this.water) { o.castShadow = true; o.receiveShadow = true; } });
     const sign = makeTextSprite('🏡 Mežvidi', { fontSize: 52, bg: 'rgba(60,120,40,0.85)' });
     sign.position.set(30, VILLAGE_Y + 3, -4);
     g.add(sign);
@@ -681,12 +703,12 @@ export class World {
       for (let gz = -HALF; gz < HALF; gz += step) {
         const x = gx + (rnd() - 0.5) * step * 0.9, z = gz + (rnd() - 0.5) * step * 0.9;
         const r = Math.hypot(x, z);
-        if (r > 215 || r < 42) { rnd(); rnd(); continue; }
+        if (r > PLAY_RADIUS + 35 || r < 42) { rnd(); rnd(); continue; }
         const h = this.getHeight(x, z);
         if (h < 1.2 || h > 45) { rnd(); rnd(); continue; }
         if (this.roadDist(x, z).d < 5) { rnd(); rnd(); continue; }
-        if (r > 176 && (r > 200 || rnd() < 0.4)) { rnd(); continue; }
-        const f = r > 176 ? 0.5 : this.forest(x, z);
+        if (r > EDGE + 8 && (r > PLAY_RADIUS + 20 || rnd() < 0.4)) { rnd(); continue; }
+        const f = r > EDGE + 8 ? 0.5 : this.forest(x, z);
         const p = f > 0.12 ? 0.62 : f > 0.0 ? 0.08 : 0.02;
         if (rnd() > p) {
           if (f > 0.05 && rnd() < 0.25 && this.trackDist(x, z) > TRACK_WIDTH / 2 + 3) lists.bush.push({ x, y: h, z, s: 0.6 + rnd() * 0.7, ry: rnd() * 6.28 });
@@ -851,9 +873,9 @@ export class World {
     });
     const barkM = (color, map) => { const m = new THREE.MeshStandardMaterial({ color, map, roughness: 1 }); return natureMaterial(m, { wind: 0.002 }); };
     bark.repeat.set(2, 2);
-    const foliageM = (tex, opts = {}) => natureMaterial(new THREE.MeshStandardMaterial({
+    const foliageM = (tex, { wind = 0.012, ...opts } = {}) => natureMaterial(new THREE.MeshStandardMaterial({
       map: tex, vertexColors: true, alphaTest: 0.42, side: THREE.DoubleSide, roughness: 0.85, ...opts,
-    }), { wind: opts.wind ?? 0.012, flutter: 0.025, keepNormals: true, translucent: 0.12 });
+    }), { wind, flutter: 0.025, keepNormals: true, translucent: 0.12 });
     const spruceTex = spruceTexture(), pineTex = pineTexture();
     const types = [
       ['egle', trunkWith(6.6, 0.28, 0.06, []), barkM('#6a5442', bark), spruceG, foliageM(spruceTex, { color: '#c8d8c0', wind: 0.008 })],
@@ -862,36 +884,150 @@ export class World {
       ['ozols', trunkWith(3.4, 0.5, 0.3, oakBranches), barkM('#7a6656', bark), oakG, foliageM(leafTexture('ozols'))],
     ];
     const dummy = new THREE.Object3D();
-    // koki sadalīti apgabalos, lai neredzamos apgabalus nezīmētu (ātrāk telefonā)
-    const CH = 90;
-    const mk = (geo, material, all, shadow = true) => {
-      const chunks = new Map();
-      for (const d of all) {
-        const key = Math.floor(d.x / CH) + ',' + Math.floor(d.z / CH);
-        if (!chunks.has(key)) chunks.set(key, []);
-        chunks.get(key).push(d);
-      }
-      for (const list of chunks.values()) mk1(geo, material, list, shadow);
-    };
     const tc = new THREE.Color();
-    const mk1 = (geo, material, list, shadow) => {
-      const im = new THREE.InstancedMesh(geo, material, list.length);
-      list.forEach((d, i) => {
-        dummy.position.set(d.x, d.y - 0.15, d.z);
-        dummy.rotation.set(d.tilt || 0, d.ry, (d.tilt || 0) * 0.7);
-        dummy.scale.set(d.s, d.s * (0.92 + ((d.ry * 7.3) % 1) * 0.16), d.s);
-        dummy.updateMatrix();
-        im.setMatrixAt(i, dummy.matrix);
-        const v = (d.ry * 13.7) % 1;
-        im.setColorAt(i, tc.setRGB(0.88 + v * 0.18, 0.9 + v * 0.14, 0.86 + ((d.ry * 3.1) % 1) * 0.16));
-      });
-      im.castShadow = shadow;
-      im.receiveShadow = true;
-      im.computeBoundingSphere();
-      this.group.add(im);
+    const place = (d, y0 = 0) => {
+      dummy.position.set(d.x, d.y - 0.15 + y0, d.z);
+      dummy.rotation.set(d.tilt || 0, d.ry, (d.tilt || 0) * 0.7);
+      dummy.scale.set(d.s, d.s * (0.92 + ((d.ry * 7.3) % 1) * 0.16), d.s);
     };
-    for (const [k, tg, tm, cg, cm] of types) { mk(tg, tm, lists[k]); mk(cg, cm, lists[k]); }
-    mk(bushG, foliageM(leafTexture('bush'), { wind: 0.03 }), lists.bush, false);
+    const tint = (d) => { const v = (d.ry * 13.7) % 1; return tc.setRGB(0.88 + v * 0.18, 0.9 + v * 0.14, 0.86 + ((d.ry * 3.1) % 1) * 0.16); };
+    const im = (geo, material, list, shadow) => {
+      const m = new THREE.InstancedMesh(geo, material, list.length);
+      list.forEach((d, i) => { place(d); dummy.updateMatrix(); m.setMatrixAt(i, dummy.matrix); m.setColorAt(i, tint(d)); });
+      m.castShadow = shadow; m.receiveShadow = true; m.computeBoundingSphere();
+      this.group.add(m);
+      return m;
+    };
+    // tālajiem kokiem: iepriekš uzzīmēti attēli (impostori) — 4 trijstūri uz koku
+    const atlas = this.renderer ? this.makeImpostorAtlas(types) : null;
+    const quad = (() => {
+      const parts = [0, Math.PI / 2].map((a) => { const q = new THREE.PlaneGeometry(1, 1); q.translate(0, 0.5, 0); q.rotateY(a); return q; });
+      const g = mergeGeometries(parts);
+      const p = g.attributes.position, nn = g.attributes.normal;
+      for (let i = 0; i < p.count; i++) { N.set(p.getX(i) * 1.4, 0.55 + p.getY(i) * 0.3, p.getZ(i) * 1.4).normalize(); nn.setXYZ(i, N.x, N.y, N.z); }
+      return g;
+    })();
+    let impM = null;
+    if (atlas) {
+      impM = new THREE.MeshStandardMaterial({ map: atlas.tex, alphaTest: 0.45, side: THREE.DoubleSide, roughness: 0.9 });
+      impM.onBeforeCompile = (sh) => {
+        sh.vertexShader = 'attribute float aSpecies;\n' + sh.vertexShader.replace('#include <uv_vertex>', '#include <uv_vertex>\n vMapUv.x = (vMapUv.x + aSpecies) * 0.25;');
+        sh.fragmentShader = sh.fragmentShader.replace('#include <normal_fragment_begin>', THREE.ShaderChunk.normal_fragment_begin.replace(/normal\s*\*=\s*faceDirection;/g, ''));
+      };
+      impM.customProgramCacheKey = () => 'impostor';
+    }
+    // grupējam pa apgabaliem: tuvumā pilni koki, tālumā impostori
+    this.lodChunks = this.lodChunks || new Map();
+    const chunkOf = (d) => {
+      const kx = Math.floor(d.x / LOD_CH), kz = Math.floor(d.z / LOD_CH), key = kx + ',' + kz;
+      if (!this.lodChunks.has(key)) this.lodChunks.set(key, { cx: (kx + 0.5) * LOD_CH, cz: (kz + 0.5) * LOD_CH, hi: [], lo: [] });
+      return this.lodChunks.get(key);
+    };
+    const buckets = new Map();
+    const kinds = ['egle', 'priede', 'berzs', 'ozols'];
+    for (const k of [...kinds, 'bush']) for (const d of lists[k]) {
+      const ch = chunkOf(d);
+      if (!buckets.has(ch)) buckets.set(ch, { egle: [], priede: [], berzs: [], ozols: [], bush: [] });
+      buckets.get(ch)[k].push(d);
+    }
+    const bushM = foliageM(leafTexture('bush'), { wind: 0.03 });
+    for (const [ch, b] of buckets) {
+      for (const [k, tg, tm, cg, cm] of types) {
+        if (!b[k].length) continue;
+        ch.hi.push(im(tg, tm, b[k], true), im(cg, cm, b[k], true));
+      }
+      if (b.bush.length) ch.hi.push(im(bushG, bushM, b.bush, false));
+      if (atlas) {
+        const all = [];
+        kinds.forEach((k, si) => b[k].forEach((d) => all.push([d, si])));
+        if (!all.length) continue;
+        const g = quad.clone();
+        const sp = new Float32Array(all.length);
+        const m = new THREE.InstancedMesh(g, impM, all.length);
+        all.forEach(([d, si], i) => {
+          const A = atlas.dims[si];
+          place(d, A.y0 * d.s);
+          dummy.scale.set(A.w * d.s, A.h * dummy.scale.y, A.w * d.s);
+          dummy.rotation.x = 0; dummy.rotation.z = 0;
+          dummy.updateMatrix(); m.setMatrixAt(i, dummy.matrix); m.setColorAt(i, tint(d));
+          sp[i] = si;
+        });
+        g.setAttribute('aSpecies', new THREE.InstancedBufferAttribute(sp, 1));
+        m.computeBoundingSphere();
+        m.receiveShadow = true;
+        m.visible = false;
+        this.group.add(m);
+        ch.lo.push(m);
+      }
+    }
+  }
+
+  // Uzzīmē katru koka veidu no sāniem tekstūrā (4 kolonnas), ko izmanto tālajiem kokiem
+  makeImpostorAtlas(types) {
+    const r = this.renderer, CW = 256, CHh = 512;
+    const rt = new THREE.WebGLRenderTarget(CW * 4, CHh, { minFilter: THREE.LinearMipmapLinearFilter, generateMipmaps: true });
+    const scene = new THREE.Scene();
+    const prevTarget = r.getRenderTarget(), prevColor = new THREE.Color(), prevAlpha = r.getClearAlpha(), prevAuto = r.autoClear;
+    r.getClearColor(prevColor);
+    r.setClearColor('#3d5a2c', 0);
+    r.setRenderTarget(rt); r.clear();
+    r.autoClear = false;
+    const dims = [];
+    types.forEach(([, tg, tm, cg, cm], i) => {
+      scene.clear();
+      const trunk = new THREE.Mesh(tg, new THREE.MeshBasicMaterial({ map: tm.map, color: tm.color.clone().multiplyScalar(0.75) }));
+      const fol = new THREE.Mesh(cg, new THREE.MeshBasicMaterial({ map: cm.map, color: cm.color, vertexColors: true, alphaTest: 0.42, side: THREE.DoubleSide }));
+      scene.add(trunk, fol);
+      const bb = new THREE.Box3().setFromObject(scene);
+      const w = Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z, (bb.max.y - bb.min.y) / 2) * 1.04;
+      const cam = new THREE.OrthographicCamera(-w / 2, w / 2, bb.min.y + w * 2, bb.min.y, 0.1, 100);
+      cam.position.set(0, 0, 30); cam.lookAt(0, 0, 0);
+      cam.top = bb.min.y + w * 2; cam.bottom = bb.min.y; cam.updateProjectionMatrix();
+      rt.viewport.set(i * CW, 0, CW, CHh); rt.scissor.set(i * CW, 0, CW, CHh); rt.scissorTest = true;
+      r.setRenderTarget(rt);
+      r.render(scene, cam);
+      dims.push({ w, h: w * 2, y0: bb.min.y });
+      trunk.material.dispose(); fol.material.dispose();
+    });
+    rt.scissorTest = false; rt.viewport.set(0, 0, CW * 4, CHh);
+    r.setRenderTarget(prevTarget);
+    r.setClearColor(prevColor, prevAlpha);
+    r.autoClear = prevAuto;
+    return { tex: rt.texture, dims };
+  }
+
+  // Redzamība pēc attāluma: tuvu pilni koki, tālu impostori; sīkas detaļas tikai tuvumā
+  updateVisibility(x, z) {
+    if (this.lodChunks) for (const ch of this.lodChunks.values()) {
+      const d = Math.hypot(ch.cx - x, ch.cz - z);
+      const near = d < 100 || !ch.lo.length;
+      for (const m of ch.hi) m.visible = near && d < 400;
+      for (const m of ch.lo) m.visible = !near && d < 400;
+    }
+    if (this.distCull) for (const c of this.distCull) c.mesh.visible = Math.hypot(c.cx - x, c.cz - z) < c.max;
+  }
+
+  // Instanču saraksts sadalīts apgabalos, katrs redzams tikai līdz attālumam max
+  chunked(geo, material, list, setup, max, opts = {}) {
+    this.distCull = this.distCull || [];
+    const chunks = new Map();
+    for (const d of list) {
+      const key = Math.floor(d.x / LOD_CH) + ',' + Math.floor(d.z / LOD_CH);
+      if (!chunks.has(key)) chunks.set(key, []);
+      chunks.get(key).push(d);
+    }
+    const out = [];
+    for (const [key, items] of chunks) {
+      const [kx, kz] = key.split(',').map(Number);
+      const m = new THREE.InstancedMesh(geo, material, items.length);
+      items.forEach((d, i) => setup(m, d, i));
+      m.castShadow = !!opts.castShadow; m.receiveShadow = opts.receiveShadow !== false;
+      m.computeBoundingSphere();
+      this.group.add(m);
+      this.distCull.push({ mesh: m, cx: (kx + 0.5) * LOD_CH, cz: (kz + 0.5) * LOD_CH, max: max + LOD_CH * 0.7 });
+      out.push(m);
+    }
+    return out;
   }
 
   buildRocksAndFlowers() {
@@ -899,10 +1035,10 @@ export class World {
     const dummy = new THREE.Object3D();
     const col = new THREE.Color();
     const rocks = [];
-    for (let i = 0; i < 4000 && rocks.length < 260; i++) {
-      const x = (rnd() - 0.5) * 2 * 175, z = (rnd() - 0.5) * 2 * 175;
+    for (let i = 0; i < 24000 && rocks.length < 1400; i++) {
+      const x = (rnd() - 0.5) * 2 * (PLAY_RADIUS - 5), z = (rnd() - 0.5) * 2 * (PLAY_RADIUS - 5);
       const r = Math.hypot(x, z);
-      if (r > 178 || r < 38) continue;
+      if (r > PLAY_RADIUS - 2 || r < 38) continue;
       const h = this.getHeight(x, z);
       if (h < 0.3) continue;
       if (this.trackDist(x, z) < TRACK_WIDTH / 2 + 4 || this.roadDist(x, z).d < 4) continue;
@@ -932,18 +1068,14 @@ export class World {
     }
     rg.setAttribute('color', new THREE.BufferAttribute(rc, 3));
     const stoneTex = noiseTexture('stone', 128); stoneTex.repeat.set(2, 2);
-    const rim = new THREE.InstancedMesh(rg, new THREE.MeshStandardMaterial({ vertexColors: true, map: stoneTex, roughness: 0.95 }), rocks.length);
-    rocks.forEach((d, i) => {
+    this.chunked(rg, new THREE.MeshStandardMaterial({ vertexColors: true, map: stoneTex, roughness: 0.95 }), rocks, (m, d, i) => {
       dummy.position.set(d.x, d.y, d.z); dummy.scale.set(d.s, d.s, d.s * 0.9); dummy.rotation.set(0, d.ry, 0.08);
-      dummy.updateMatrix(); rim.setMatrixAt(i, dummy.matrix); rim.setColorAt(i, col.setScalar(d.c));
-    });
-    rim.castShadow = true; rim.receiveShadow = true;
-    rim.computeBoundingSphere();
-    this.group.add(rim);
+      dummy.updateMatrix(); m.setMatrixAt(i, dummy.matrix); m.setColorAt(i, col.setScalar(d.c));
+    }, 230, { castShadow: true });
 
     // ---- blīva zāle ap spēlētāju: GPU to novieto pēc reljefa augstuma un krāsas tekstūrām ----
     {
-      const R = 336, cell = SIZE / R;
+      const R = 512, cell = SIZE / R;
       const hData = new Uint16Array(R * R), gData = new Uint8Array(R * R * 4);
       const gnz = makeNoise2D(this.seed + 61);
       for (let j = 0; j < R; j++) for (let i = 0; i < R; i++) {
@@ -1018,8 +1150,8 @@ export class World {
     }
     const flowers = [];
     const fc = ['#f4f1e8', '#f0d84a', '#8a62c0', '#c8302a', '#5a7ad8', '#f4f1e8'];
-    for (let i = 0; i < 40000 && flowers.length < 1500; i++) {
-      const x = (rnd() - 0.5) * 2 * 172, z = (rnd() - 0.5) * 2 * 172;
+    for (let i = 0; i < 220000 && flowers.length < 7500; i++) {
+      const x = (rnd() - 0.5) * 2 * (PLAY_RADIUS - 5), z = (rnd() - 0.5) * 2 * (PLAY_RADIUS - 5);
       const h = this.getHeight(x, z);
       if (h < 1 || h > 16) continue;
       if (this.trackDist(x, z) < TRACK_WIDTH / 2 + 1.5 || this.roadDist(x, z).d < 3) continue;
@@ -1043,21 +1175,18 @@ export class World {
       fcols.set(stem ? [0.2, 0.34, 0.1] : centre ? [1.6, 1.2, 0.1] : [1, 1, 1], i * 3);
     }
     fg.setAttribute('color', new THREE.BufferAttribute(fcols, 3));
-    const fim = new THREE.InstancedMesh(fg, natureMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, side: THREE.DoubleSide }), { wind: 0.3 }), flowers.length);
-    flowers.forEach((d, i) => {
+    this.chunked(fg, natureMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, side: THREE.DoubleSide }), { wind: 0.3 }), flowers, (m, d, i) => {
       dummy.position.set(d.x, d.y, d.z); dummy.scale.setScalar(1.3); dummy.rotation.set(0, d.x * 7 % 6.28, 0);
-      dummy.updateMatrix(); fim.setMatrixAt(i, dummy.matrix); fim.setColorAt(i, col.set(d.c));
-    });
-    fim.computeBoundingSphere();
-    this.group.add(fim);
+      dummy.updateMatrix(); m.setMatrixAt(i, dummy.matrix); m.setColorAt(i, col.set(d.c));
+    }, 110);
 
     // niedres, vilkvālītes un ūdensrozes ezeru malās
     const reeds = [], pads = [];
-    for (let i = 0; i < 60000 && reeds.length < 2200; i++) {
-      const x = (rnd() - 0.5) * 2 * 175, z = (rnd() - 0.5) * 2 * 175;
+    for (let i = 0; i < 330000 && reeds.length < 11000; i++) {
+      const x = (rnd() - 0.5) * 2 * (PLAY_RADIUS - 5), z = (rnd() - 0.5) * 2 * (PLAY_RADIUS - 5);
       const h = this.getHeight(x, z);
       if (h > -0.6 && h < 0.35 && this.trackDist(x, z) > TRACK_WIDTH && rnd() < 0.7) reeds.push({ x, y: Math.min(h, 0) - 0.05, z, s: 0.8 + rnd() * 0.6, ry: rnd() * 6.28, cat: rnd() < 0.25 });
-      else if (h < -0.9 && h > -2.5 && pads.length < 260 && rnd() < 0.08) pads.push({ x, z, s: 0.6 + rnd() * 0.6, ry: rnd() * 6.28, fl: rnd() < 0.2 });
+      else if (h < -0.9 && h > -2.5 && pads.length < 1300 && rnd() < 0.08) pads.push({ x, z, s: 0.6 + rnd() * 0.6, ry: rnd() * 6.28, fl: rnd() < 0.2 });
     }
     const rparts = [];
     for (let k = 0; k < 7; k++) {
@@ -1073,32 +1202,26 @@ export class World {
     const rcol = new Float32Array(reedG.attributes.position.count * 3);
     for (let j = 0; j < reedG.attributes.position.count; j++) { const t = Math.min(1, reedG.attributes.position.getY(j) / 1.6); rcol.set([0.25 + t * 0.35, 0.36 + t * 0.25, 0.12 + t * 0.06], j * 3); }
     reedG.setAttribute('color', new THREE.BufferAttribute(rcol, 3));
-    const rim2 = new THREE.InstancedMesh(reedG, natureMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide, roughness: 0.9 }), { wind: 0.08 }), reeds.length);
+    const reedM = natureMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide, roughness: 0.9 }), { wind: 0.08 });
     const cats = reeds.filter((d) => d.cat);
     const catG = mergeGeometries([new THREE.CylinderGeometry(0.006, 0.006, 1.5, 3).translate(0, 0.75, 0).toNonIndexed(), new THREE.CapsuleGeometry(0.035, 0.16, 2, 5).translate(0, 1.45, 0).toNonIndexed().deleteAttribute('uv')].map((g) => { if (g.attributes.uv) g.deleteAttribute('uv'); return g; }));
     const ccol = new Float32Array(catG.attributes.position.count * 3);
     for (let j = 0; j < catG.attributes.position.count; j++) ccol.set(catG.attributes.position.getY(j) > 1.35 ? [0.32, 0.2, 0.1] : [0.35, 0.45, 0.18], j * 3);
     catG.setAttribute('color', new THREE.BufferAttribute(ccol, 3));
-    const cim = new THREE.InstancedMesh(catG, natureMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85 }), { wind: 0.06 }), Math.max(1, cats.length));
-    reeds.forEach((d, i) => { dummy.position.set(d.x, d.y, d.z); dummy.scale.set(d.s, d.s, d.s); dummy.rotation.set(0, d.ry, 0); dummy.updateMatrix(); rim2.setMatrixAt(i, dummy.matrix); });
-    cats.forEach((d, i) => { dummy.position.set(d.x + 0.1, d.y, d.z); dummy.scale.setScalar(d.s); dummy.rotation.set(0.05, d.ry, 0); dummy.updateMatrix(); cim.setMatrixAt(i, dummy.matrix); });
-    cim.count = cats.length;
-    for (const im of [rim2, cim]) { im.castShadow = true; im.receiveShadow = true; im.computeBoundingSphere(); this.group.add(im); }
+    const catM = natureMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85 }), { wind: 0.06 });
+    this.chunked(reedG, reedM, reeds, (m, d, i) => { dummy.position.set(d.x, d.y, d.z); dummy.scale.set(d.s, d.s, d.s); dummy.rotation.set(0, d.ry, 0); dummy.updateMatrix(); m.setMatrixAt(i, dummy.matrix); }, 150, { castShadow: true });
+    this.chunked(catG, catM, cats, (m, d, i) => { dummy.position.set(d.x + 0.1, d.y, d.z); dummy.scale.setScalar(d.s); dummy.rotation.set(0.05, d.ry, 0); dummy.updateMatrix(); m.setMatrixAt(i, dummy.matrix); }, 150, { castShadow: true });
     // ūdensrožu lapas ar iegriezumu un daži balti ziedi
     const padShape = new THREE.Shape(); padShape.moveTo(0, 0); padShape.absarc(0, 0, 0.35, 0.25, Math.PI * 2 - 0.05, false); padShape.lineTo(0, 0);
     const padG = new THREE.ShapeGeometry(padShape, 12); padG.rotateX(-Math.PI / 2);
-    const pim = new THREE.InstancedMesh(padG, new THREE.MeshStandardMaterial({ color: '#3f6a2a', roughness: 0.4, side: THREE.DoubleSide }), pads.length);
-    pads.forEach((d, i) => { dummy.position.set(d.x, WATER_Y + 0.02, d.z); dummy.scale.setScalar(d.s); dummy.rotation.set(0, d.ry, 0); dummy.updateMatrix(); pim.setMatrixAt(i, dummy.matrix); pim.setColorAt(i, col.setRGB(0.8 + (i % 5) * 0.08, 0.9 + (i % 3) * 0.06, 0.8)); });
-    pim.receiveShadow = true; pim.computeBoundingSphere(); this.group.add(pim);
+    this.chunked(padG, new THREE.MeshStandardMaterial({ color: '#3f6a2a', roughness: 0.4, side: THREE.DoubleSide }), pads, (m, d, i) => { dummy.position.set(d.x, WATER_Y + 0.02, d.z); dummy.scale.setScalar(d.s); dummy.rotation.set(0, d.ry, 0); dummy.updateMatrix(); m.setMatrixAt(i, dummy.matrix); m.setColorAt(i, col.setRGB(0.8 + (i % 5) * 0.08, 0.9 + (i % 3) * 0.06, 0.8)); }, 180);
     const lilies = pads.filter((d) => d.fl);
     if (lilies.length) {
       const lparts = [];
       for (let k = 0; k < 8; k++) { const pe = new THREE.SphereGeometry(0.06, 6, 3); pe.scale(0.45, 0.25, 1); pe.translate(0, 0.03, 0.06); pe.rotateX(-0.5); pe.rotateY(k / 8 * Math.PI * 2); lparts.push(pe); }
       lparts.push(new THREE.SphereGeometry(0.025, 8, 6).translate(0, 0.05, 0));
       const lg = mergeGeometries(lparts);
-      const lim = new THREE.InstancedMesh(lg, new THREE.MeshStandardMaterial({ color: '#f6f3ea', roughness: 0.6 }), lilies.length);
-      lilies.forEach((d, i) => { dummy.position.set(d.x + 0.1, WATER_Y + 0.02, d.z); dummy.scale.setScalar(1.2); dummy.rotation.set(0, d.ry, 0); dummy.updateMatrix(); lim.setMatrixAt(i, dummy.matrix); });
-      lim.computeBoundingSphere(); this.group.add(lim);
+      this.chunked(lg, new THREE.MeshStandardMaterial({ color: '#f6f3ea', roughness: 0.6 }), lilies, (m, d, i) => { dummy.position.set(d.x + 0.1, WATER_Y + 0.02, d.z); dummy.scale.setScalar(1.2); dummy.rotation.set(0, d.ry, 0); dummy.updateMatrix(); m.setMatrixAt(i, dummy.matrix); }, 140);
     }
   }
 
@@ -1138,10 +1261,13 @@ export class World {
     this.group.add(this.clouds);
   }
 
-  updateClouds(dt) {
+  updateClouds(dt, cam) {
+    const cx = cam ? cam.x : 0, cz = cam ? cam.z : 0;
     for (const c of this.clouds.children) {
       c.position.x += dt * 1.2;
-      if (c.position.x > 320) c.position.x = -320;
+      // mākoņi apkārt kamerai (pasaule ir liela)
+      if (c.position.x - cx > 320) c.position.x -= 640; else if (c.position.x - cx < -320) c.position.x += 640;
+      if (c.position.z - cz > 320) c.position.z -= 640; else if (c.position.z - cz < -320) c.position.z += 640;
     }
     this.updateWater(dt);
   }
@@ -1149,10 +1275,10 @@ export class World {
   placeMushrooms() {
     const rnd = mulberry32(this.seed + 31);
     this.mushrooms = [];
-    for (let i = 0; i < 20000 && this.mushrooms.length < 110; i++) {
-      const x = (rnd() - 0.5) * 2 * 170, z = (rnd() - 0.5) * 2 * 170;
+    for (let i = 0; i < 80000 && this.mushrooms.length < 420; i++) {
+      const x = (rnd() - 0.5) * 2 * (PLAY_RADIUS - 10), z = (rnd() - 0.5) * 2 * (PLAY_RADIUS - 10);
       const tr = rnd();
-      if (Math.hypot(x, z) > 172 || Math.hypot(x, z) < 50) continue;
+      if (Math.hypot(x, z) > PLAY_RADIUS - 10 || Math.hypot(x, z) < 50) continue;
       const h = this.getHeight(x, z);
       if (h < 1.3 || h > 32) continue;
       if (this.forest(x, z) < 0.2) continue;
@@ -1169,9 +1295,9 @@ export class World {
     this.stars = [];
     for (let k = 0; k < 15; k++) {
       let best = null;
-      for (let s = 0; s < 80; s++) {
+      for (let s = 0; s < 250; s++) {
         const a = (k + rnd()) / 15 * Math.PI * 2;
-        const r = 50 + rnd() * 115;
+        const r = 60 + rnd() * (PLAY_RADIUS - 90);
         const x = Math.cos(a) * r, z = Math.sin(a) * r;
         const h = this.getHeight(x, z);
         if (h < 1) continue;
@@ -1187,20 +1313,20 @@ export class World {
   placeNpcHomes() {
     const rnd = mulberry32(this.seed + 55);
     const want = [
-      ['stirna', 7, 12, (f, h) => f > -0.05 && f < 0.3 && h > 1.5],
-      ['zakis', 7, 8, (f, h) => f < 0.05 && h > 1.5],
-      ['ezis', 5, 4, (f, h) => f > 0.18 && h > 1.5],
-      ['mezacuka', 4, 9, (f, h) => f > 0.18 && h > 1.5],
-      ['vavere', 5, 3, (f, h) => f > 0.15 && h > 1.5],
-      ['starkis', 5, 4, (f, h) => h > 0.2 && h < 1.6],
+      ['stirna', 22, 12, (f, h) => f > -0.05 && f < 0.3 && h > 1.5],
+      ['zakis', 20, 8, (f, h) => f < 0.05 && h > 1.5],
+      ['ezis', 14, 4, (f, h) => f > 0.18 && h > 1.5],
+      ['mezacuka', 12, 9, (f, h) => f > 0.18 && h > 1.5],
+      ['vavere', 14, 3, (f, h) => f > 0.15 && h > 1.5],
+      ['starkis', 14, 4, (f, h) => h > 0.2 && h < 1.6],
     ];
     this.npcHomes = [];
     for (const [type, count, R, ok] of want) {
       let got = 0;
-      for (let i = 0; i < 6000 && got < count; i++) {
-        const x = (rnd() - 0.5) * 2 * 165, z = (rnd() - 0.5) * 2 * 165;
+      for (let i = 0; i < 30000 && got < count; i++) {
+        const x = (rnd() - 0.5) * 2 * (PLAY_RADIUS - 15), z = (rnd() - 0.5) * 2 * (PLAY_RADIUS - 15);
         const p1 = rnd() * 6.28, p2 = rnd() * 6.28, sp = 0.6 + rnd() * 0.5;
-        if (Math.hypot(x, z) < 45 || Math.hypot(x, z) > 165) continue;
+        if (Math.hypot(x, z) < 45 || Math.hypot(x, z) > PLAY_RADIUS - 15) continue;
         if (this.trackDist(x, z) < TRACK_WIDTH + R) continue;
         const h = this.getHeight(x, z);
         if (!ok(this.forest(x, z), h)) continue;

@@ -1,5 +1,12 @@
 # Izmaiņu žurnāls
 
+## 1.4.0 — 2026-11-14
+- Pasaule ~2,3 reizes platāka (spēles laukums 840 m diametrā, ~5 reizes lielāka platība):
+  vairāk ezeru, mežu, līdzenumu un pauguru apgabalu.
+- 420 sēnes, 96 meža dzīvnieki, vairāk akmeņu, ziedu, niedru un ūdensrožu; 15 zvaigznes izkaisītas pa visu pasauli.
+- Minikarte rāda apkārtni ap spēlētāju; pieskaroties tai, atveras visa karte.
+- Ātrdarbība: tālie koki zīmēti kā vienkārši attēli, sīkas detaļas — tikai tuvumā, reljefs sadalīts flīzēs.
+
 ## 1.3.2 — 2026-11-14
 - Telefoni vairs nerāda veco versiju no kešatmiņas: visiem failiem ir versijas atzīme, un spēle,
   ja serverī ir jaunāka versija, pati pārlādējas.
