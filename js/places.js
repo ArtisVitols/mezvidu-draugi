@@ -1,9 +1,9 @@
 // Īpašās vietas pasaulē: skatu tornis, ugunskura vieta, purvs, pilsdrupas, makšķernieku laipa.
 // Vietas atrod deterministiski pēc reljefa (visiem spēlētājiem vienādas), būvē to modeļus un ogu krūmu vietas.
 import * as THREE from 'three';
-import { mulberry32 } from './noise.js?v=1.5.0';
-import { mat, noiseTexture, makeTextSprite, smoothstep } from './util.js?v=1.5.0';
-import { optimizeRig } from './characters.js?v=1.5.0';
+import { mulberry32 } from './noise.js?v=1.6.0';
+import { mat, noiseTexture, makeTextSprite, smoothstep } from './util.js?v=1.6.0';
+import { optimizeRig } from './characters.js?v=1.6.0';
 
 const TAU = Math.PI * 2;
 const angDiff = (a, b) => { let d = Math.abs(a - b) % TAU; return d > Math.PI ? TAU - d : d; };
@@ -124,8 +124,12 @@ export function inPlace(W, x, z, pad = 0) {
 let stoneTex = null, woodTex = null;
 function stoneM(color = '#9a958a') {
   if (!stoneTex) { stoneTex = noiseTexture('stone', 128); stoneTex.wrapS = stoneTex.wrapT = THREE.RepeatWrapping; }
-  return new THREE.MeshStandardMaterial({ color, map: stoneTex, roughness: 1 });
+  const m = new THREE.MeshStandardMaterial({ color, map: stoneTex, roughness: 1 });
+  stoneList.push(m);
+  return m;
 }
+const stoneList = [];
+export function placeStoneMats() { return stoneList; }
 function woodM(color = '#8a6a48') {
   if (!woodTex) { woodTex = noiseTexture('fur', 64); woodTex.wrapS = woodTex.wrapT = THREE.RepeatWrapping; woodTex.repeat.set(1, 3); }
   return new THREE.MeshStandardMaterial({ color, map: woodTex, roughness: 0.95 });
@@ -415,6 +419,7 @@ export function buildPlaces(W) {
     if (g) root.add(g);
   }
   W.group.add(root);
+  W.stoneMats = (W.stoneMats || []).concat(stoneList);
 }
 
 // liesmu plīvošana

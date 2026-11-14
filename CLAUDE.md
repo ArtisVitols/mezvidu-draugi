@@ -1,7 +1,7 @@
 # Mežvidu Draugi — notes for Claude
 
 Multiplayer (up to 4) 3D adventure game for **phone browsers**, all UI text in **Latvian**.
-Static site: plain HTML + ES modules, no build step. three.js r160 and PeerJS 1.5.4 load from unpkg
+Static site: plain HTML + ES modules, no build step. Photo textures in `assets/` (CC0). three.js r160 and PeerJS 1.5.4 load from unpkg
 (see the importmap in `index.html`).
 
 - Live: https://artisvitols.github.io/mezvidu-draugi/
@@ -37,6 +37,9 @@ Static site: plain HTML + ES modules, no build step. three.js r160 and PeerJS 1.
 | `js/places.js` | Special places (tower, camp, swamp, ruins, pier): deterministic site search before the height grid, terrain flattening (`placeHeight`), models, walkable platforms, berry bush spots |
 | `js/props.js` | Berry bushes (cloned templates), garden decorations + `DECOR_SPOTS`, fishing rod, bobber |
 | `js/activities.js` | `Activities` mixin on `Game.prototype`: fishing, berries, pets, decor, discovery, treasure, tag/hide-and-seek (host-run), weekly team goal |
+| `js/gfx.js` | Realistic graphics: photo terrain material (5-layer `sampler2DArray` splat), HDRI environment, water shader upgrade, `PlanarReflection`, `PostFX` (AO, bloom, ACES + grading) |
+| `assets/` | Poly Haven CC0 textures (`tex/*_c.jpg` albedo 1024, `*_n.jpg` normal 512) and `sky.hdr` (256×128) |
+| `TODO.md` | Planned next ideas (graphics points 5–6, places not built yet) |
 | `js/version.js` | Version shown in the UI |
 | `tools/bump-version.mjs` | Sets the version and cache-busting `?v=` tags |
 
@@ -52,6 +55,11 @@ Static site: plain HTML + ES modules, no build step. three.js r160 and PeerJS 1.
 - Special places come from `findPlaces` in the `World` constructor (needs `computeHeight`, runs before `computeHeights`).
   `world.groundAt(x, z, y)` = terrain or a platform (pier, tower top, swamp boardwalk); player walking uses it.
   Trees, rocks and mushrooms skip `inPlace(...)` areas.
+- Quality (`mezvidi_quality`): `high` = photo textures + reflection + PostFX; `mid` = photo textures only; `low` = old look.
+  With PostFX the scene renders into a HalfFloat MSAA target, so tone mapping/sRGB happen in the PostFX composite shader.
+  If fps < 32 the game first disables PostFX + reflection, then the older pixel-ratio/shadow fallbacks apply.
+- Terrain splat weights come from `world.splatAt()` (forest, sand, dirt, rock; meadow = remainder) as a `splat` vertex attribute.
+- Layer 1 = small details (grass field, flowers, rocks) that the water reflection camera skips; the main camera enables layer 1.
 - Minimap: `mapBase` is a canvas of the whole world; the HUD minimap shows ~130 m around the player, and tapping it opens the full map.
 
 ## Conventions / gotchas

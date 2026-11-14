@@ -4,7 +4,7 @@ Kopīga 3D piedzīvojumu spēle telefona pārlūkam līdz 4 draugiem. Viss latvi
 
 ▶️ **Spēlēt:** https://artisvitols.github.io/mezvidu-draugi/
 
-Pašreizējā versija: **1.5.0** (redzama sākuma ekrānā un ☰ izvēlnē). Izmaiņas: [CHANGELOG.md](CHANGELOG.md).
+Pašreizējā versija: **1.6.0** (redzama sākuma ekrānā un ☰ izvēlnē). Izmaiņas: [CHANGELOG.md](CHANGELOG.md).
 
 ## Kā spēlēt
 1. Atver spēles saiti telefonā (vislabāk guļus).
@@ -42,7 +42,7 @@ Katra spēlētāja progress (monētas, soma, dārzs, zvaigznes, uzdevumi, cepure
 ## Tehniski
 - Tīrs HTML + JavaScript, [three.js](https://threejs.org) 3D grafikai, [PeerJS](https://peerjs.com) (WebRTC) tiešiem savienojumiem.
 - Nav sava servera: saimnieka telefons ir „serveris”. PeerJS bezmaksas serviss palīdz tikai savienoties.
-- Pasaule ģenerēta procedurāli no fiksētas sēklas (`WORLD_SEED`), tāpēc tā katram ir vienāda. Visi 3D modeļi un faktūras tiek uzzīmēti kodā — nav ārēju attēlu failu.
+- Pasaule ģenerēta procedurāli no fiksētas sēklas (`WORLD_SEED`), tāpēc tā katram ir vienāda. 3D modeļi tiek uzbūvēti kodā; zemei, asfaltam un akmeņiem ir foto faktūras (`assets/tex`, ~2,6 MB).
 - Versija: `js/version.js`; jaunu versiju iestata ar `node tools/bump-version.mjs X.Y.Z`.
 
 ### Publicēšana GitHub Pages
@@ -56,7 +56,13 @@ python3 -m http.server 8000
 un atver `http://localhost:8000`.
 
 ### Grafika
-☰ izvēlnē ir poga **„🎨 Grafika: Augsta/Zema”**. Lēnos telefonos spēle pati samazina izšķirtspēju un izslēdz ēnas.
+☰ izvēlnē ir poga **„🎨 Grafika: Augsta / Vidēja / Zema”**:
+- **Augsta** — foto faktūras, debesu foto apgaismojums, ūdens atspulgi, mīkstas ēnas un krāsu korekcija;
+- **Vidēja** — foto faktūras bez atspulgiem un pēcapstrādes;
+- **Zema** — vienkāršākā grafika vecākiem telefoniem.
+
+Lēnos telefonos spēle pati izslēdz efektus, samazina izšķirtspēju un izslēdz ēnas.
+Faktūras un debesu attēls — [Poly Haven](https://polyhaven.com) (CC0), mapē `assets/`.
 
 ### Zināmie ierobežojumi
 - Ja saimnieks aizver spēli vai telefons aizmieg, istaba beidzas (pārējo progress saglabājas).

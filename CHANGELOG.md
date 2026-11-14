@@ -1,5 +1,14 @@
 # Izmaiņu žurnāls
 
+## 1.6.0 — 2026-11-14
+- Reālistiskāka grafika: zeme no foto faktūrām (pļava, meža zeme, smiltis, dubļi, akmens), kas dabiski pāriet viena otrā.
+- Foto faktūras trases asfaltam, akmeņiem un pilsdrupām.
+- Apgaismojums no īstas debesu fotogrāfijas (HDRI).
+- Ūdens: koku un mākoņu atspulgi, caurspīdīgs sekls krasts, viegla putu josla.
+- Pēcapstrāde: mīkstas ēnas kaktos (apkārtnes aizēnojums), mirdzums, krāsu korekcija, vinjete.
+- Grafikas izvēle: Augsta (viss) / Vidēja (foto faktūras bez atspulgiem un efektiem) / Zema. Lēnos telefonos efekti izslēdzas paši.
+- Faktūras: Poly Haven (CC0). Nākamās idejas — TODO.md.
+
 ## 1.5.0 — 2026-11-14
 - 🎣 Makšķerēšana: makšķere pie Ūdra Ojāra, zivis ezeros (rauda, asaris, līdaka, reta zelta zivtiņa), no laipas ķeras labāk.
 - 🫐 Ogu lasīšana: mellenes, avenes un dzērvenes.

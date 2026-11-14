@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mat, makeBlobShadow, noiseTexture, lerp, canvasTexture } from './util.js?v=1.5.0';
+import { mat, makeBlobShadow, noiseTexture, lerp, canvasTexture } from './util.js?v=1.6.0';
 
 // kažoka/auduma materiāli ar smalku faktūru
 let furTex = null, clothTex = null;
@@ -46,6 +46,53 @@ export function optimizeRig(root, skip = new Set()) {
       g.add(mm);
     }
   }
+}
+
+// Nekustīgu objektu (tirgotāji, ratiņi) visas daļas apvieno pa materiāliem — daudz mazāk zīmēšanas izsaukumu
+export function flattenStatic(root) {
+  root.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(root.matrixWorld).invert();
+  const buckets = new Map(), loose = [];
+  root.traverse((o) => {
+    if (!o.visible && o !== root) return;
+    if (o.isMesh && !o.isInstancedMesh && !Array.isArray(o.material) && !o.material.transparent) {
+      const m = o.material;
+      // vienkrāsaini materiāli bez faktūrām -> viens kopīgs materiāls ar virsotņu krāsām
+      const plain = m.isMeshStandardMaterial && !m.isMeshPhysicalMaterial && !m.map && !m.normalMap && !m.bumpMap && !m.vertexColors && m.emissive.getHex() === 0 && m.side === THREE.FrontSide;
+      const key = plain ? `plain|${m.roughness.toFixed(2)}|${m.metalness.toFixed(2)}` : m;
+      if (!buckets.has(key)) buckets.set(key, []);
+      buckets.get(key).push(o);
+    } else if (o.isMesh || o.isSprite) loose.push(o);
+  });
+  const out = new THREE.Group();
+  const rel = (o) => new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld);
+  for (const [key, list] of buckets) {
+    const plain = typeof key === 'string';
+    const keepUv = !plain && list.every((c) => c.geometry.attributes.uv);
+    const geos = list.map((c) => {
+      const g = c.geometry.index ? c.geometry.toNonIndexed() : c.geometry.clone();
+      for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal' && !(keepUv && k === 'uv')) g.deleteAttribute(k);
+      if (plain) {
+        const n = g.attributes.position.count, col = new Float32Array(n * 3), cc = c.material.color;
+        for (let i = 0; i < n; i++) { col[i * 3] = cc.r; col[i * 3 + 1] = cc.g; col[i * 3 + 2] = cc.b; }
+        g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      }
+      return g.applyMatrix4(rel(c));
+    });
+    const merged = mergeGeometries(geos);
+    if (!merged) { list.forEach((c) => loose.push(c)); continue; }
+    const m = plain ? new THREE.MeshStandardMaterial({ vertexColors: true, roughness: list[0].material.roughness, metalness: list[0].material.metalness }) : key;
+    const mm = new THREE.Mesh(merged, m);
+    mm.castShadow = true; mm.receiveShadow = true;
+    out.add(mm);
+  }
+  for (const o of loose) {
+    const c = o.clone(false);
+    rel(o).decompose(c.position, c.quaternion, c.scale);
+    out.add(c);
+  }
+  out.position.copy(root.position); out.quaternion.copy(root.quaternion); out.scale.copy(root.scale);
+  return out;
 }
 
 const S = (r, w = 16, h = 12) => new THREE.SphereGeometry(r, w, h);

@@ -1,10 +1,10 @@
 import * as THREE from 'three';
-import { makeNoise2D, mulberry32 } from './noise.js?v=1.5.0';
-import { MUSHROOMS } from './data.js?v=1.5.0';
+import { makeNoise2D, mulberry32 } from './noise.js?v=1.6.0';
+import { MUSHROOMS } from './data.js?v=1.6.0';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mat, smoothstep, lerp, makeTextSprite, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.5.0';
-import { optimizeRig } from './characters.js?v=1.5.0';
-import { findPlaces, placeHeight, inPlace, buildPlaces, updatePlaces, placeBerries } from './places.js?v=1.5.0';
+import { mat, smoothstep, lerp, makeTextSprite, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.6.0';
+import { optimizeRig } from './characters.js?v=1.6.0';
+import { findPlaces, placeHeight, inPlace, buildPlaces, updatePlaces, placeBerries } from './places.js?v=1.6.0';
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
@@ -273,6 +273,57 @@ export class World {
     return c.multiplyScalar(0.9 + v2 * 0.18);
   }
 
+  // foto faktūru slāņu svari: mežs, smiltis, zeme/dubļi, akmens (pļava = atlikums)
+  splatAt(x, z, h, ny, out, o) {
+    const r = Math.hypot(x, z);
+    let wF = 0, wS = 0, wD = 0, wR = 0;
+    if (h < 0.9) wS = 1 - smoothstep(0.45, 0.95, h);
+    if (h < -0.3) { wD = clamp01((-h - 0.3) * 0.8); wS *= 1 - wD; }
+    if (h >= 0.6) {
+      const f = r > EDGE + 4 ? 0.5 : this.forest(x, z);
+      wF = clamp01((f - 0.08) * 3.2) * smoothstep(0.6, 1.2, h) * smoothstep(40, 55, r);
+      const rd = this.roadDist(x, z).d;
+      if (rd < 3.6) wD = Math.max(wD, 1 - smoothstep(1.6, 3.6, rd));
+      const sw = this.swampPlace || (this.swampPlace = this.places.find((p) => p.id === 'purvs') || { x: 1e9, z: 0, swamp: 1 });
+      const sd = Math.hypot(x - sw.x, z - sw.z);
+      if (sd < sw.swamp * 1.4) wD = Math.max(wD, 0.55 * (1 - smoothstep(sw.swamp * 0.6, sw.swamp * 1.4, sd)));
+      for (const p of this.places) if ((p.id === 'nometne' || p.id === 'drupas') && Math.hypot(x - p.x, z - p.z) < 6) wD = Math.max(wD, 0.6);
+      if (r < 4) wD = Math.max(wD, 0.5);
+    }
+    wR = smoothstep(0.88, 0.72, ny);
+    if (h > 13 && r < EDGE + 4) wR = Math.max(wR, Math.min(0.75, (h - 13) / 9));
+    const sum = wF + wS + wD + wR;
+    const k = sum > 1 ? 1 / sum : 1;
+    out[o] = wF * k; out[o + 1] = wS * k; out[o + 2] = wD * k; out[o + 3] = wR * k;
+  }
+
+  // trases asfalts no foto faktūras ar baltajām malu līnijām
+  usePhotoAsphalt(img, normal) {
+    const cv = document.createElement('canvas');
+    cv.width = 512; cv.height = 1024;
+    const c = cv.getContext('2d');
+    for (let y = 0; y < 3; y++) for (let x = 0; x < 2; x++) c.drawImage(img, x * 342, y * 342, 342, 342);
+    const grd = c.createLinearGradient(0, 0, 512, 0);
+    grd.addColorStop(0.25, 'rgba(10,10,12,0)'); grd.addColorStop(0.5, 'rgba(10,10,12,0.28)'); grd.addColorStop(0.75, 'rgba(10,10,12,0)');
+    c.fillStyle = grd; c.fillRect(0, 0, 512, 1024);
+    c.fillStyle = 'rgba(235,235,228,0.9)'; c.fillRect(512 * 0.035, 0, 512 * 0.025, 1024); c.fillRect(512 * 0.94, 0, 512 * 0.025, 1024);
+    const t = new THREE.CanvasTexture(cv);
+    t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.ClampToEdgeWrapping; t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8;
+    const m = this.trackRoad.material;
+    m.map = t; m.normalMap = normal; normal.repeat.set(3, 3); m.normalScale.set(0.8, 0.8); m.roughness = 0.9;
+    m.needsUpdate = true;
+  }
+
+  // akmeņiem un pilsdrupām foto faktūra
+  usePhotoRock(map, normal) {
+    for (const m of this.stoneMats || []) { m.map = map; m.normalMap = normal; m.color.multiplyScalar(1.9); m.needsUpdate = true; }
+  }
+
+  // nomaina reljefa materiālu uz foto faktūrām (izsauc gfx, kad faktūras ielādētas)
+  usePhotoTerrain(material) {
+    for (const t of this.terrainTiles) t.material = material;
+  }
+
   buildTerrain() {
     // reljefs sadalīts 8×8 flīzēs, lai neredzamās nezīmētu; normāles no kopējā augstumu režģa (bez šuvēm)
     const n = SEG + 1, H = this.heights;
@@ -306,6 +357,7 @@ export class World {
       geo.rotateX(-Math.PI / 2);
       const pos = geo.attributes.position, nor = geo.attributes.normal;
       const colors = new Float32Array(pos.count * 3);
+      const splat = new Float32Array(pos.count * 4);
       const ox = -HALF + tx * TW + TW / 2, oz = -HALF + tz * TW + TW / 2;
       for (let i = 0; i < pos.count; i++) {
         const ix = tx * TS + (i % (TS + 1)), iz = tz * TS + Math.floor(i / (TS + 1));
@@ -316,8 +368,10 @@ export class World {
         nor.setXYZ(i, nv.x, nv.y, nv.z);
         this.groundColor(x, z, h, c);
         colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
+        this.splatAt(x, z, h, nv.y, splat, i * 4);
       }
       geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+      geo.setAttribute('splat', new THREE.BufferAttribute(splat, 4));
       geo.computeBoundingSphere();
       const m = new THREE.Mesh(geo, material);
       m.position.set(ox, 0, oz);
@@ -366,10 +420,12 @@ export class World {
     m.receiveShadow = true;
     this.group.add(m);
     this.water = m;
+    this.size = SIZE; this.waterY = WATER_Y; this.waterTime = { value: 0 };
   }
 
   updateWater(dt) {
     windTime.value += dt;
+    if (this.waterTime) this.waterTime.value += dt;
     if (!this.waterNormal) return;
     this.waterNormal.offset.x += dt * 0.006;
     this.waterNormal.offset.y += dt * 0.004;
@@ -407,6 +463,7 @@ export class World {
     });
     asphalt.wrapT = THREE.RepeatWrapping; asphalt.anisotropy = 8;
     const road = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: asphalt, roughness: 0.85, metalness: 0 }));
+    this.trackRoad = road;
     road.receiveShadow = true;
     this.group.add(road);
 
@@ -1046,6 +1103,7 @@ export class World {
       const m = new THREE.InstancedMesh(geo, material, items.length);
       items.forEach((d, i) => setup(m, d, i));
       m.castShadow = !!opts.castShadow; m.receiveShadow = opts.receiveShadow !== false;
+      if (opts.layer) m.layers.set(opts.layer); // 1. slānis: sīkumi, ko nezīmē ūdens atspulgā
       m.computeBoundingSphere();
       this.group.add(m);
       this.distCull.push({ mesh: m, cx: (kx + 0.5) * LOD_CH, cz: (kz + 0.5) * LOD_CH, max: max + LOD_CH * 0.7 });
@@ -1092,10 +1150,12 @@ export class World {
     }
     rg.setAttribute('color', new THREE.BufferAttribute(rc, 3));
     const stoneTex = noiseTexture('stone', 128); stoneTex.repeat.set(2, 2);
-    this.chunked(rg, new THREE.MeshStandardMaterial({ vertexColors: true, map: stoneTex, roughness: 0.95 }), rocks, (m, d, i) => {
+    const rockMat = new THREE.MeshStandardMaterial({ vertexColors: true, map: stoneTex, roughness: 0.95 });
+    (this.stoneMats = this.stoneMats || []).push(rockMat);
+    this.chunked(rg, rockMat, rocks, (m, d, i) => {
       dummy.position.set(d.x, d.y, d.z); dummy.scale.set(d.s, d.s, d.s * 0.9); dummy.rotation.set(0, d.ry, 0.08);
       dummy.updateMatrix(); m.setMatrixAt(i, dummy.matrix); m.setColorAt(i, col.setScalar(d.c));
-    }, 230, { castShadow: true });
+    }, 230, { castShadow: true, layer: 1 });
 
     // ---- blīva zāle ap spēlētāju: GPU to novieto pēc reljefa augstuma un krāsas tekstūrām ----
     {
@@ -1121,6 +1181,7 @@ export class World {
       }
       const hTex = new THREE.DataTexture(hData, R, R, THREE.RedFormat, THREE.HalfFloatType);
       hTex.magFilter = hTex.minFilter = THREE.LinearFilter; hTex.needsUpdate = true;
+      this.heightTex = hTex;
       const gTex = new THREE.DataTexture(gData, R, R, THREE.RGBAFormat);
       gTex.colorSpace = THREE.SRGBColorSpace;
       gTex.magFilter = gTex.minFilter = THREE.LinearFilter; gTex.needsUpdate = true;
@@ -1169,6 +1230,7 @@ export class World {
       gm.customProgramCacheKey = () => 'grassfield' + COUNT;
       const gim = new THREE.InstancedMesh(tg, gm, COUNT);
       gim.frustumCulled = false;
+      gim.layers.set(1);
       gim.receiveShadow = true;
       this.group.add(gim);
     }
@@ -1202,7 +1264,7 @@ export class World {
     this.chunked(fg, natureMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, side: THREE.DoubleSide }), { wind: 0.3 }), flowers, (m, d, i) => {
       dummy.position.set(d.x, d.y, d.z); dummy.scale.setScalar(1.3); dummy.rotation.set(0, d.x * 7 % 6.28, 0);
       dummy.updateMatrix(); m.setMatrixAt(i, dummy.matrix); m.setColorAt(i, col.set(d.c));
-    }, 110);
+    }, 110, { layer: 1 });
 
     // niedres, vilkvālītes un ūdensrozes ezeru malās
     const reeds = [], pads = [];

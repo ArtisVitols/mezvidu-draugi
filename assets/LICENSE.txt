@@ -1,0 +1,3 @@
+Faktūras un debesu HDRI: Poly Haven (https://polyhaven.com), licence CC0 (publisks īpašums).
+meadow = rocky_terrain_02, forest = forest_leaves_04, sand = coast_sand_01, dirt = brown_mud_leaves_01,
+rock = mossy_rock, asphalt = asphalt_02, sky.hdr = farm_field (samazināts līdz 256x128).
