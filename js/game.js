@@ -5,7 +5,7 @@ import { Controls } from './controls.js';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS } from './data.js';
 import { writeSave } from './save.js';
-import { makeTextSprite, angleLerp, clamp, lerp, smoothstep } from './util.js';
+import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js';
 import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js';
 
 const ANIM = ['idle', 'walk', 'run', 'jump', 'swim', 'sit', 'pet', 'wave'];
@@ -101,6 +101,7 @@ export class Game {
     window.addEventListener('resize', () => this.onResize());
 
     this.world = new World(WORLD_SEED);
+    this.world.lowQ = !hi;
     this.world.build(this.scene);
 
     this.buildMushrooms();
@@ -205,7 +206,12 @@ export class Game {
     this.gardenKeys = [];
     this.gardenSigns = [];
     const soilG = new THREE.BoxGeometry(2.1, 0.16, 2.1);
-    const soilM = new THREE.MeshStandardMaterial({ color: '#4a3220', roughness: 1 });
+    const soilTex = canvasTexture(128, 128, (g, w, h) => {
+      g.fillStyle = '#7a6656'; g.fillRect(0, 0, w, h);
+      for (let i = 0; i < 2500; i++) { const l = 60 + Math.random() * 120; g.fillStyle = `rgba(${l},${l * 0.82 | 0},${l * 0.65 | 0},0.7)`; g.fillRect(Math.random() * w, Math.random() * h, 1 + Math.random() * 3, 1 + Math.random() * 2); }
+      for (let y = 0; y < h; y += 21) { g.fillStyle = 'rgba(25,15,8,0.35)'; g.fillRect(0, y, w, 5); g.fillStyle = 'rgba(255,230,200,0.08)'; g.fillRect(0, y + 8, w, 6); }
+    });
+    const soilM = new THREE.MeshStandardMaterial({ color: '#8a7058', map: soilTex, roughness: 1 });
     GARDEN_SLOTS.forEach((s, slot) => {
       this.gardenCrops[slot] = [];
       this.gardenKeys[slot] = [];
@@ -728,6 +734,7 @@ export class Game {
     this.updateRace(dt, t);
     this.updateEffects(dt);
     this.world.updateClouds(dt);
+    if (this.world.grassCenter) this.world.grassCenter.set(this.me.pos.x, this.me.pos.z);
 
     this.timers.action -= dt;
     if (this.timers.action <= 0) { this.timers.action = 0.15; this.refreshAction(); }

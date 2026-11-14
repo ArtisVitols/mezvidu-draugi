@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { makeNoise2D, mulberry32 } from './noise.js';
 import { MUSHROOMS } from './data.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mat, smoothstep, lerp, makeTextSprite, canvasTexture } from './util.js';
+import { mat, smoothstep, lerp, makeTextSprite, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js';
 import { optimizeRig } from './characters.js';
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
@@ -204,55 +204,78 @@ export class World {
     this.placeNpcHomes();
   }
 
+  // dabiska zemes krāsa konkrētā vietā (izmanto gan reljefs, gan zāle)
+  groundColor(x, z, h, c) {
+    const P = this._pal || (this._pal = {
+      sandWet: new THREE.Color('#6e6248'), sand: new THREE.Color('#b19d74'),
+      grass: new THREE.Color('#4a6b2a'), grass2: new THREE.Color('#62803a'), dry: new THREE.Color('#8f8a52'),
+      lush: new THREE.Color('#3f6326'), forestG: new THREE.Color('#3a4f24'), needles: new THREE.Color('#5a4a30'),
+      soil: new THREE.Color('#4e3f2a'), rock: new THREE.Color('#77736a'), road: new THREE.Color('#7d6a4c'),
+      village: new THREE.Color('#5c8236'), tmp: new THREE.Color(),
+    });
+    const v = this.noise2(x * 0.03, z * 0.03) * 0.5 + 0.5;
+    const v2 = this.noise(x * 0.11 + 40, z * 0.11) * 0.5 + 0.5;
+    const v3 = this.noise2(x * 0.006 - 50, z * 0.006 + 20) * 0.5 + 0.5;
+    if (h < -0.2) c.copy(P.sandWet).lerp(P.sand, clamp01(h + 1));
+    else if (h < 0.9) c.copy(P.sand).lerp(P.lush, smoothstep(0.45, 0.95, h));
+    else {
+      c.copy(P.grass).lerp(P.grass2, v);
+      c.lerp(P.lush, Math.max(0, 0.5 - v3) * 1.2);
+      c.lerp(P.dry, Math.max(0, v3 - 0.55) * 1.4 + Math.max(0, v2 - 0.7) * 1.2);
+      if (h < 2.2) c.lerp(P.lush, (2.2 - h) * 0.5);
+      const f = this.forest(x, z);
+      if (f > 0.05) {
+        c.lerp(P.forestG, Math.min(1, (f - 0.05) * 3.5));
+        c.lerp(P.needles, Math.min(0.55, Math.max(0, v2 - 0.35) * Math.min(1, f * 3)));
+      }
+      const r = Math.hypot(x, z);
+      if (r < 30) c.lerp(P.village, 0.4);
+      if (h > 13 && r < 172) c.lerp(P.rock, Math.min(0.6, (h - 13) / 10));
+      if (r > 172) c.lerp(P.forestG, 0.8);
+      const rd = this.roadDist(x, z).d;
+      if (rd < 3.4) c.lerp(P.road, (1 - smoothstep(1.8, 3.4, rd)) * (0.85 + v2 * 0.15));
+    }
+    return c.multiplyScalar(0.9 + v2 * 0.18);
+  }
+
   buildTerrain() {
     const geo = new THREE.PlaneGeometry(SIZE, SIZE, SEG, SEG);
     geo.rotateX(-Math.PI / 2);
     const pos = geo.attributes.position;
     const colors = new Float32Array(pos.count * 3);
     const c = new THREE.Color();
-    const sandWet = new THREE.Color('#867650'), sand = new THREE.Color('#c2ab7c');
-    const grass = new THREE.Color('#58852f'), grass2 = new THREE.Color('#7c9b3e'), dry = new THREE.Color('#9a9a52');
-    const forestG = new THREE.Color('#3f5a26'), soil = new THREE.Color('#5c4a2e'), rock = new THREE.Color('#7b776d');
-    const road = new THREE.Color('#8a7350'), village = new THREE.Color('#6a9a3c');
     const n = SEG + 1;
     for (let i = 0; i < pos.count; i++) {
       const ix = i % n, iz = Math.floor(i / n);
       const x = -HALF + ix * CELL, z = -HALF + iz * CELL;
       const h = this.heights[iz * n + ix];
       pos.setY(i, h);
-      const v = this.noise2(x * 0.03, z * 0.03) * 0.5 + 0.5;
-      const v2 = this.noise(x * 0.11 + 40, z * 0.11) * 0.5 + 0.5;
-      if (h < -0.2) c.copy(sandWet).lerp(sand, clamp01(h + 1));
-      else if (h < 0.9) c.copy(sand).lerp(grass2, smoothstep(0.5, 0.9, h));
-      else {
-        c.copy(grass).lerp(grass2, v);
-        c.lerp(dry, Math.max(0, v2 - 0.65) * 1.5);
-        const f = this.forest(x, z);
-        if (f > 0.08) { c.lerp(forestG, Math.min(1, (f - 0.08) * 4)); c.lerp(soil, Math.max(0, v2 - 0.5) * 0.5 * Math.min(1, f * 3)); }
-        if (Math.hypot(x, z) < 30) c.lerp(village, 0.5);
-        if (h > 13 && Math.hypot(x, z) < 172) c.lerp(rock, Math.min(0.6, (h - 13) / 10));
-        if (Math.hypot(x, z) > 172) c.lerp(forestG, 0.8);
-        const rd = this.roadDist(x, z).d;
-        if (rd < 3.2) c.lerp(road, 1 - smoothstep(2, 3.2, rd));
-      }
-      c.multiplyScalar(0.92 + v2 * 0.16);
+      this.groundColor(x, z, h, c);
       colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
     }
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     geo.computeVertexNormals();
-    // smalka zāles/zemes faktūra, kas sareizinās ar krāsām
-    const detail = canvasTexture(256, 256, (g, w, h) => {
-      g.fillStyle = '#d8d8d8'; g.fillRect(0, 0, w, h);
-      for (let k = 0; k < 9000; k++) {
-        const l = 170 + Math.random() * 85;
-        g.fillStyle = `rgb(${l},${l},${l})`;
+    // smalka zāles/zemes faktūra divos mērogos, kas sareizinās ar krāsām
+    const detail = canvasTexture(512, 512, (g, w, h) => {
+      g.fillStyle = '#cfcfcf'; g.fillRect(0, 0, w, h);
+      for (let k = 0; k < 120; k++) {
+        const x = Math.random() * w, y = Math.random() * h, r = 10 + Math.random() * 40;
+        const l = 170 + Math.random() * 80;
+        const grd = g.createRadialGradient(x, y, 0, x, y, r);
+        grd.addColorStop(0, `rgba(${l},${l},${l},0.35)`); grd.addColorStop(1, `rgba(${l},${l},${l},0)`);
+        g.fillStyle = grd;
+        for (const ox of [-w, 0, w]) for (const oy of [-h, 0, h]) { g.save(); g.translate(ox, oy); g.fillRect(x - r, y - r, r * 2, r * 2); g.restore(); }
+      }
+      for (let k = 0; k < 30000; k++) {
+        const l = 120 + Math.random() * 135;
+        g.fillStyle = `rgba(${l},${l * 1.02},${l * 0.9},0.8)`;
         const x = Math.random() * w, y = Math.random() * h;
-        g.fillRect(x, y, 1 + Math.random() * 1.5, 2 + Math.random() * 3);
+        g.fillRect(x, y, 1 + Math.random() * 1.5, 2 + Math.random() * 4);
       }
     });
     detail.wrapS = detail.wrapT = THREE.RepeatWrapping;
-    detail.repeat.set(110, 110);
-    detail.anisotropy = 4;
+    detail.repeat.set(80, 80);
+    detail.anisotropy = 8;
     const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, map: detail, roughness: 1, metalness: 0 }));
     m.receiveShadow = true;
     this.group.add(m);
@@ -286,11 +309,11 @@ export class World {
     });
     nTex.colorSpace = THREE.NoColorSpace;
     nTex.wrapS = nTex.wrapT = THREE.RepeatWrapping;
-    nTex.repeat.set(60, 60);
+    nTex.repeat.set(110, 110);
     this.waterNormal = nTex;
     const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
-      color: '#2b5f78', roughness: 0.06, metalness: 0.2, transparent: true, opacity: 0.86,
-      normalMap: nTex, normalScale: new THREE.Vector2(0.35, 0.35),
+      color: '#24495a', roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.9,
+      normalMap: nTex, normalScale: new THREE.Vector2(0.18, 0.18),
     }));
     m.position.y = WATER_Y;
     m.renderOrder = 2;
@@ -300,6 +323,7 @@ export class World {
   }
 
   updateWater(dt) {
+    windTime.value += dt;
     if (!this.waterNormal) return;
     this.waterNormal.offset.x += dt * 0.006;
     this.waterNormal.offset.y += dt * 0.004;
@@ -422,55 +446,145 @@ export class World {
     const g = this.group;
     // aka
     const well = new THREE.Group();
-    const ring = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.4, 1, 12, 1, true), mat('#9a9a92', { side: THREE.DoubleSide }));
+    const wst = noiseTexture('stone', 128); wst.repeat.set(5, 1);
+    const ring = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.4, 1, 18, 1, true), new THREE.MeshStandardMaterial({ color: '#9a958a', map: wst, roughness: 1, side: THREE.DoubleSide }));
     ring.position.y = 0.5; well.add(ring);
-    const wat = new THREE.Mesh(new THREE.CircleGeometry(1.25, 12), mat('#3b8fd9'));
-    wat.rotation.x = -Math.PI / 2; wat.position.y = 0.6; well.add(wat);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(1.33, 0.1, 6, 18), mat('#8d887d', { roughness: 1 }));
+    rim.rotation.x = Math.PI / 2; rim.position.y = 1.0; well.add(rim);
+    const wat = new THREE.Mesh(new THREE.CircleGeometry(1.25, 18), mat('#1e3a44', { roughness: 0.1 }));
+    wat.rotation.x = -Math.PI / 2; wat.position.y = 0.35; well.add(wat);
     for (const s of [1, -1]) {
-      const post = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2.4, 0.2), mat('#7a5230'));
-      post.position.set(s * 1.2, 1.2, 0); well.add(post);
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 2.6, 6), mat('#6e5a45'));
+      post.position.set(s * 1.2, 1.3, 0); well.add(post);
     }
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(1.9, 1.1, 4), mat('#b5452e'));
-    roof.position.y = 2.8; roof.rotation.y = Math.PI / 4; well.add(roof);
+    const axle = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.5, 8), mat('#6e5a45'));
+    axle.rotation.z = Math.PI / 2; axle.position.y = 1.9; well.add(axle);
+    for (const s of [1, -1]) {
+      const rf = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.08, 1.4), mat('#5d5650', { roughness: 1 }));
+      rf.position.set(0, 2.85, s * 0.55); rf.rotation.x = s * 0.6; well.add(rf);
+    }
     optimizeRig(well);
     well.position.set(0, VILLAGE_Y, 0);
     g.add(well);
     this.addCollider(0, 0, 1.5);
 
-    // mājiņas
+    // mājiņas: guļbūves ar skaidu jumtiem
+    const logTex = canvasTexture(256, 256, (g, w, h) => {
+      const n = 8, bh = h / n;
+      for (let i = 0; i < n; i++) {
+        const y = i * bh, l = 0.85 + Math.random() * 0.15;
+        const grd = g.createLinearGradient(0, y, 0, y + bh);
+        grd.addColorStop(0, `rgb(${60 * l | 0},${45 * l | 0},${32 * l | 0})`);
+        grd.addColorStop(0.18, `rgb(${150 * l | 0},${118 * l | 0},${86 * l | 0})`);
+        grd.addColorStop(0.55, `rgb(${170 * l | 0},${138 * l | 0},${104 * l | 0})`);
+        grd.addColorStop(0.9, `rgb(${105 * l | 0},${80 * l | 0},${58 * l | 0})`);
+        grd.addColorStop(1, 'rgb(40,30,22)');
+        g.fillStyle = grd; g.fillRect(0, y, w, bh);
+        for (let k = 0; k < 40; k++) {
+          g.strokeStyle = `rgba(50,35,25,${0.1 + Math.random() * 0.2})`; g.lineWidth = 1;
+          const yy = y + 4 + Math.random() * (bh - 8), x0 = Math.random() * w;
+          g.beginPath(); g.moveTo(x0, yy); g.lineTo(x0 + 20 + Math.random() * 60, yy + (Math.random() - 0.5) * 2); g.stroke();
+        }
+      }
+    });
+    logTex.wrapS = logTex.wrapT = THREE.RepeatWrapping;
+    const roofTex = canvasTexture(256, 256, (g, w, h) => {
+      const rows = 12, rh = h / rows;
+      for (let r = 0; r < rows; r++) {
+        let x = (r % 2) * -10;
+        while (x < w) {
+          const sw = 14 + Math.random() * 14, l = 80 + Math.random() * 50;
+          g.fillStyle = `rgb(${l},${l * 0.95 | 0},${l * 0.88 | 0})`;
+          g.fillRect(x, r * rh, sw - 1.5, rh);
+          g.fillStyle = 'rgba(20,18,15,0.55)'; g.fillRect(x, r * rh + rh - 3, sw, 3);
+          if (Math.random() < 0.25) { g.fillStyle = 'rgba(90,110,50,0.35)'; g.fillRect(x, r * rh, sw, rh); }
+          x += sw;
+        }
+      }
+    });
+    roofTex.wrapS = roofTex.wrapT = THREE.RepeatWrapping;
+    const plankTex = canvasTexture(128, 128, (g, w, h) => {
+      for (let i = 0; i < 6; i++) {
+        const l = 0.8 + Math.random() * 0.25;
+        g.fillStyle = `rgb(${120 * l | 0},${88 * l | 0},${60 * l | 0})`; g.fillRect(i * w / 6, 0, w / 6 - 2, h);
+        g.fillStyle = 'rgba(30,20,12,0.9)'; g.fillRect(i * w / 6 + w / 6 - 2, 0, 2, h);
+      }
+    });
     const houses = [[4, -30, 0.2], [20, -25, -0.4], [6, 30, 3.0], [-10, 32, 2.8], [-34, -32, 0.8]];
-    const wallCols = ['#f3e2b8', '#e8c9a0', '#f6f1e6', '#d9e6f2', '#f2d4d4'];
+    const tints = ['#ffffff', '#e6dccf', '#d6cbbd', '#f2e8dc', '#cfc3b3'];
+    const frameM = mat('#e9e4da', { roughness: 0.7 });
+    const glassM = new THREE.MeshStandardMaterial({ color: '#1d2a33', roughness: 0.08, metalness: 0.4 });
+    const doorM = new THREE.MeshStandardMaterial({ map: plankTex, roughness: 0.9 });
+    const stoneTex = noiseTexture('stone', 128); stoneTex.repeat.set(4, 1);
+    const baseM = new THREE.MeshStandardMaterial({ color: '#8a867e', map: stoneTex, roughness: 1 });
     houses.forEach(([x, z, r], i) => {
       const h = new THREE.Group();
-      const w = new THREE.Mesh(new THREE.BoxGeometry(5, 3, 4.4), mat(wallCols[i]));
-      w.position.y = 1.5; h.add(w);
-      const rf = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 3.6, 2.2, 4, 1), mat('#a3402c'));
-      rf.position.y = 4.1; rf.rotation.y = Math.PI / 4; rf.scale.set(1, 1, 0.9); h.add(rf);
-      const door = new THREE.Mesh(new THREE.BoxGeometry(1, 1.8, 0.1), mat('#6b4423'));
-      door.position.set(0, 0.9, 2.22); h.add(door);
-      for (const s of [1, -1]) {
-        const win = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.8, 0.1), mat('#7fc4ff'));
-        win.position.set(s * 1.6, 1.8, 2.22); h.add(win);
+      const W = 5, D = 4.4, WH = 2.8;
+      const wallM = new THREE.MeshStandardMaterial({ color: tints[i], map: logTex, roughness: 0.95 });
+      const base = new THREE.Mesh(new THREE.BoxGeometry(W + 0.2, 0.5, D + 0.2), baseM); base.position.y = 0.05; h.add(base);
+      const wg = new THREE.BoxGeometry(W, WH, D);
+      // UV mērogs, lai baļķi visām sienām vienā biezumā
+      const uv = wg.attributes.uv, wp = wg.attributes.position, wn = wg.attributes.normal;
+      for (let k = 0; k < uv.count; k++) {
+        const nx = Math.abs(wn.getX(k)), ny = Math.abs(wn.getY(k));
+        if (ny > 0.5) continue;
+        const u = nx > 0.5 ? wp.getZ(k) : wp.getX(k);
+        uv.setXY(k, u / 2.4, (wp.getY(k) + WH / 2) / 2.8);
       }
+      const w = new THREE.Mesh(wg, wallM); w.position.y = 0.3 + WH / 2; h.add(w);
+      // divslīpju jumts + frontoni
+      const top = 0.3 + WH, rise = 1.9, half = D / 2 + 0.45;
+      const slope = Math.hypot(half, rise), ang = Math.atan2(rise, half);
+      const roofM = new THREE.MeshStandardMaterial({ color: '#d8d4cc', map: roofTex, roughness: 0.95 });
+      for (const sd of [1, -1]) {
+        const rg = new THREE.BoxGeometry(W + 0.9, 0.12, slope);
+        const ruv = rg.attributes.uv; for (let k = 0; k < ruv.count; k++) ruv.setXY(k, ruv.getX(k) * 2.4, ruv.getY(k) * 1.4);
+        const rf = new THREE.Mesh(rg, roofM);
+        rf.position.set(0, top + rise / 2, sd * half / 2); rf.rotation.x = sd * ang;
+        h.add(rf);
+      }
+      const gable = new THREE.Shape([new THREE.Vector2(-D / 2, 0), new THREE.Vector2(D / 2, 0), new THREE.Vector2(0, rise - 0.1)]);
+      const gg = new THREE.ExtrudeGeometry(gable, { depth: W - 0.02, bevelEnabled: false });
+      gg.rotateY(Math.PI / 2); gg.translate(-(W - 0.02) / 2, top, 0);
+      const guv = gg.attributes.uv; for (let k = 0; k < guv.count; k++) guv.setXY(k, guv.getX(k) / 2.4, guv.getY(k) / 2.8);
+      h.add(new THREE.Mesh(gg, wallM));
+      const ch = new THREE.Mesh(new THREE.BoxGeometry(0.55, 1.6, 0.55), baseM); ch.position.set(1.2, top + rise - 0.1, -0.6); h.add(ch);
+      const door = new THREE.Mesh(new THREE.BoxGeometry(1, 1.9, 0.08), doorM);
+      door.position.set(0, 0.3 + 0.95, D / 2 + 0.03); h.add(door);
+      const df = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.05, 0.06), frameM); df.position.set(0, 0.3 + 1.0, D / 2 + 0.01); h.add(df);
+      const win = (px, pz, ry) => {
+        const gw = new THREE.Group();
+        const fr = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.0, 0.08), frameM); gw.add(fr);
+        const gl = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.82, 0.04), glassM); gl.position.z = 0.03; gw.add(gl);
+        const m1 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.84, 0.03), frameM); m1.position.z = 0.06; gw.add(m1);
+        const m2 = new THREE.Mesh(new THREE.BoxGeometry(0.84, 0.06, 0.03), frameM); m2.position.z = 0.06; gw.add(m2);
+        const sill = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.07, 0.2), frameM); sill.position.set(0, -0.53, 0.08); gw.add(sill);
+        gw.position.set(px, 0.3 + 1.7, pz); gw.rotation.y = ry; h.add(gw);
+      };
+      win(-1.6, D / 2 + 0.02, 0); win(1.6, D / 2 + 0.02, 0);
+      win(W / 2 + 0.02, 0, Math.PI / 2); win(-W / 2 - 0.02, 0, -Math.PI / 2);
       const y = this.getHeight(x, z);
       optimizeRig(h);
-      h.position.set(x, y, z); h.rotation.y = r;
+      h.position.set(x, y - 0.15, z); h.rotation.y = r;
       g.add(h);
       this.addCollider(x, z, 3.1);
     });
 
-    // dārzu žogi
+    // dārzu žogi: pelēcīgs, laika apstrādāts koks
+    const fenceTex = noiseTexture('fur', 64); fenceTex.repeat.set(1, 4);
+    const postM = new THREE.MeshStandardMaterial({ color: '#7a7064', map: fenceTex, roughness: 1 });
+    const railM = new THREE.MeshStandardMaterial({ color: '#8c8273', map: fenceTex, roughness: 1 });
     GARDEN_SLOTS.forEach((s) => {
       const fence = new THREE.Group();
-      const postG = new THREE.BoxGeometry(0.15, 0.8, 0.15);
-      const railX = new THREE.BoxGeometry(6.6, 0.1, 0.08), railZ = new THREE.BoxGeometry(0.08, 0.1, 9.2);
+      const postG = new THREE.CylinderGeometry(0.07, 0.08, 0.9, 6);
+      const railX = new THREE.BoxGeometry(6.6, 0.09, 0.05), railZ = new THREE.BoxGeometry(0.05, 0.09, 9.2);
       const hw = 3.3, hd = 4.6;
-      for (const [px, pz] of [[-hw, -hd], [hw, -hd], [-hw, hd], [hw, hd], [-hw, 0], [hw, 0]]) {
-        const p = new THREE.Mesh(postG, mat('#8a6238')); p.position.set(px, 0.4, pz); fence.add(p);
+      for (const [px, pz] of [[-hw, -hd], [hw, -hd], [-hw, hd], [hw, hd], [-hw, 0], [hw, 0], [0, -hd], [0, hd], [-hw, -hd / 2], [-hw, hd / 2], [hw, -hd / 2], [hw, hd / 2]]) {
+        const p = new THREE.Mesh(postG, postM); p.position.set(px, 0.42, pz); p.rotation.z = (Math.random() - 0.5) * 0.06; fence.add(p);
       }
-      for (const y of [0.35, 0.65]) {
-        for (const pz of [-hd, hd]) { const r = new THREE.Mesh(railX, mat('#a77a4a')); r.position.set(0, y, pz); fence.add(r); }
-        const r = new THREE.Mesh(railZ, mat('#a77a4a')); r.position.set(-hw, y, 0); fence.add(r);
+      for (const y of [0.35, 0.68]) {
+        for (const pz of [-hd, hd]) { const r = new THREE.Mesh(railX, railM); r.position.set(0, y, pz); fence.add(r); }
+        const r = new THREE.Mesh(railZ, railM); r.position.set(-hw, y, 0); fence.add(r);
       }
       optimizeRig(fence);
       fence.position.set(s.x, VILLAGE_Y, s.z);
@@ -513,65 +627,164 @@ export class World {
     }
     this.treeCount = lists.egle.length + lists.priede.length + lists.berzs.length + lists.ozols.length;
 
-    const blob = (r, seed) => {
-      const g = new THREE.IcosahedronGeometry(r, 1);
-      const nz = makeNoise2D(seed);
+    // ---- ģeometrija no caurspīdīgām lapu/skuju kartiņām ----
+    const gr = mulberry32(this.seed + 777);
+    const V = new THREE.Vector3(), N = new THREE.Vector3(), M = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler();
+    // kartiņu krātuve: pozīcijas, normāles (apaļas no vainaga centra), uv, krāsas (ēnojums iekšpusē)
+    const foliage = () => ({ pos: [], nor: [], uv: [], col: [], idx: [] });
+    const addCard = (F, w, h, matrix, center, radii, uvx = 0) => {
+      const base = F.pos.length / 3;
+      const corners = [[-w / 2, 0, 0, 0], [w / 2, 0, 1, 0], [w / 2, h, 1, 1], [-w / 2, h, 0, 1]];
+      for (const [x, y, u, v] of corners) {
+        V.set(x, y - (uvx ? h / 2 : 0), 0).applyMatrix4(matrix);
+        F.pos.push(V.x, V.y, V.z);
+        N.set((V.x - center.x) / radii.x, (V.y - center.y) / radii.y, (V.z - center.z) / radii.z);
+        const d = Math.min(1, N.length());
+        N.normalize(); N.y += 0.35; N.normalize();
+        F.nor.push(N.x, N.y, N.z);
+        F.uv.push(u, v);
+        const ao = 0.42 + 0.58 * Math.pow(d, 1.3) * (0.75 + 0.25 * clamp01((V.y - center.y + radii.y) / (2 * radii.y)));
+        F.col.push(ao, ao, ao);
+      }
+      F.idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
+    };
+    const toGeo = (F) => {
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(F.pos, 3));
+      g.setAttribute('normal', new THREE.Float32BufferAttribute(F.nor, 3));
+      g.setAttribute('uv', new THREE.Float32BufferAttribute(F.uv, 2));
+      g.setAttribute('color', new THREE.Float32BufferAttribute(F.col, 3));
+      g.setIndex(F.idx);
+      return g;
+    };
+    // lapu mākonis elipsoīdā
+    const leafCloud = (count, center, radii, size) => {
+      const F = foliage();
+      for (let i = 0; i < count; i++) {
+        let x, y, z;
+        do { x = gr() * 2 - 1; y = gr() * 2 - 1; z = gr() * 2 - 1; } while (x * x + y * y + z * z > 1);
+        const k = 0.55 + 0.45 * Math.sqrt(x * x + y * y + z * z);
+        V.set(center.x + x * radii.x * k, center.y + y * radii.y * k, center.z + z * radii.z * k);
+        E.set((gr() - 0.5) * 1.6, Math.atan2(x, z) + (gr() - 0.5) * 1.2, (gr() - 0.5) * 1.6);
+        Q.setFromEuler(E);
+        const s = size * (0.75 + gr() * 0.5);
+        M.compose(V, Q, new THREE.Vector3(1, 1, 1));
+        addCard(F, s, s, M, center, radii, 1);
+      }
+      return toGeo(F);
+    };
+    // stumbrs ar zariem
+    const cyl = (r0, r1, len, seg = 7) => { const g = new THREE.CylinderGeometry(r1, r0, len, seg, 2); g.translate(0, len / 2, 0); return g; };
+    const branch = (from, to, r0, r1) => {
+      const dir = new THREE.Vector3().subVectors(to, from), len = dir.length();
+      const g = cyl(r0, r1, len, 5);
+      g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize()));
+      g.translate(from.x, from.y, from.z);
+      return g;
+    };
+    const trunkWith = (h, r0, r1, branches) => {
+      const parts = [cyl(r0, r1, h, 9), ...branches];
+      // nedaudz nelīdzens stumbrs
+      const g = mergeGeometries(parts.map((p) => p.index ? p.toNonIndexed() : p));
       const p = g.attributes.position;
       for (let i = 0; i < p.count; i++) {
-        const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
-        const k = 1 + nz(x * 1.7 + y, z * 1.7 - y) * 0.22;
-        p.setXYZ(i, x * k, y * k, z * k);
+        const y = p.getY(i);
+        p.setX(i, p.getX(i) + Math.sin(y * 1.3) * 0.04);
+        p.setZ(i, p.getZ(i) + Math.cos(y * 1.1) * 0.03);
       }
       g.computeVertexNormals();
       return g;
     };
-    const merge = (parts) => mergeGeometries(parts.map((g) => g.index ? g.toNonIndexed() : g));
-    const tint = (g, top, bottom) => {
-      g.computeBoundingBox();
-      const bb = g.boundingBox, p = g.attributes.position;
-      const cols = new Float32Array(p.count * 3), a = new THREE.Color(bottom), b = new THREE.Color(top), c = new THREE.Color();
-      for (let i = 0; i < p.count; i++) {
-        c.copy(a).lerp(b, (p.getY(i) - bb.min.y) / (bb.max.y - bb.min.y));
-        cols[i * 3] = c.r; cols[i * 3 + 1] = c.g; cols[i * 3 + 2] = c.b;
+    const v3 = (x, y, z) => new THREE.Vector3(x, y, z);
+
+    // EGLE: skuju zaru virpuļi, nokareni uz leju, kas īsāki uz augšu
+    const spruceF = foliage();
+    {
+      const center = v3(0, 3.6, 0), radii = v3(2.2, 3.8, 2.2);
+      const whorls = 12;
+      for (let i = 0; i < whorls; i++) {
+        const t = i / (whorls - 1);
+        const y = 0.9 + t * 6.0;
+        const L = 0.35 + 2.0 * Math.pow(1 - t, 0.95);
+        const n = t > 0.8 ? 4 : 6;
+        for (let k = 0; k < n; k++) {
+          const a = (k / n) * Math.PI * 2 + i * 0.9 + gr() * 0.4;
+          const droop = 0.35 + 0.35 * (1 - t) + gr() * 0.15;
+          for (const roll of [0.45, -0.45]) {
+            // kartiņa guļ horizontāli (x = garums uz āru), tad noliecas un pagriežas
+            M.identity();
+            const m1 = new THREE.Matrix4().makeRotationX(-Math.PI / 2 + roll);
+            const m0 = new THREE.Matrix4().makeTranslation(L / 2, 0, 0);
+            const m2 = new THREE.Matrix4().makeRotationZ(-droop);
+            const m3 = new THREE.Matrix4().makeRotationY(a);
+            const m4 = new THREE.Matrix4().makeTranslation(0, y, 0);
+            M.multiply(m4).multiply(m3).multiply(m2).multiply(m0).multiply(m1);
+            addCard(spruceF, L, L * 0.55, M, center, radii, 1);
+          }
+        }
       }
-      g.setAttribute('color', new THREE.BufferAttribute(cols, 3));
-      return g;
-    };
-    const place = (g, x, y, z, sx = 1, sy = 1, sz = 1) => { g.scale(sx, sy, sz); g.translate(x, y, z); return g; };
-
-    // egle: vairāki konusi viens virs otra
-    const spruceParts = [];
-    for (let i = 0; i < 5; i++) {
-      const r = 1.9 - i * 0.33, hh = 1.9;
-      const cg = new THREE.ConeGeometry(r, hh, 8, 1, true);
-      const p = cg.attributes.position;
-      for (let k = 0; k < p.count; k++) if (p.getY(k) < 0) p.setY(k, p.getY(k) - 0.25);
-      cg.computeVertexNormals();
-      spruceParts.push(place(cg, 0, 1.5 + i * 1.1, 0));
+      // galotne
+      for (let k = 0; k < 3; k++) {
+        M.makeRotationY(k * Math.PI / 3).multiply(new THREE.Matrix4().makeRotationZ(Math.PI / 2)).setPosition(0, 7.1, 0);
+        addCard(spruceF, 1.5, 0.8, M, center, radii, 1);
+      }
     }
-    const spruceG = tint(merge(spruceParts), '#3d6b3a', '#173a20');
-    const pineCrown = tint(merge([place(blob(1, 1), 0, 6.2, 0, 1.5, 0.7, 1.4), place(blob(1, 2), 0.9, 5.6, 0.3, 1.0, 0.55, 1.0), place(blob(1, 3), -0.8, 5.8, -0.4, 1.1, 0.6, 1.0)]), '#4f7a3a', '#2b4d26');
-    const birchCrown = tint(merge([place(blob(1, 4), 0, 4.6, 0, 1.3, 1.6, 1.3), place(blob(1, 5), 0.7, 3.9, 0.4, 0.9, 1.1, 0.9), place(blob(1, 6), -0.6, 4.1, -0.5, 0.9, 1.2, 0.9)]), '#9cc25a', '#557f2c');
-    const oakCrown = tint(merge([place(blob(1, 7), 0, 4.4, 0, 2.3, 1.7, 2.3), place(blob(1, 8), 1.5, 3.8, 0.6, 1.4, 1.2, 1.4), place(blob(1, 9), -1.4, 4.0, -0.7, 1.5, 1.2, 1.5), place(blob(1, 10), 0.2, 5.4, -0.9, 1.3, 1.0, 1.3)]), '#5e8a3a', '#2f5222');
-    const bushG = tint(merge([place(blob(1, 11), 0, 0.45, 0, 0.9, 0.6, 0.9), place(blob(1, 12), 0.5, 0.35, 0.3, 0.6, 0.45, 0.6), place(blob(1, 13), -0.5, 0.35, -0.2, 0.6, 0.45, 0.6)]), '#4f7a32', '#2a4a1e');
+    const spruceG = toGeo(spruceF);
 
-    const trunk = (h, r0, r1) => { const g = new THREE.CylinderGeometry(r1, r0, h, 8, 3); g.translate(0, h / 2, 0); return g; };
-    const bark = canvasTexture(64, 128, (g, w, h) => {
-      g.fillStyle = '#ffffff'; g.fillRect(0, 0, w, h);
-      for (let i = 0; i < 260; i++) { const l = 140 + Math.random() * 100; g.fillStyle = `rgb(${l},${l},${l})`; g.fillRect(Math.random() * w, Math.random() * h, 1 + Math.random() * 2, 4 + Math.random() * 14); }
+    // PRIEDE: augsts kails stumbrs, skuju pušķi galotnē
+    const pineBranches = [], pineParts = [];
+    const pineClumps = [[0, 7.4, 0, 1.5], [1.1, 6.6, 0.4, 1.2], [-1.0, 6.3, -0.5, 1.2], [0.3, 5.7, -1.1, 1.1], [-0.4, 6.9, 0.9, 1.0]];
+    for (const [x, y, z, s] of pineClumps) {
+      if (x || z) pineBranches.push(branch(v3(0, y - 0.9, 0), v3(x * 0.9, y, z * 0.9), 0.07, 0.03));
+      pineParts.push(leafCloud(7, v3(x, y, z), v3(s * 0.9, s * 0.45, s * 0.9), s * 1.25));
+    }
+    const pineG = mergeGeometries(pineParts);
+    {
+      // pārrēķina normāles no kopējā vainaga centra, lai viss vainags ēnojas vienoti
+      const p = pineG.attributes.position, nn = pineG.attributes.normal;
+      for (let i = 0; i < p.count; i++) {
+        N.set(p.getX(i) / 1.8, (p.getY(i) - 6.6) / 1.0, p.getZ(i) / 1.8).normalize(); N.y += 0.35; N.normalize();
+        nn.setXYZ(i, N.x, N.y, N.z);
+      }
+    }
+    // BĒRZS: slaids balts stumbrs, nokarena gaiša lapotne
+    const birchBranches = [
+      branch(v3(0, 3.0, 0), v3(0.9, 4.6, 0.3), 0.06, 0.025), branch(v3(0, 3.6, 0), v3(-0.8, 5.0, -0.4), 0.05, 0.02),
+      branch(v3(0, 4.2, 0), v3(0.2, 5.6, -0.9), 0.05, 0.02),
+    ];
+    const birchG = leafCloud(30, v3(0, 4.9, 0), v3(1.5, 2.1, 1.5), 1.35);
+    // OZOLS: resns stumbrs, plats kupls vainags
+    const oakBranches = [
+      branch(v3(0, 2.4, 0), v3(1.8, 3.8, 0.5), 0.2, 0.08), branch(v3(0, 2.6, 0), v3(-1.6, 3.9, -0.7), 0.18, 0.07),
+      branch(v3(0, 2.8, 0), v3(0.3, 4.4, -1.6), 0.16, 0.06), branch(v3(0, 3.0, 0), v3(-0.3, 4.8, 1.4), 0.15, 0.06),
+    ];
+    const oakG = leafCloud(40, v3(0, 4.5, 0), v3(2.7, 1.9, 2.7), 1.9);
+    const bushG = leafCloud(12, v3(0, 0.55, 0), v3(0.95, 0.55, 0.95), 0.9);
+
+    const bark = canvasTexture(64, 256, (g, w, h) => {
+      g.fillStyle = '#c8c8c8'; g.fillRect(0, 0, w, h);
+      for (let i = 0; i < 500; i++) { const l = 90 + Math.random() * 150; g.fillStyle = `rgb(${l},${l},${l})`; g.fillRect(Math.random() * w, Math.random() * h, 1 + Math.random() * 3, 5 + Math.random() * 20); }
+      for (let i = 0; i < 60; i++) { g.fillStyle = 'rgba(30,30,30,0.5)'; g.fillRect(Math.random() * w, Math.random() * h, 1, 10 + Math.random() * 30); }
     });
     bark.wrapS = bark.wrapT = THREE.RepeatWrapping;
-    const birchBark = canvasTexture(64, 128, (g, w, h) => {
-      g.fillStyle = '#ecebe4'; g.fillRect(0, 0, w, h);
-      for (let i = 0; i < 40; i++) { g.fillStyle = 'rgba(30,30,30,0.85)'; g.fillRect(Math.random() * w, Math.random() * h, 6 + Math.random() * 18, 1.5 + Math.random() * 2.5); }
+    const birchBark = canvasTexture(64, 256, (g, w, h) => {
+      g.fillStyle = '#e6e3d8'; g.fillRect(0, 0, w, h);
+      for (let i = 0; i < 400; i++) { const l = 200 + Math.random() * 55; g.fillStyle = `rgb(${l},${l},${l - 8})`; g.fillRect(Math.random() * w, Math.random() * h, 3 + Math.random() * 10, 1); }
+      for (let i = 0; i < 55; i++) { g.fillStyle = `rgba(25,22,20,${0.6 + Math.random() * 0.35})`; g.fillRect(Math.random() * w, Math.random() * h, 4 + Math.random() * 20, 1 + Math.random() * 3); }
+      const grd = g.createLinearGradient(0, h * 0.75, 0, h); grd.addColorStop(0, 'rgba(40,35,30,0)'); grd.addColorStop(1, 'rgba(40,35,30,0.85)');
+      g.fillStyle = grd; g.fillRect(0, 0, w, h);
     });
-    birchBark.wrapS = birchBark.wrapT = THREE.RepeatWrapping;
-    const leafM = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, side: THREE.DoubleSide });
+    const barkM = (color, map) => { const m = new THREE.MeshStandardMaterial({ color, map, roughness: 1 }); return natureMaterial(m, { wind: 0.002 }); };
+    bark.repeat.set(2, 2);
+    const foliageM = (tex, opts = {}) => natureMaterial(new THREE.MeshStandardMaterial({
+      map: tex, vertexColors: true, alphaTest: 0.42, side: THREE.DoubleSide, roughness: 0.85, ...opts,
+    }), { wind: opts.wind ?? 0.012, flutter: 0.025, keepNormals: true, translucent: 0.12 });
+    const spruceTex = spruceTexture(), pineTex = pineTexture();
     const types = [
-      ['egle', trunk(2.2, 0.26, 0.12), new THREE.MeshStandardMaterial({ color: '#5a3d26', map: bark, roughness: 1 }), spruceG],
-      ['priede', trunk(6, 0.24, 0.13), new THREE.MeshStandardMaterial({ color: '#a8643a', map: bark, roughness: 1 }), pineCrown],
-      ['berzs', trunk(4.4, 0.2, 0.09), new THREE.MeshStandardMaterial({ map: birchBark, roughness: 0.9 }), birchCrown],
-      ['ozols', trunk(3.4, 0.45, 0.28), new THREE.MeshStandardMaterial({ color: '#4e3b2a', map: bark, roughness: 1 }), oakCrown],
+      ['egle', trunkWith(6.6, 0.28, 0.06, []), barkM('#6a5442', bark), spruceG, foliageM(spruceTex, { color: '#c8d8c0', wind: 0.008 })],
+      ['priede', trunkWith(7.2, 0.26, 0.1, pineBranches), barkM('#b07a52', bark), pineG, foliageM(pineTex, { color: '#d0dcc0' })],
+      ['berzs', trunkWith(6.0, 0.18, 0.05, birchBranches), barkM('#ffffff', birchBark), birchG, foliageM(leafTexture('berzs'), { wind: 0.016 })],
+      ['ozols', trunkWith(3.4, 0.5, 0.3, oakBranches), barkM('#7a6656', bark), oakG, foliageM(leafTexture('ozols'))],
     ];
     const dummy = new THREE.Object3D();
     // koki sadalīti apgabalos, lai neredzamos apgabalus nezīmētu (ātrāk telefonā)
@@ -585,22 +798,25 @@ export class World {
       }
       for (const list of chunks.values()) mk1(geo, material, list, shadow);
     };
+    const tc = new THREE.Color();
     const mk1 = (geo, material, list, shadow) => {
       const im = new THREE.InstancedMesh(geo, material, list.length);
       list.forEach((d, i) => {
-        dummy.position.set(d.x, d.y - 0.1, d.z);
+        dummy.position.set(d.x, d.y - 0.15, d.z);
         dummy.rotation.set(d.tilt || 0, d.ry, (d.tilt || 0) * 0.7);
-        dummy.scale.setScalar(d.s);
+        dummy.scale.set(d.s, d.s * (0.92 + ((d.ry * 7.3) % 1) * 0.16), d.s);
         dummy.updateMatrix();
         im.setMatrixAt(i, dummy.matrix);
+        const v = (d.ry * 13.7) % 1;
+        im.setColorAt(i, tc.setRGB(0.88 + v * 0.18, 0.9 + v * 0.14, 0.86 + ((d.ry * 3.1) % 1) * 0.16));
       });
       im.castShadow = shadow;
       im.receiveShadow = true;
       im.computeBoundingSphere();
       this.group.add(im);
     };
-    for (const [k, tg, tm, cg] of types) { mk(tg, tm, lists[k]); mk(cg, leafM, lists[k]); }
-    mk(bushG, leafM, lists.bush, false);
+    for (const [k, tg, tm, cg, cm] of types) { mk(tg, tm, lists[k]); mk(cg, cm, lists[k]); }
+    mk(bushG, foliageM(leafTexture('bush'), { wind: 0.03 }), lists.bush, false);
   }
 
   buildRocksAndFlowers() {
@@ -617,69 +833,142 @@ export class World {
       if (this.trackDist(x, z) < TRACK_WIDTH / 2 + 4 || this.roadDist(x, z).d < 4) continue;
       if (rnd() > (h > 10 ? 0.5 : 0.12)) continue;
       const s = 0.35 + rnd() * rnd() * 1.6;
-      rocks.push({ x, y: h + s * 0.1, z, s, ry: rnd() * 6, c: ['#8a877e', '#9b978c', '#77736a'][Math.floor(rnd() * 3)] });
+      rocks.push({ x, y: h - s * 0.12, z, s, ry: rnd() * 6, c: 0.8 + rnd() * 0.3 });
       if (s > 0.7) this.addCollider(x, z, s * 0.85);
     }
-    const rg = new THREE.IcosahedronGeometry(1, 1);
+    // akmens: noapaļots laukakmens ar sūnām augšpusē
+    const rg = new THREE.IcosahedronGeometry(1, 3);
     const rn = makeNoise2D(this.seed + 4);
     const rp = rg.attributes.position;
     for (let i = 0; i < rp.count; i++) {
       const x = rp.getX(i), y = rp.getY(i), z = rp.getZ(i);
-      const k = 1 + rn(x * 1.3 + z, y * 1.3) * 0.28;
-      rp.setXYZ(i, x * k, y * k * 0.65, z * k);
+      const k = 1 + rn(x * 1.1 + z * 0.7, y * 1.1) * 0.2 + rn(x * 3.1 - z, y * 3.1 + z) * 0.06;
+      rp.setXYZ(i, x * k, Math.max(-0.3, y * k * 0.62), z * k);
     }
     rg.computeVertexNormals();
-    const rim = new THREE.InstancedMesh(rg, new THREE.MeshStandardMaterial({ color: '#fff', roughness: 0.95, flatShading: true }), rocks.length);
+    const rc = new Float32Array(rp.count * 3), moss = new THREE.Color('#5d6e34'), stone = new THREE.Color('#8d8a82');
+    const rnrm = rg.attributes.normal;
+    for (let i = 0; i < rp.count; i++) {
+      col.copy(stone).multiplyScalar(0.85 + rn(rp.getX(i) * 4, rp.getZ(i) * 4) * 0.15);
+      const up = rnrm.getY(i);
+      if (up > 0.55) col.lerp(moss, Math.min(0.8, (up - 0.55) * 2.2 * (0.6 + 0.4 * rn(rp.getX(i) * 2, rp.getZ(i) * 2))));
+      if (rp.getY(i) < -0.15) col.multiplyScalar(0.65);
+      rc[i * 3] = col.r; rc[i * 3 + 1] = col.g; rc[i * 3 + 2] = col.b;
+    }
+    rg.setAttribute('color', new THREE.BufferAttribute(rc, 3));
+    const stoneTex = noiseTexture('stone', 128); stoneTex.repeat.set(2, 2);
+    const rim = new THREE.InstancedMesh(rg, new THREE.MeshStandardMaterial({ vertexColors: true, map: stoneTex, roughness: 0.95 }), rocks.length);
     rocks.forEach((d, i) => {
-      dummy.position.set(d.x, d.y, d.z); dummy.scale.set(d.s, d.s, d.s * 0.9); dummy.rotation.set(0, d.ry, 0.1);
-      dummy.updateMatrix(); rim.setMatrixAt(i, dummy.matrix); rim.setColorAt(i, col.set(d.c));
+      dummy.position.set(d.x, d.y, d.z); dummy.scale.set(d.s, d.s, d.s * 0.9); dummy.rotation.set(0, d.ry, 0.08);
+      dummy.updateMatrix(); rim.setMatrixAt(i, dummy.matrix); rim.setColorAt(i, col.setScalar(d.c));
     });
     rim.castShadow = true; rim.receiveShadow = true;
+    rim.computeBoundingSphere();
     this.group.add(rim);
 
-    // zāles kušķi un ziedi
-    const flowers = [], tufts = [];
-    const fc = ['#ffffff', '#f4e04a', '#9b6ad0', '#d8302a', '#4a7ae0', '#ffffff'];
-    for (let i = 0; i < 40000 && tufts.length < 9000; i++) {
+    // ---- blīva zāle ap spēlētāju: GPU to novieto pēc reljefa augstuma un krāsas tekstūrām ----
+    {
+      const R = 336, cell = SIZE / R;
+      const hData = new Uint16Array(R * R), gData = new Uint8Array(R * R * 4);
+      const gnz = makeNoise2D(this.seed + 61);
+      for (let j = 0; j < R; j++) for (let i = 0; i < R; i++) {
+        const x = -HALF + (i + 0.5) * cell, z = -HALF + (j + 0.5) * cell;
+        const h = this.getHeight(x, z);
+        hData[j * R + i] = THREE.DataUtils.toHalfFloat(h);
+        this.groundColor(x, z, h, col);
+        col.convertLinearToSRGB();
+        let dens = smoothstep(0.55, 1.1, h) * (1 - smoothstep(16, 20, h));
+        dens *= smoothstep(2.0, 3.2, this.roadDist(x, z).d);
+        dens *= smoothstep(TRACK_WIDTH / 2 + 0.3, TRACK_WIDTH / 2 + 1.6, this.trackDist(x, z));
+        for (const gs of GARDEN_SLOTS) if (Math.abs(x - gs.x) < 3.6 && Math.abs(z - gs.z) < 4.9) dens = 0;
+        if (Math.hypot(x, z) < 2.2) dens = 0;
+        const f = this.forest(x, z);
+        dens *= 1 - Math.min(0.6, Math.max(0, f) * 2.5);
+        dens *= 0.55 + 0.45 * (gnz(x * 0.08, z * 0.08) * 0.5 + 0.5);
+        const k = (j * R + i) * 4;
+        gData[k] = col.r * 255; gData[k + 1] = col.g * 255; gData[k + 2] = col.b * 255; gData[k + 3] = clamp01(dens) * 255;
+      }
+      const hTex = new THREE.DataTexture(hData, R, R, THREE.RedFormat, THREE.HalfFloatType);
+      hTex.magFilter = hTex.minFilter = THREE.LinearFilter; hTex.needsUpdate = true;
+      const gTex = new THREE.DataTexture(gData, R, R, THREE.RGBAFormat);
+      gTex.colorSpace = THREE.SRGBColorSpace;
+      gTex.magFilter = gTex.minFilter = THREE.LinearFilter; gTex.needsUpdate = true;
+
+      const COUNT = this.lowQ ? 4500 : 9000, TILE = this.lowQ ? 34 : 46;
+      const quads = [];
+      for (let k = 0; k < 3; k++) {
+        const q = new THREE.PlaneGeometry(0.75, 0.5); q.translate(0, 0.25, 0); q.rotateY(k * Math.PI / 3);
+        quads.push(q);
+      }
+      const tg = mergeGeometries(quads);
+      const tn = tg.attributes.normal;
+      for (let i = 0; i < tn.count; i++) tn.setXYZ(i, 0, 1, 0);
+      const off = new Float32Array(COUNT * 4);
+      const gr = mulberry32(this.seed + 62);
+      for (let i = 0; i < COUNT; i++) off.set([gr() * TILE, gr() * TILE, gr() * 6.28, 0.7 + gr() * 0.7], i * 4);
+      tg.setAttribute('aOff', new THREE.InstancedBufferAttribute(off, 4));
+      const gm = new THREE.MeshStandardMaterial({ map: grassTexture(), alphaTest: 0.45, side: THREE.DoubleSide, roughness: 1 });
+      const U = { uCenter: { value: new THREE.Vector2() }, uHeightTex: { value: hTex }, uGroundTex: { value: gTex } };
+      this.grassCenter = U.uCenter.value;
+      gm.onBeforeCompile = (sh) => {
+        Object.assign(sh.uniforms, U, { uWind: windTime });
+        sh.vertexShader = `uniform float uWind; uniform vec2 uCenter; uniform sampler2D uHeightTex; uniform sampler2D uGroundTex;
+          attribute vec4 aOff; varying vec3 vGrass;\n` + sh.vertexShader.replace('#include <begin_vertex>', `
+          vec3 transformed = vec3(position);
+          vec2 gp = aOff.xy + ${TILE.toFixed(1)} * floor((uCenter - aOff.xy) / ${TILE.toFixed(1)} + 0.5);
+          vec2 tuv = (gp + ${HALF.toFixed(1)}) / ${SIZE.toFixed(1)};
+          float gh = texture2D(uHeightTex, tuv).r;
+          vec4 gc = texture2D(uGroundTex, tuv);
+          float gd = length(gp - uCenter) / ${(TILE / 2).toFixed(1)};
+          float gs = aOff.w * smoothstep(0.12, 0.45, gc.a) * (1.0 - smoothstep(0.6, 1.0, gd));
+          float cs = cos(aOff.z), sn = sin(aOff.z);
+          transformed.xz = mat2(cs, -sn, sn, cs) * transformed.xz;
+          transformed *= vec3(gs, gs * (0.75 + 0.5 * gc.a), gs);
+          float wk = position.y * 0.32;
+          float ph = gp.x * 0.11 + gp.y * 0.07;
+          float gust = 0.6 + 0.4 * sin(uWind * 0.35 + gp.x * 0.012);
+          transformed.x += (sin(uWind * 1.6 + ph) * 0.7 + sin(uWind * 3.7 + ph * 2.7) * 0.3) * wk * gust;
+          transformed.z += cos(uWind * 1.3 + ph * 1.2) * 0.45 * wk * gust;
+          transformed += vec3(gp.x, gh - 0.04, gp.y);
+          vGrass = gc.rgb * (1.1 + 0.25 * fract(aOff.z * 3.7));`);
+        sh.fragmentShader = 'varying vec3 vGrass;\n' + sh.fragmentShader
+          .replace('#include <color_fragment>', '#include <color_fragment>\n diffuseColor.rgb *= vGrass;')
+          .replace('#include <normal_fragment_begin>', THREE.ShaderChunk.normal_fragment_begin.replace(/normal\s*\*=\s*faceDirection;/g, ''));
+      };
+      gm.customProgramCacheKey = () => 'grassfield' + COUNT;
+      const gim = new THREE.InstancedMesh(tg, gm, COUNT);
+      gim.frustumCulled = false;
+      gim.receiveShadow = true;
+      this.group.add(gim);
+    }
+    const flowers = [];
+    const fc = ['#f4f1e8', '#f0d84a', '#8a62c0', '#c8302a', '#5a7ad8', '#f4f1e8'];
+    for (let i = 0; i < 40000 && flowers.length < 1500; i++) {
       const x = (rnd() - 0.5) * 2 * 172, z = (rnd() - 0.5) * 2 * 172;
       const h = this.getHeight(x, z);
-      if (h < 0.9 || h > 18) continue;
-      if (this.trackDist(x, z) < TRACK_WIDTH / 2 + 1.2) continue;
-      if (this.roadDist(x, z).d < 2.5) continue;
-      if (x > -28 && x < -20 && Math.abs(z) < 24) continue;
-      const f = this.forest(x, z);
-      tufts.push({ x, y: h, z, s: 0.7 + rnd() * 0.7, ry: rnd() * 6.28, c: f > 0.1 ? 0.75 : 0.9 + rnd() * 0.25 });
-      if (f < 0.05 && rnd() < 0.12 && flowers.length < 1200) flowers.push({ x: x + 0.4, y: this.getHeight(x + 0.4, z) + 0.28, z, c: fc[Math.floor(rnd() * fc.length)] });
+      if (h < 1 || h > 16) continue;
+      if (this.trackDist(x, z) < TRACK_WIDTH / 2 + 1.5 || this.roadDist(x, z).d < 3) continue;
+      if (x > -28.5 && x < -19.5 && Math.abs(z) < 26.5) continue;
+      if (this.forest(x, z) > 0.03 || rnd() > 0.3) continue;
+      flowers.push({ x, y: h + 0.2 + rnd() * 0.12, z, c: fc[Math.floor(rnd() * fc.length)] });
     }
-    // kušķis no 5 šauriem stiebriem
-    const pos = [], cols = [];
-    for (let b = 0; b < 5; b++) {
-      const a = b / 5 * Math.PI * 2 + 0.3, w = 0.035, hh = 0.32 + (b % 3) * 0.1, lean = 0.12;
-      const ox = Math.cos(a) * 0.06, oz = Math.sin(a) * 0.06;
-      const tx = ox + Math.cos(a) * lean, tz = oz + Math.sin(a) * lean;
-      const px = -Math.sin(a) * w, pz = Math.cos(a) * w;
-      pos.push(ox - px, 0, oz - pz, ox + px, 0, oz + pz, tx, hh, tz);
-      cols.push(0.1, 0.17, 0.05, 0.1, 0.17, 0.05, 0.3, 0.42, 0.13);
+    // ziedi: stiebrs + mazi ziedlapu kauliņi
+    const fg = mergeGeometries([
+      new THREE.CylinderGeometry(0.006, 0.008, 0.25, 3).translate(0, -0.12, 0).toNonIndexed(),
+      new THREE.IcosahedronGeometry(0.04, 0).scale(1, 0.45, 1).toNonIndexed(),
+    ]);
+    const fcols = new Float32Array(fg.attributes.position.count * 3);
+    for (let i = 0; i < fg.attributes.position.count; i++) {
+      const stem = fg.attributes.position.getY(i) < -0.02;
+      fcols.set(stem ? [0.2, 0.32, 0.1] : [1, 1, 1], i * 3);
     }
-    const tg = new THREE.BufferGeometry();
-    tg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    tg.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
-    tg.computeVertexNormals();
-    const tn = tg.attributes.normal;
-    for (let i = 0; i < tn.count; i++) tn.setXYZ(i, 0, 1, 0);
-    const tim = new THREE.InstancedMesh(tg, new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide, roughness: 1 }), tufts.length);
-    tufts.forEach((d, i) => {
-      dummy.position.set(d.x, d.y - 0.02, d.z); dummy.scale.set(d.s, d.s, d.s); dummy.rotation.set(0, d.ry, 0);
-      dummy.updateMatrix(); tim.setMatrixAt(i, dummy.matrix); tim.setColorAt(i, col.setScalar(d.c));
-    });
-    tim.receiveShadow = true;
-    this.group.add(tim);
-    const fg = new THREE.IcosahedronGeometry(0.06, 0);
-    const fim = new THREE.InstancedMesh(fg, new THREE.MeshStandardMaterial({ color: '#fff', roughness: 0.8 }), flowers.length);
+    fg.setAttribute('color', new THREE.BufferAttribute(fcols, 3));
+    const fim = new THREE.InstancedMesh(fg, natureMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8 }), { wind: 0.3 }), flowers.length);
     flowers.forEach((d, i) => {
-      dummy.position.set(d.x, d.y, d.z); dummy.scale.set(1, 0.5, 1); dummy.rotation.set(0, 0, 0);
+      dummy.position.set(d.x, d.y, d.z); dummy.scale.set(1, 1, 1); dummy.rotation.set(0, 0, 0);
       dummy.updateMatrix(); fim.setMatrixAt(i, dummy.matrix); fim.setColorAt(i, col.set(d.c));
     });
+    fim.computeBoundingSphere();
     this.group.add(fim);
   }
 
