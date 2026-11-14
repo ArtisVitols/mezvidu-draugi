@@ -1,0 +1,11 @@
+{
+  "name": "Mežvidu Draugi",
+  "short_name": "Mežvidi",
+  "start_url": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#3d9b4a",
+  "theme_color": "#2f7d32",
+  "lang": "lv",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
