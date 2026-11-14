@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mat, makeBlobShadow, noiseTexture, lerp } from './util.js';
+import { mat, makeBlobShadow, noiseTexture, lerp, canvasTexture } from './util.js';
 
 // kažoka/auduma materiāli ar smalku faktūru
 let furTex = null, clothTex = null;
@@ -78,6 +78,19 @@ const SPECIES = {
 const CAP = (r, len, seg = 12) => new THREE.CapsuleGeometry(r, len, 5, seg);
 // ekstremitāte, kas karājas uz leju no locītavas
 const LIMB = (r, len) => { const g = CAP(r, len); g.translate(0, -(len / 2 + r * 0.6), 0); return g; };
+// konusveida, noapaļota ekstremitāte ar muskuļa izliekumu (rotācijas virsma)
+const TL = (r0, r1, len, bulge = 0.12) => {
+  const pts = [];
+  for (let i = 0; i <= 6; i++) { const a = Math.PI / 2 - (i / 6) * Math.PI / 2; pts.push(new THREE.Vector2(Math.cos(a) * r0, Math.sin(a) * r0)); }
+  for (let i = 1; i < 8; i++) {
+    const t = i / 8, r = r0 + (r1 - r0) * t + Math.sin(t * Math.PI) * bulge * r0;
+    pts.push(new THREE.Vector2(r, -len * t));
+  }
+  for (let i = 0; i <= 6; i++) { const a = -(i / 6) * Math.PI / 2; pts.push(new THREE.Vector2(Math.cos(a) * r1, -len + Math.sin(a) * r1)); }
+  pts[0].x = 0.0001; pts[pts.length - 1].x = 0.0001;
+  return new THREE.LatheGeometry(pts.reverse(), 16);
+};
+const LATHE = (prof, seg = 24) => new THREE.LatheGeometry(prof.map(([r, y]) => new THREE.Vector2(Math.max(0.0001, r), y)), seg);
 
 export function buildAnimal({ animal = 'lacis', fur = '#8b5a2b', shirt = '#d23b3b', hat = null }) {
   const P = SPECIES[animal] || SPECIES.lacis;
@@ -95,9 +108,9 @@ export function buildAnimal({ animal = 'lacis', fur = '#8b5a2b', shirt = '#d23b3
   const body = new THREE.Group(); body.position.y = HIP; root.add(body);
 
   // iegurnis + mugura
-  add(S(0.18, 18, 14), fur, 0, 0.03, 0, body).scale.set(B, 0.85, 0.9 * B);
+  add(LATHE([[0, -0.15], [0.08, -0.14], [0.14, -0.1], [0.175, -0.03], [0.18, 0.03], [0.165, 0.1], [0.13, 0.15], [0, 0.16]]), fur, 0, 0.03, 0, body).scale.set(B, 1, 0.88 * B);
   const spine = new THREE.Group(); spine.position.y = 0.06; body.add(spine);
-  const torso = add(CAP(0.165, 0.27, 18), fur, 0, 0.23, 0, spine);
+  const torso = add(LATHE([[0, -0.02], [0.13, 0.0], [0.15, 0.08], [0.163, 0.18], [0.17, 0.27], [0.162, 0.34], [0.13, 0.4], [0.085, 0.44], [0, 0.46]], 28), fur, 0, 0, 0, spine);
   torso.scale.set(B, 1, 0.82 * B);
   if (P.bird || animal === 'varde') add(S(0.12, 16, 12), light, 0, 0.24, 0.07 * B, spine).scale.set(0.9 * B, 1.25, 0.6);
   else add(S(0.06, 12, 10), light, 0, 0.4, 0.085, spine).scale.set(1.1, 0.9, 0.6);
@@ -124,7 +137,17 @@ export function buildAnimal({ animal = 'lacis', fur = '#8b5a2b', shirt = '#d23b3
   skull.scale.set(...P.head);
   const eyeM = mat('#120c08', { roughness: 0.15 });
   const nose = (x, y, z, r = 0.022, c = '#1a1412') => add(S(r, 10, 8), c, x, y, z, head, mat(c, { roughness: 0.35 }));
-  const eyes = (x, y, z, r = 0.02) => { for (const s of [-1, 1]) add(S(r, 10, 8), '#000', s * x, y, z, head, eyeM); };
+  const irisM = mat('#3a2412', { roughness: 0.05, metalness: 0.1 });
+  const glintM = new THREE.MeshBasicMaterial({ color: '#ffffff' });
+  const eyes = (x, y, z, r = 0.02, brow = !P.bird && animal !== 'varde') => {
+    for (const s of [-1, 1]) {
+      add(S(r * 1.08, 14, 12), '#000', s * x, y, z, head, eyeM).scale.set(1, 0.92, 0.8);
+      add(S(r * 0.72, 12, 10), '#3a2412', s * (x + r * 0.12), y, z + r * 0.36, head, irisM).scale.set(1, 1, 0.6);
+      add(S(r * 0.42, 10, 8), '#000', s * (x + r * 0.14), y, z + r * 0.62, head, eyeM).scale.set(1, 1, 0.5);
+      add(S(r * 0.2, 6, 6), '#fff', s * (x + r * 0.05) , y + r * 0.35, z + r * 0.85, head, glintM);
+      if (brow) { const b = add(S(r * 1.5, 12, 8), fur, s * x, y + r * 1.05, z - r * 0.35, head); b.scale.set(1.2, 0.36, 0.8); b.rotation.z = s * 0.12; }
+    }
+  };
   const ears = (geo, color, x, y, z, rz = 0, rx = 0, sc = [1, 1, 1]) => {
     for (const s of [-1, 1]) { const e = add(geo, color, s * x, y, z, head); e.rotation.set(rx, 0, -s * rz); e.scale.set(...sc); }
   };
@@ -138,6 +161,8 @@ export function buildAnimal({ animal = 'lacis', fur = '#8b5a2b', shirt = '#d23b3
     case 'lacis':
       muzzle(0.06, 0.06, lighten(fur, 0.25)); nose(0, -0.02, 0.22, 0.026); eyes(0.06, 0.04, 0.125);
       ears(S(0.045, 12, 10), fur, 0.105, 0.115, -0.01, 0, 0, [1, 1, 0.55]);
+      ears(S(0.03, 10, 8), darken(fur, 0.45), 0.107, 0.112, 0.008, 0, 0, [1, 1, 0.3]);
+      for (const sd of [-1, 1]) add(S(0.05, 12, 10), fur, sd * 0.1, -0.05, 0.06, head).scale.set(1, 0.8, 0.9);
       tail = add(S(0.04), fur, 0, 0, -0.02, tailRoot);
       break;
     case 'lapsa': {
@@ -146,6 +171,8 @@ export function buildAnimal({ animal = 'lacis', fur = '#8b5a2b', shirt = '#d23b3
       nose(0, -0.035, 0.3, 0.018); eyes(0.058, 0.03, 0.12, 0.017);
       ears(new THREE.ConeGeometry(0.055, 0.14, 12), fur, 0.085, 0.15, -0.01, 0.2, -0.1, [1, 1, 0.45]);
       ears(new THREE.ConeGeometry(0.025, 0.05, 8), '#2a2420', 0.098, 0.205, -0.01, 0.2, -0.1, [1, 1, 0.45]);
+      ears(new THREE.ConeGeometry(0.035, 0.09, 12), '#f4efe6', 0.086, 0.14, 0.008, 0.2, -0.1, [1, 1, 0.3]);
+      for (const sd of [-1, 1]) { const ch = add(new THREE.ConeGeometry(0.05, 0.12, 12), '#f4efe6', sd * 0.1, -0.06, 0.04, head); ch.rotation.z = sd * 1.9; ch.scale.set(1, 1, 0.6); }
       tail = new THREE.Group();
       add(S(0.09, 16, 12), fur, 0, -0.02, -0.2, tail).scale.set(0.9, 0.9, 2.6);
       add(S(0.06, 12, 10), '#f4efe6', 0, -0.05, -0.44, tail).scale.set(1, 1, 1.4);
@@ -160,7 +187,9 @@ export function buildAnimal({ animal = 'lacis', fur = '#8b5a2b', shirt = '#d23b3
       break;
     case 'kakis':
       muzzle(0.02, 0.05, light, -0.045, 0.1); nose(0, -0.025, 0.165, 0.014, '#c97a7a'); eyes(0.06, 0.03, 0.12, 0.02);
-      ears(new THREE.ConeGeometry(0.05, 0.1, 4), fur, 0.085, 0.13, 0, 0.3, -0.1, [1, 1, 0.5]);
+      ears(new THREE.ConeGeometry(0.05, 0.1, 16), fur, 0.085, 0.13, 0, 0.3, -0.1, [1, 1, 0.5]);
+      ears(new THREE.ConeGeometry(0.032, 0.07, 12), '#d8a0a0', 0.086, 0.125, 0.012, 0.3, -0.1, [1, 1, 0.3]);
+      for (const sd of [-1, 1]) add(S(0.045, 12, 10), light, sd * 0.06, -0.06, 0.09, head).scale.set(1.1, 0.75, 0.8);
       for (const s of [-1, 1]) for (const k of [-1, 1]) {
         const w = add(new THREE.CylinderGeometry(0.0015, 0.0015, 0.16, 3), '#ddd', s * 0.08, -0.045 + k * 0.012, 0.16, head); w.rotation.z = Math.PI / 2 + s * k * 0.12;
       }
@@ -179,6 +208,7 @@ export function buildAnimal({ animal = 'lacis', fur = '#8b5a2b', shirt = '#d23b3
     case 'suns':
       muzzle(0.08, 0.055, lighten(fur, 0.2)); nose(0, -0.02, 0.255, 0.022); eyes(0.06, 0.04, 0.12, 0.02);
       ears(S(0.07, 14, 10), dark, 0.13, 0.0, -0.01, 0.15, 0, [0.35, 1.1, 0.75]);
+      for (const sd of [-1, 1]) add(S(0.04, 12, 10), lighten(fur, 0.2), sd * 0.05, -0.08, 0.12, head).scale.set(1, 0.7, 1);
       tail = new THREE.Group(); { const t = add(LIMB(0.03, 0.22), fur, 0, 0, 0, tail); t.rotation.x = -2.4; } tailRoot.add(tail);
       break;
     case 'varde': {
@@ -237,11 +267,17 @@ export function buildAnimal({ animal = 'lacis', fur = '#8b5a2b', shirt = '#d23b3
       const w = add(S(0.1, 14, 10), fur, 0, -0.14, -0.02, sh); w.scale.set(0.3, 1.3, 0.75);
       el.position.y = -0.26; sh.add(el);
     } else {
-      add(LIMB(0.056 * Math.sqrt(B), 0.13), fur, 0, 0, 0, sh);
-      add(new THREE.CylinderGeometry(0.066 * Math.sqrt(B), 0.064 * Math.sqrt(B), 0.08, 14), shirt, 0, -0.05, 0, sh, clothMat(shirt));
+      const rb = Math.sqrt(B);
+      add(TL(0.06 * rb, 0.047 * rb, 0.2, 0.18), fur, 0, 0, 0, sh);
+      const sl = add(LATHE([[0.07 * rb, 0.03], [0.072 * rb, -0.02], [0.068 * rb, -0.09], [0.066 * rb, -0.1]], 18), shirt, 0, 0, 0, sh, clothMat(shirt, { side: THREE.DoubleSide }));
+      sl.rotation.z = s * 0.05;
       el.position.y = -0.2; sh.add(el);
-      add(LIMB(0.05 * Math.sqrt(B), 0.12), P.sock || fur, 0, 0, 0, el);
-      add(S(0.048, 12, 10), P.sock || (animal === 'varde' ? fur : lighten(fur, 0.15)), 0, -0.2, 0.01, el).scale.set(0.9, 1, 0.8);
+      add(TL(0.048 * rb, 0.036 * rb, 0.17, 0.2), P.sock || fur, 0, 0, 0, el);
+      // ķepa ar pirkstiem
+      const pc = P.sock || (animal === 'varde' ? fur : lighten(fur, 0.12));
+      add(S(0.044, 14, 10), pc, 0, -0.205, 0.008, el).scale.set(0.95, 1.05, 0.72);
+      for (let f = 0; f < 4; f++) add(S(0.016, 8, 6), pc, (f - 1.5) * 0.019, -0.245, 0.016, el).scale.set(1, 1.3, 1);
+      add(S(0.016, 8, 6), pc, -s * 0.035, -0.215, 0.03, el).scale.set(1, 1.4, 1);
     }
     arms.push({ sh, el, side: s });
   }
@@ -253,12 +289,19 @@ export function buildAnimal({ animal = 'lacis', fur = '#8b5a2b', shirt = '#d23b3
     hip.position.set(s * 0.095 * B, 0, 0);
     body.add(hip);
     if (P.bird) add(LIMB(0.032, 0.22), legColor, 0, 0, 0, hip, mat(legColor, { roughness: 0.5 }));
-    else add(LIMB(0.088 * Math.sqrt(B), 0.17), fur, 0, 0, 0, hip);
+    else add(TL(0.1 * Math.sqrt(B), 0.068 * Math.sqrt(B), 0.3, 0.2), fur, 0, 0, 0, hip);
     const knee = new THREE.Group(); knee.position.y = -0.3; hip.add(knee);
-    add(LIMB(P.bird ? 0.025 : 0.066 * Math.sqrt(B), 0.21), P.sock || legColor, 0, 0, 0, knee);
-    const foot = add(S(0.06, 14, 10), P.sock || (P.bird ? legColor : darken(fur, 0.15)), 0, -0.345, 0.05, knee);
+    if (P.bird) add(LIMB(0.025, 0.21), legColor, 0, 0, 0, knee, mat(legColor, { roughness: 0.5 }));
+    else add(TL(0.068 * Math.sqrt(B), 0.045 * Math.sqrt(B), 0.32, 0.22), P.sock || legColor, 0, 0, 0, knee);
+    const fc = P.sock || (P.bird ? legColor : darken(fur, 0.15));
+    const foot = add(S(0.06, 16, 12), fc, 0, -0.35, 0.05, knee);
     foot.scale.set(P.bird ? 1.4 : 1, 0.5, (P.feet || 1) * 1.7);
-    if (P.bird) foot.material = mat(legColor, { roughness: 0.5 });
+    if (P.bird) {
+      foot.material = mat(legColor, { roughness: 0.5 });
+      for (const a of [-0.5, 0, 0.5]) { const t = add(LIMB(0.012, 0.08), legColor, Math.sin(a) * 0.03, -0.37, 0.1, knee, mat(legColor, { roughness: 0.5 })); t.rotation.set(-1.45, a, 0); }
+    } else {
+      for (let f = 0; f < 3; f++) add(S(0.024, 10, 8), fc, (f - 1) * 0.03, -0.365, 0.05 + 0.095 * (P.feet || 1), knee).scale.set(1, 0.75, 1.15);
+    }
     legs.push({ hip, knee });
   }
 
@@ -354,49 +397,112 @@ export function buildAnimal({ animal = 'lacis', fur = '#8b5a2b', shirt = '#d23b3
   return av;
 }
 
+const texCache = new Map();
+function cachedTex(kind, size) { const k = kind + size; if (!texCache.has(k)) texCache.set(k, noiseTexture(kind, size)); return texCache.get(k); }
+// cepuru faktūras
+let strawTex = null;
+function straw() {
+  if (strawTex) return strawTex;
+  strawTex = canvasTexture(128, 128, (g, w, h) => {
+    g.fillStyle = '#d9bd6a'; g.fillRect(0, 0, w, h);
+    for (let y = 0; y < h; y += 8) for (let x = 0; x < w; x += 8) {
+      const o = ((x + y) / 8) % 2;
+      const l = 0.85 + Math.random() * 0.25;
+      g.fillStyle = `rgb(${232 * l | 0},${202 * l | 0},${120 * l | 0})`;
+      if (o) g.fillRect(x, y + 1, 8, 6); else g.fillRect(x + 1, y, 6, 8);
+      g.fillStyle = 'rgba(90,60,20,0.35)'; g.fillRect(x, y + 7, 8, 1); g.fillRect(x + 7, y, 1, 8);
+    }
+  });
+  strawTex.wrapS = strawTex.wrapT = THREE.RepeatWrapping; strawTex.repeat.set(8, 2);
+  return strawTex;
+}
+// lapas forma (ozola — ar robiem)
+function leafShape(oak) {
+  const sh = new THREE.Shape();
+  sh.moveTo(0, 0);
+  if (oak) {
+    const pts = [[0.03, 0.02], [0.05, 0.05], [0.03, 0.07], [0.055, 0.1], [0.03, 0.12], [0.045, 0.15], [0.0, 0.18]];
+    for (const [x, y] of pts) sh.lineTo(x, y);
+    for (let i = pts.length - 2; i >= 0; i--) sh.lineTo(-pts[i][0], pts[i][1]);
+  } else {
+    sh.quadraticCurveTo(0.05, 0.06, 0, 0.14); sh.quadraticCurveTo(-0.05, 0.06, 0, 0);
+  }
+  return new THREE.ShapeGeometry(sh, 4);
+}
 export function buildHat(id) {
   const g = new THREE.Group();
+  const M = (c, o = {}) => mat(c, o);
   switch (id) {
-    case 'salmu': {
-      mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.04, 16), '#e8cf6a', 0, 0, 0, g);
-      mesh(new THREE.CylinderGeometry(0.24, 0.27, 0.22, 14), '#e2c35a', 0, 0.11, 0, g);
-      mesh(new THREE.CylinderGeometry(0.275, 0.275, 0.06, 14), '#d23b3b', 0, 0.04, 0, g);
+    case 'salmu': { // pīta salmu cepure ar izliektu malu un lenti
+      const sm = new THREE.MeshStandardMaterial({ color: '#f2dc9a', map: straw(), roughness: 0.95, side: THREE.DoubleSide });
+      const prof = [[0.52, -0.035], [0.46, -0.01], [0.36, 0.005], [0.27, 0.01], [0.255, 0.05], [0.25, 0.16], [0.235, 0.22], [0.18, 0.25], [0.0, 0.26]];
+      g.add(new THREE.Mesh(LATHE(prof, 36), sm));
+      g.add(new THREE.Mesh(LATHE([[0.258, 0.03], [0.256, 0.09]], 36), M('#7a2a22', { roughness: 0.6, side: THREE.DoubleSide })));
+      const bow = new THREE.Mesh(S(0.035, 10, 8), M('#7a2a22', { roughness: 0.6 })); bow.position.set(0.255, 0.06, 0.05); bow.scale.set(0.5, 1, 1.6); g.add(bow);
       break;
     }
-    case 'vainags': {
-      const t = mesh(new THREE.TorusGeometry(0.27, 0.05, 6, 16), '#3f8a2f', 0, 0, 0, g); t.rotation.x = Math.PI / 2;
-      const cols = ['#ffffff', '#ffe03a', '#3a7ae8', '#e8302a', '#b06ae0'];
-      for (let i = 0; i < 10; i++) {
-        const a = i / 10 * Math.PI * 2;
-        mesh(S(0.06, 6, 6), cols[i % 5], Math.cos(a) * 0.27, 0.04, Math.sin(a) * 0.27, g);
+    case 'vainags': { // Jāņu ziedu vainags: zāle, lapas un pļavas ziedi
+      const t = new THREE.Mesh(new THREE.TorusGeometry(0.27, 0.035, 8, 32), M('#4a7a2a', { roughness: 0.9 })); t.rotation.x = Math.PI / 2; g.add(t);
+      const lg = leafShape(false), lm = M('#4f8a30', { side: THREE.DoubleSide, roughness: 0.8 });
+      for (let i = 0; i < 26; i++) {
+        const a = i / 26 * Math.PI * 2, l = new THREE.Mesh(lg, lm);
+        l.position.set(Math.cos(a) * 0.27, 0.01, Math.sin(a) * 0.27); l.rotation.set(-0.9, -a + Math.PI / 2 + (i % 2 ? 0.6 : -0.6), 0); g.add(l);
+      }
+      const cols = ['#ffffff', '#ffe03a', '#4a6ae0', '#e8302a', '#b06ae0', '#ffffff'];
+      const petal = new THREE.SphereGeometry(0.022, 8, 6);
+      for (let i = 0; i < 9; i++) {
+        const a = i / 9 * Math.PI * 2 + 0.2, fl = new THREE.Group();
+        const pm = M(cols[i % cols.length], { roughness: 0.7 });
+        for (let k = 0; k < 6; k++) { const pe = new THREE.Mesh(petal, pm); const b = k / 6 * Math.PI * 2; pe.position.set(Math.cos(b) * 0.026, 0, Math.sin(b) * 0.026); pe.scale.set(1.2, 0.3, 0.7); pe.rotation.y = -b; fl.add(pe); }
+        const cn = new THREE.Mesh(S(0.014, 8, 6), M('#f2b81a')); cn.position.y = 0.006; fl.add(cn);
+        fl.position.set(Math.cos(a) * 0.27, 0.05, Math.sin(a) * 0.27); fl.rotation.set(Math.cos(a) * 0.5, 0, -Math.sin(a) * 0.5); g.add(fl);
       }
       break;
     }
-    case 'ozols': {
-      const t = mesh(new THREE.TorusGeometry(0.28, 0.06, 6, 16), '#2f6b24', 0, 0, 0, g); t.rotation.x = Math.PI / 2;
-      for (let i = 0; i < 12; i++) {
-        const a = i / 12 * Math.PI * 2;
-        const l = mesh(new THREE.BoxGeometry(0.12, 0.02, 0.07), '#3f8a2f', Math.cos(a) * 0.3, 0.04, Math.sin(a) * 0.3, g);
-        l.rotation.y = -a;
+    case 'ozols': { // ozollapu vainags ar zīlēm
+      const t = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.03, 8, 32), M('#4a3a22')); t.rotation.x = Math.PI / 2; g.add(t);
+      const og = leafShape(true);
+      const cols = ['#2f6b24', '#3f7a2a', '#356f22'];
+      for (let i = 0; i < 22; i++) {
+        const a = i / 22 * Math.PI * 2, l = new THREE.Mesh(og, M(cols[i % 3], { side: THREE.DoubleSide, roughness: 0.75 }));
+        l.position.set(Math.cos(a) * 0.28, 0.0, Math.sin(a) * 0.28); l.rotation.set(-1.0, -a + Math.PI / 2 + (i % 2 ? 0.7 : -0.7), 0); l.scale.setScalar(1.15); g.add(l);
+      }
+      for (let i = 0; i < 4; i++) {
+        const a = i / 4 * Math.PI * 2 + 0.4;
+        const ac = new THREE.Mesh(S(0.025, 10, 8), M('#8a6a2a', { roughness: 0.5 })); ac.scale.set(1, 1.4, 1); ac.position.set(Math.cos(a) * 0.3, 0.03, Math.sin(a) * 0.3); g.add(ac);
+        const cup = new THREE.Mesh(new THREE.SphereGeometry(0.027, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), M('#5a4a2a', { roughness: 1 })); cup.position.set(Math.cos(a) * 0.3, 0.05, Math.sin(a) * 0.3); g.add(cup);
       }
       break;
     }
-    case 'cilindrs': {
-      mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.03, 16), '#151515', 0, 0, 0, g);
-      mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.45, 16), '#151515', 0, 0.23, 0, g);
-      mesh(new THREE.CylinderGeometry(0.245, 0.245, 0.07, 16), '#b02020', 0, 0.06, 0, g);
+    case 'cilindrs': { // filca cilindrs ar zīda lenti
+      const fm = new THREE.MeshStandardMaterial({ color: '#141416', roughness: 0.45, side: THREE.DoubleSide });
+      g.add(new THREE.Mesh(LATHE([[0.4, 0.03], [0.38, 0.0], [0.3, 0.0], [0.24, 0.01], [0.235, 0.2], [0.245, 0.42], [0.25, 0.46], [0.24, 0.47], [0, 0.47]], 36), fm));
+      g.add(new THREE.Mesh(LATHE([[0.239, 0.02], [0.24, 0.1]], 36), M('#7a1515', { roughness: 0.3, side: THREE.DoubleSide })));
       break;
     }
-    case 'kronis': {
-      mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.14, 12, 1, true), '#f2c12e', 0, 0.07, 0, g);
-      for (let i = 0; i < 6; i++) {
-        const a = i / 6 * Math.PI * 2;
-        mesh(new THREE.ConeGeometry(0.05, 0.14, 4), '#f2c12e', Math.cos(a) * 0.22, 0.2, Math.sin(a) * 0.22, g);
-        mesh(S(0.03, 6, 6), ['#e8302a', '#3a7ae8'][i % 2], Math.cos(a) * 0.245, 0.07, Math.sin(a) * 0.245, g);
+    case 'kronis': { // zelta kronis ar zobiem un dārgakmeņiem
+      const gold = new THREE.MeshStandardMaterial({ color: '#e6b632', metalness: 1, roughness: 0.28, side: THREE.DoubleSide });
+      const sh = new THREE.Shape();
+      const N = 8, W = 2 * Math.PI * 0.24;
+      sh.moveTo(0, 0);
+      for (let i = 0; i < N; i++) { const x0 = i / N * W; sh.lineTo(x0, 0.1); sh.lineTo(x0 + W / N / 2, 0.2); sh.lineTo(x0 + W / N, 0.1); }
+      sh.lineTo(W, 0); sh.lineTo(0, 0);
+      const bg = new THREE.ShapeGeometry(sh, 2);
+      const p = bg.attributes.position;
+      for (let i = 0; i < p.count; i++) { const a = p.getX(i) / 0.24; const y = p.getY(i); p.setXYZ(i, Math.cos(a) * 0.24, y, Math.sin(a) * 0.24); }
+      bg.computeVertexNormals();
+      g.add(new THREE.Mesh(bg, gold));
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.242, 0.012, 6, 40), gold); rim.rotation.x = Math.PI / 2; g.add(rim);
+      for (let i = 0; i < N; i++) {
+        const a = (i + 0.5) / N * Math.PI * 2;
+        const ball = new THREE.Mesh(S(0.016, 8, 6), gold); ball.position.set(Math.cos(a) * 0.24, 0.205, Math.sin(a) * 0.24); g.add(ball);
+        const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.022, 0), new THREE.MeshStandardMaterial({ color: ['#c0102a', '#1a4ad0', '#10a050'][i % 3], metalness: 0.2, roughness: 0.05 }));
+        gem.position.set(Math.cos(a) * 0.248, 0.05, Math.sin(a) * 0.248); gem.rotation.y = -a; gem.scale.set(1, 1, 0.5); g.add(gem);
       }
       break;
     }
   }
+  optimizeRig(g);
   return g;
 }
 
@@ -430,15 +536,23 @@ export function buildNPC(type) {
     legs.push(hip); knees.push({ k: knee, front });
     return hip;
   };
-  const eyes = (x, y, z, r, parent = body) => { for (const s of [-1, 1]) part(S(r, 10, 8), '#000', s * x, y, z, parent, mat('#0b0806', { roughness: 0.1 })); };
+  const eyes = (x, y, z, r, parent = body) => {
+    for (const s of [-1, 1]) {
+      part(S(r, 12, 10), '#000', s * x, y, z, parent, mat('#0b0806', { roughness: 0.05 }));
+      part(S(r * 0.25, 6, 6), '#fff', s * x * 1.05, y + r * 0.35, z + r * 0.75, parent, new THREE.MeshBasicMaterial({ color: '#fff' }));
+    }
+  };
+  // vienlaidu ķermenis (rotācijas virsma gar z asi): prof = [[rādiuss, z], ...] no aizmugures uz priekšu
+  const trunk = (prof, color, y, sy = 1) => {
+    const g = LATHE(prof.map(([r, z]) => [r, z]), 28); g.rotateX(Math.PI / 2);
+    const o = part(g, color, 0, y, 0); o.scale.set(1, sy, 1); return o;
+  };
   let scale = 1, hop = false, gait = 8;
   switch (type) {
     case 'stirna': { // stirna: slaida, sarkanbrūna, balts spogulis
       const c = '#93603a', d = '#6e4428';
       const H = 0.78;
-      ell(0.22, 0.26, 0.46, c, 0, H + 0.12, 0);
-      ell(0.21, 0.25, 0.22, c, 0, H + 0.15, 0.26);
-      ell(0.2, 0.22, 0.2, c, 0, H + 0.13, -0.3);
+      trunk([[0, -0.5], [0.12, -0.47], [0.19, -0.38], [0.21, -0.22], [0.2, 0.0], [0.215, 0.2], [0.21, 0.32], [0.16, 0.44], [0, 0.48]], c, H + 0.13, 1.18);
       ell(0.13, 0.15, 0.06, '#f2ece2', 0, H + 0.14, -0.47);
       ell(0.14, 0.12, 0.3, '#b48a64', 0, H + 0.0, 0.02);
       const neck = new THREE.Group(); neck.position.set(0, H + 0.24, 0.36); neck.rotation.x = -0.55; body.add(neck);
@@ -506,8 +620,8 @@ export function buildNPC(type) {
     }
     case 'mezacuka': { // mežacūka: masīvs priekšgals, gara purns, sari
       const c = '#56483a', d = '#3f342a';
-      ell(0.3, 0.34, 0.55, c, 0, 0.72, -0.02);
-      ell(0.31, 0.38, 0.3, d, 0, 0.78, 0.25);
+      trunk([[0, -0.58], [0.16, -0.55], [0.27, -0.42], [0.3, -0.2], [0.32, 0.05], [0.35, 0.28], [0.32, 0.45], [0.2, 0.56], [0, 0.6]], c, 0.74, 1.08);
+      ell(0.3, 0.36, 0.28, d, 0, 0.8, 0.28);
       const crest = ell(0.05, 0.07, 0.42, '#2a221a', 0, 1.06, 0.12); crest.rotation.x = -0.15;
       const head = new THREE.Group(); head.position.set(0, 0.72, 0.55); head.rotation.x = 0.35; body.add(head);
       ell(0.19, 0.21, 0.24, d, 0, 0, 0, head);
@@ -630,60 +744,197 @@ export function buildNPC(type) {
 }
 
 // ---------------- Karts ----------------
+function tyreGeo(r, w) {
+  const ri = r * 0.58, rr = w * 0.3, pts = [];
+  // noapaļots riepas šķērsgriezums (r = rādiuss, y = platums)
+  const corner = (cx, cy, a0) => { for (let i = 0; i <= 4; i++) { const a = a0 + (i / 4) * Math.PI / 2; pts.push(new THREE.Vector2(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr)); } };
+  pts.push(new THREE.Vector2(ri, -w / 2));
+  corner(r - rr, -w / 2 + rr, -Math.PI / 2);
+  corner(r - rr, w / 2 - rr, 0);
+  pts.push(new THREE.Vector2(ri, w / 2));
+  const g = new THREE.LatheGeometry(pts, 28);
+  g.rotateZ(Math.PI / 2);
+  return g;
+}
 export function buildKart(color = '#e02a2a') {
   const g = new THREE.Group();
-  const base = mesh(new THREE.BoxGeometry(1.4, 0.25, 2.2), color, 0, 0.35, 0, g);
-  const nose = mesh(new THREE.BoxGeometry(1.1, 0.3, 0.6), color, 0, 0.42, 1.2, g);
-  nose.rotation.x = 0.25;
-  mesh(new THREE.BoxGeometry(1.5, 0.12, 0.3), '#222', 0, 0.38, 1.55, g);
-  mesh(new THREE.BoxGeometry(0.9, 0.5, 0.2), '#333', 0, 0.75, -0.6, g); // sēdekļa atzveltne
-  mesh(new THREE.BoxGeometry(1.5, 0.08, 0.4), color, 0, 1.0, -1.05, g); // spoileris
-  for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(0.06, 0.5, 0.06), '#333', s * 0.6, 0.75, -1.05, g);
-  const sw = mesh(new THREE.TorusGeometry(0.17, 0.035, 6, 12), '#222', 0, 0.85, 0.45, g);
-  sw.rotation.x = -0.9;
+  const paint = new THREE.MeshPhysicalMaterial({ color, roughness: 0.35, metalness: 0.1, clearcoat: 1, clearcoatRoughness: 0.08 });
+  const steel = new THREE.MeshStandardMaterial({ color: '#9aa0a6', metalness: 0.9, roughness: 0.35 });
+  const dark = new THREE.MeshStandardMaterial({ color: '#1b1c1e', roughness: 0.6, metalness: 0.2 });
+  const rubber = new THREE.MeshStandardMaterial({ color: '#141414', roughness: 0.92 });
+  const P = (geo, m, x, y, z, parent = g) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); parent.add(o); return o; };
+  const tube = (a, b, r = 0.025, m = steel) => {
+    const A = new THREE.Vector3(...a), Bv = new THREE.Vector3(...b), d = Bv.clone().sub(A), len = d.length();
+    const t = P(new THREE.CylinderGeometry(r, r, len, 8), m, (A.x + Bv.x) / 2, (A.y + Bv.y) / 2, (A.z + Bv.z) / 2);
+    t.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize());
+    return t;
+  };
+  // rāmis no caurulēm
+  for (const sx of [-1, 1]) {
+    tube([sx * 0.45, 0.22, 0.9], [sx * 0.5, 0.22, -0.95]);
+    tube([sx * 0.45, 0.22, 0.9], [0, 0.22, 1.05]);
+  }
+  tube([-0.75, 0.3, 0.75], [0.75, 0.3, 0.75], 0.03);
+  tube([-0.82, 0.32, -0.75], [0.82, 0.32, -0.75], 0.035);
+  P(new THREE.BoxGeometry(0.9, 0.03, 1.8), dark, 0, 0.2, -0.02);
+  // krāsotās daļas: priekšējais konuss, sānu kārbas, aizmugures buferis
+  const nose = P(LATHE([[0, -0.5], [0.12, -0.46], [0.22, -0.3], [0.27, 0], [0.28, 0.32], [0, 0.34]], 20), paint, 0, 0.36, 0.78);
+  nose.rotation.x = Math.PI / 2 + 0.12; nose.scale.set(1.7, 1, 0.55);
+  const base = nose;
+  for (const sx of [-1, 1]) {
+    const pod = P(new THREE.CapsuleGeometry(0.13, 0.8, 6, 14), paint, sx * 0.62, 0.3, -0.05);
+    pod.rotation.x = Math.PI / 2; pod.scale.set(0.9, 1, 0.75);
+  }
+  const bump = P(new THREE.CapsuleGeometry(0.08, 1.3, 6, 12), dark, 0, 0.3, -1.12); bump.rotation.z = Math.PI / 2;
+  // numura plāksne
+  const plate = P(new THREE.PlaneGeometry(0.42, 0.26), new THREE.MeshStandardMaterial({ roughness: 0.5, map: canvasTexture(128, 80, (c, w, h) => {
+    c.fillStyle = '#f4f4f0'; c.fillRect(0, 0, w, h); c.fillStyle = '#111'; c.font = 'bold 64px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText(String(1 + Math.floor(Math.random() * 9)), w / 2, h / 2 + 3);
+  }) }), 0, 0.52, 1.08);
+  plate.rotation.x = -0.75;
+  // sēdeklis (kauss)
+  const seatM = new THREE.MeshStandardMaterial({ color: '#202124', roughness: 0.7 });
+  const sb = P(new THREE.SphereGeometry(0.32, 18, 12, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), seatM, 0, 0.5, -0.38);
+  sb.scale.set(0.95, 0.85, 0.9); sb.rotation.x = -0.25;
+  sb.material = seatM.clone(); sb.material.side = THREE.DoubleSide;
+  const back = P(new THREE.CapsuleGeometry(0.2, 0.25, 6, 14), seatM, 0, 0.72, -0.65); back.rotation.x = -0.3; back.scale.set(1.25, 1, 0.35);
+  // stūre
+  tube([0, 0.28, 0.75], [0, 0.78, 0.35], 0.022, dark);
+  const sw = P(new THREE.TorusGeometry(0.16, 0.022, 8, 24), dark, 0, 0.8, 0.33); sw.rotation.x = -0.9;
+  P(new THREE.CylinderGeometry(0.05, 0.05, 0.04, 12), paint, 0, 0.8, 0.33).rotation.x = Math.PI / 2 - 0.9;
+  // dzinējs ar ribām un izpūtēju
+  const eng = new THREE.Group(); eng.position.set(0.42, 0.45, -0.72); g.add(eng);
+  P(new THREE.BoxGeometry(0.26, 0.24, 0.3), dark, 0, 0, 0, eng);
+  for (let i = 0; i < 5; i++) P(new THREE.BoxGeometry(0.3, 0.012, 0.32), steel, 0, 0.05 + i * 0.03, 0, eng);
+  P(new THREE.CylinderGeometry(0.07, 0.07, 0.18, 14), steel, 0.02, 0.24, 0, eng);
+  const ex = P(new THREE.CylinderGeometry(0.035, 0.035, 0.5, 10), steel, -0.08, -0.04, -0.3, eng); ex.rotation.x = Math.PI / 2;
+  // riteņi: noapaļotas riepas, metāla diski ar spieķiem
   const wheels = [];
-  const wg = new THREE.CylinderGeometry(0.32, 0.32, 0.3, 12); wg.rotateZ(Math.PI / 2);
-  for (const [x, z] of [[-0.8, 0.75], [0.8, 0.75], [-0.8, -0.75], [0.8, -0.75]]) {
-    const w = mesh(wg, '#1c1c1c', x, 0.32, z, g);
-    mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.31, 8).rotateZ(Math.PI / 2), '#bbbbbb', 0, 0, 0, w);
+  const rimM = new THREE.MeshStandardMaterial({ color: '#c8ccd0', metalness: 0.95, roughness: 0.25 });
+  for (const [x, z, front] of [[-0.8, 0.75, 1], [0.8, 0.75, 1], [-0.84, -0.75, 0], [0.84, -0.75, 0]]) {
+    const w = new THREE.Group(); w.position.set(x, 0.32, z); g.add(w);
+    const wd = front ? 0.22 : 0.3;
+    P(tyreGeo(0.32, wd), rubber, 0, 0, 0, w);
+    const rim = P(new THREE.CylinderGeometry(0.19, 0.19, wd * 0.8, 20, 1, true), rimM, 0, 0, 0, w); rim.rotation.z = Math.PI / 2;
+    const hub = P(new THREE.CylinderGeometry(0.05, 0.05, wd * 0.9, 10), rimM, 0, 0, 0, w); hub.rotation.z = Math.PI / 2;
+    for (let k = 0; k < 5; k++) {
+      const sp = P(new THREE.BoxGeometry(0.03, 0.34, 0.035), rimM, Math.sign(x) * wd * 0.3, 0, 0, w); sp.rotation.x = k / 5 * Math.PI;
+    }
     wheels.push(w);
   }
   const seat = new THREE.Group();
   seat.position.set(0, 0.12, -0.3);
   g.add(seat);
   g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  optimizeRig(g);
   const shadow = makeBlobShadow(2.6);
   shadow.position.y = 0.04;
   g.add(shadow);
-  return { root: g, wheels, seat, base, setColor(c) { base.material = mat(c); nose.material = mat(c); } };
+  return { root: g, wheels, seat, base, setColor(c) { paint.color.set(c); } };
 }
 
 // ---------------- Tirgotāja ratiņi ----------------
-export function buildCart(color = '#3c9a4a', iceCream = false) {
+let plankTex = null;
+function planks() {
+  if (plankTex) return plankTex;
+  plankTex = canvasTexture(128, 128, (c, w, h) => {
+    for (let i = 0; i < 6; i++) {
+      const l = 0.82 + Math.random() * 0.25, y = i * h / 6;
+      c.fillStyle = `rgb(${168 * l | 0},${120 * l | 0},${76 * l | 0})`; c.fillRect(0, y, w, h / 6);
+      for (let k = 0; k < 12; k++) { c.strokeStyle = `rgba(70,45,25,${0.15 + Math.random() * 0.2})`; c.beginPath(); const yy = y + Math.random() * h / 6; c.moveTo(0, yy); c.bezierCurveTo(w / 3, yy + 2, w * 2 / 3, yy - 2, w, yy + (Math.random() - 0.5) * 3); c.stroke(); }
+      c.fillStyle = 'rgba(40,25,12,0.8)'; c.fillRect(0, y + h / 6 - 2, w, 2);
+      c.fillStyle = 'rgba(30,30,30,0.7)'; c.fillRect(6, y + 8, 3, 3); c.fillRect(w - 10, y + 8, 3, 3);
+    }
+  });
+  plankTex.wrapS = plankTex.wrapT = THREE.RepeatWrapping;
+  return plankTex;
+}
+export function buildCart(color = '#3c9a4a', iceCream = false, goodsKind = 'veg') {
   const g = new THREE.Group();
-  mesh(new THREE.BoxGeometry(2.6, 1.0, 1.4), '#a0703f', 0, 0.9, 0, g);
-  mesh(new THREE.BoxGeometry(2.7, 0.1, 1.5), '#7a5230', 0, 1.45, 0, g);
-  const wg = new THREE.CylinderGeometry(0.45, 0.45, 0.12, 12); wg.rotateX(Math.PI / 2);
-  for (const s of [-1, 1]) mesh(wg, '#5a3a1a', s * 0.9, 0.45, 0.76, g);
-  for (const s of [-1, 1]) mesh(wg, '#5a3a1a', s * 0.9, 0.45, -0.76, g);
-  for (const [x, z] of [[-1.25, -0.65], [1.25, -0.65], [-1.25, 0.65], [1.25, 0.65]]) {
-    mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.4, 6), '#dddddd', x, 2.1, z, g);
+  const wood = new THREE.MeshStandardMaterial({ color: '#ffffff', map: planks(), roughness: 0.9 });
+  const darkWood = mat('#5a3e26', { roughness: 0.9 });
+  const P = (geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); g.add(o); return o; };
+  // kaste ar rāmja malām
+  P(new THREE.BoxGeometry(2.6, 0.9, 1.4), wood, 0, 1.0, 0);
+  for (const [x, z] of [[-1.3, -0.7], [1.3, -0.7], [-1.3, 0.7], [1.3, 0.7]]) P(new THREE.BoxGeometry(0.1, 1.0, 0.1), darkWood, x, 1.0, z);
+  for (const y of [0.55, 1.45]) { P(new THREE.BoxGeometry(2.7, 0.08, 0.1), darkWood, 0, y, 0.72); P(new THREE.BoxGeometry(2.7, 0.08, 0.1), darkWood, 0, y, -0.72); }
+  P(new THREE.BoxGeometry(2.8, 0.07, 1.55), darkWood, 0, 1.49, 0);
+  // lieli koka riteņi ar spieķiem un ass
+  const wM = mat('#4a3220', { roughness: 0.85 }), iron = new THREE.MeshStandardMaterial({ color: '#3a3a3c', metalness: 0.8, roughness: 0.5 });
+  for (const s of [-1, 1]) {
+    const wg = new THREE.Group(); wg.position.set(0.5, 0.55, s * 0.82); g.add(wg);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.05, 8, 28), wM); wg.add(rim);
+    const tyre = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.035, 6, 28), iron); tyre.scale.set(1.04, 1.04, 1.3); wg.add(tyre);
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.16, 12), wM); hub.rotation.x = Math.PI / 2; wg.add(hub);
+    for (let k = 0; k < 8; k++) { const sp = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.028, 0.9, 6), wM); sp.rotation.z = k / 8 * Math.PI; wg.add(sp); }
   }
-  // svītraina markīze
-  for (let i = 0; i < 6; i++) {
-    const st = mesh(new THREE.BoxGeometry(0.48, 0.06, 1.7), i % 2 ? '#ffffff' : color, -1.2 + i * 0.48, 2.85, 0, g);
-    st.rotation.x = 0;
+  // atbalsta kājas un rokturi
+  for (const s of [-1, 1]) {
+    P(new THREE.CylinderGeometry(0.05, 0.05, 0.6, 6), darkWood, -1.15, 0.3, s * 0.55);
+    const h = P(new THREE.CylinderGeometry(0.035, 0.035, 1.0, 8), darkWood, -1.75, 0.9, s * 0.5); h.rotation.z = Math.PI / 2 - 0.15;
   }
-  // preces uz galda
+  // stabi un izliekta svītraina tenta
+  for (const [x, z] of [[-1.25, -0.65], [1.25, -0.65], [-1.25, 0.65], [1.25, 0.65]]) P(new THREE.CylinderGeometry(0.035, 0.04, 1.45, 8), darkWood, x, 2.2, z);
+  const stripes = canvasTexture(256, 64, (c, w, h) => {
+    for (let i = 0; i < 8; i++) { c.fillStyle = i % 2 ? '#f6f2e8' : color; c.fillRect(i * w / 8, 0, w / 8, h); }
+    for (let k = 0; k < 1500; k++) { c.fillStyle = `rgba(0,0,0,${Math.random() * 0.06})`; c.fillRect(Math.random() * w, Math.random() * h, 1, 1); }
+  });
+  const awnM = new THREE.MeshStandardMaterial({ map: stripes, roughness: 0.95, side: THREE.DoubleSide });
+  const awn = P(new THREE.CylinderGeometry(1.4, 1.4, 3.0, 24, 1, true, Math.PI / 2 - 0.75, 1.5), awnM, 0, 2.46, 0);
+  awn.rotation.z = Math.PI / 2; awn.scale.set(0.35, 1, 1);
+  // vīlīte ar zobiņiem gar malām
+  for (const s of [-1, 1]) for (let i = 0; i < 12; i++) {
+    const fl = P(new THREE.ConeGeometry(0.12, 0.16, 3), mat(i % 2 ? '#f6f2e8' : color, { roughness: 0.95 }), -1.37 + i * 0.25, 2.76, s * 0.96);
+    fl.rotation.x = Math.PI; fl.scale.set(1, 1, 0.15);
+  }
+  // preces
   if (iceCream) {
-    const cols = ['#ffd1dc', '#fff3b0', '#c6f0c2', '#8a5a3a'];
+    const box = P(new THREE.BoxGeometry(1.8, 0.35, 0.9), mat('#eef2f4', { roughness: 0.3, metalness: 0.2 }), 0, 1.7, 0);
+    void box;
+    const cols = ['#f7d6df', '#fbf0c0', '#cfeccb', '#7a4a2e', '#f2f2ea'];
     cols.forEach((c, i) => {
-      mesh(new THREE.ConeGeometry(0.1, 0.3, 8).rotateX(Math.PI), '#e0b070', -0.8 + i * 0.5, 1.65, 0.3, g);
-      mesh(S(0.12, 8, 6), c, -0.8 + i * 0.5, 1.85, 0.3, g);
+      const x = -0.7 + i * 0.35;
+      P(new THREE.CylinderGeometry(0.15, 0.13, 0.08, 16), mat('#c8d0d4', { metalness: 0.7, roughness: 0.3 }), x, 1.9, 0.1);
+      const sc = P(new THREE.SphereGeometry(0.14, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), mat(c, { roughness: 0.55 }), x, 1.92, 0.1); sc.scale.set(1, 0.6, 1);
+    });
+    const coneTex = canvasTexture(64, 64, (c, w, h) => { c.fillStyle = '#d8a35e'; c.fillRect(0, 0, w, h); c.strokeStyle = 'rgba(120,70,30,0.6)'; c.lineWidth = 2; for (let i = -64; i < 128; i += 10) { c.beginPath(); c.moveTo(i, 0); c.lineTo(i + 64, 64); c.stroke(); c.beginPath(); c.moveTo(i + 64, 0); c.lineTo(i, 64); c.stroke(); } });
+    for (let i = 0; i < 4; i++) {
+      const cn = P(new THREE.ConeGeometry(0.06, 0.2, 12).rotateX(Math.PI), new THREE.MeshStandardMaterial({ map: coneTex, roughness: 0.8 }), -0.6 + i * 0.4, 1.98, -0.32);
+      P(new THREE.SphereGeometry(0.07, 12, 10), mat(cols[i], { roughness: 0.55 }), -0.6 + i * 0.4, 2.1, -0.32);
+      void cn;
+    }
+  } else if (goodsKind === 'hats') {
+    // cepures uz koka statīviem
+    ['salmu', 'cilindrs', 'vainags', 'kronis'].forEach((id, i) => {
+      const x = -0.9 + i * 0.6;
+      P(new THREE.CylinderGeometry(0.03, 0.05, 0.3, 8), darkWood, x, 1.68, 0.05);
+      const head = P(new THREE.SphereGeometry(0.11, 14, 10), mat('#d8cfc0', { roughness: 0.9 }), x, 1.88, 0.05); head.scale.y = 1.15;
+      const h = buildHat(id); h.scale.setScalar(0.42); h.position.set(x, 1.98, 0.05); h.rotation.y = i; g.add(h);
+    });
+  } else if (goodsKind === 'seeds') {
+    // sēklu maisiņi un paciņas
+    const sackM = new THREE.MeshStandardMaterial({ color: '#c8b48a', map: cachedTex('fur', 64), roughness: 1 });
+    ['#f07b1a', '#c9a25e', '#e0302a', '#ff3355', '#f39a1e'].forEach((c, i) => {
+      const x = -1.0 + i * 0.5;
+      const sack = P(LATHE([[0, 0], [0.17, 0.0], [0.2, 0.1], [0.19, 0.24], [0.13, 0.32], [0.15, 0.36], [0.1, 0.38], [0, 0.37]], 16), sackM, x, 1.52, 0.15);
+      void sack;
+      const top = P(new THREE.SphereGeometry(0.12, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), mat(c, { roughness: 0.7 }), x, 1.84, 0.15); top.scale.y = 0.3;
+      const pk = P(new THREE.BoxGeometry(0.16, 0.22, 0.03), new THREE.MeshStandardMaterial({ roughness: 0.6, map: canvasTexture(32, 48, (cx, w, h) => { cx.fillStyle = '#f2ead8'; cx.fillRect(0, 0, w, h); cx.fillStyle = c; cx.beginPath(); cx.arc(w / 2, h * 0.45, 9, 0, 7); cx.fill(); cx.fillStyle = '#3a6a2a'; cx.fillRect(w / 2 - 2, 4, 4, 10); }) }), x, 1.62, -0.38);
+      pk.rotation.x = -0.25;
     });
   } else {
-    const cols = ['#f07b1a', '#e0302a', '#5fae4a', '#f2c12e', '#7a4a22'];
-    for (let i = 0; i < 8; i++) mesh(S(0.14, 8, 6), cols[i % 5], -1.0 + i * 0.28, 1.6, 0.35 - (i % 2) * 0.3, g);
+    // koka kastes ar dārzeņiem
+    const crateM = new THREE.MeshStandardMaterial({ color: '#d8c4a0', map: planks(), roughness: 0.9 });
+    const goods = [['#e8741e', 'c'], ['#d8362a', 's'], ['#c9a25e', 's'], ['#6aa83a', 's'], ['#7a3a8a', 's']];
+    goods.forEach(([c, kind], i) => {
+      const x = -1.0 + i * 0.5;
+      P(new THREE.BoxGeometry(0.46, 0.18, 0.6), crateM, x, 1.62, 0.1);
+      for (let k = 0; k < 6; k++) {
+        const px = x + ((k % 3) - 1) * 0.13, pz = 0.1 + (k < 3 ? -0.13 : 0.13);
+        if (kind === 'c') { const cr = P(new THREE.ConeGeometry(0.035, 0.28, 10), mat(c, { roughness: 0.7 }), px, 1.76, pz); cr.rotation.z = Math.PI / 2; cr.rotation.y = k; }
+        else { const v = P(new THREE.SphereGeometry(0.075, 14, 10), mat(c, { roughness: c === '#d8362a' ? 0.25 : 0.8 }), px, 1.78, pz); v.scale.set(1, 0.85 + (k % 2) * 0.1, 1); }
+      }
+    });
   }
   g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   optimizeRig(g);
@@ -693,17 +944,33 @@ export function buildCart(color = '#3c9a4a', iceCream = false) {
 // ---------------- Sēnes ----------------
 export function buildMushroom(def) {
   const g = new THREE.Group();
-  mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.28, 8), def.stem, 0, 0.14, 0, g);
-  const capG = new THREE.SphereGeometry(0.2, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2);
-  const cap = mesh(capG, def.cap, 0, 0.26, 0, g);
-  cap.scale.set(1, def.poison ? 0.7 : 0.8, 1);
-  if (def.poison) {
-    for (let i = 0; i < 6; i++) {
-      const a = i * 1.1;
-      mesh(S(0.025, 4, 4), '#ffffff', Math.cos(a) * 0.12, 0.36, Math.sin(a) * 0.12, g);
+  const P = (geo, c, x, y, z, o = {}) => { const m = new THREE.Mesh(geo, mat(c, { roughness: 0.8, ...o })); m.position.set(x, y, z); g.add(m); return m; };
+  if (def.poison) { // mušmire: slaida kāja ar gredzenu un bumbuli, sarkana cepure ar baltām kārpiņām
+    P(LATHE([[0, 0], [0.07, 0.0], [0.085, 0.04], [0.06, 0.09], [0.045, 0.2], [0.04, 0.32], [0, 0.32]], 16), def.stem, 0, 0, 0);
+    P(LATHE([[0.04, 0.27], [0.07, 0.24], [0.075, 0.23]], 16), '#f4f0e6', 0, 0, 0, { side: THREE.DoubleSide });
+    P(LATHE([[0.0, 0.3], [0.19, 0.29], [0.2, 0.31], [0.18, 0.37], [0.12, 0.42], [0.0, 0.44]], 24), def.cap, 0, 0, 0, { roughness: 0.35 });
+    P(LATHE([[0.0, 0.305], [0.19, 0.295]], 24), '#f2ead8', 0, 0, 0, { side: THREE.DoubleSide });
+    for (let i = 0; i < 14; i++) {
+      const a = i * 2.4, r = 0.04 + (i % 4) * 0.035, y = 0.44 - (r / 0.2) * (r / 0.2) * 0.12;
+      const w = P(new THREE.SphereGeometry(0.013 + (i % 3) * 0.004, 6, 5), '#fbf8ef', Math.cos(a) * r, y, Math.sin(a) * r); w.scale.y = 0.5;
     }
+  } else if (def.name === 'Gailene') { // gailene: piltuvveida, viļņaina mala, rievas apakšā
+    const cap = LATHE([[0.02, 0.0], [0.035, 0.08], [0.06, 0.15], [0.12, 0.2], [0.15, 0.22], [0.13, 0.225], [0.06, 0.2], [0, 0.19]], 28);
+    const p = cap.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      const x = p.getX(i), z = p.getZ(i), r = Math.hypot(x, z), a = Math.atan2(z, x);
+      if (r > 0.08) p.setY(i, p.getY(i) + Math.sin(a * 5) * 0.015 * (r - 0.08) / 0.07);
+    }
+    cap.computeVertexNormals();
+    P(cap, def.cap, 0, 0, 0, { side: THREE.DoubleSide, roughness: 0.7 });
+  } else { // baravika: resna, bumbuļveida kāja, brūna cepure, sūklis apakšā
+    const stemTex = cachedTex('fur', 64);
+    const stem = new THREE.Mesh(LATHE([[0, 0], [0.09, 0.0], [0.115, 0.06], [0.11, 0.13], [0.085, 0.22], [0.07, 0.28], [0, 0.28]], 20), new THREE.MeshStandardMaterial({ color: def.stem, map: stemTex, roughness: 0.9 }));
+    g.add(stem);
+    P(LATHE([[0, 0.25], [0.2, 0.25], [0.215, 0.27], [0.2, 0.34], [0.14, 0.39], [0, 0.41]], 28), def.cap, 0, 0, 0, { roughness: 0.55 });
+    P(LATHE([[0.0, 0.252], [0.2, 0.252]], 24), '#d8c060', 0, 0, 0, { side: THREE.DoubleSide, roughness: 1 });
   }
-  g.scale.setScalar(1.4);
+  g.scale.setScalar(1.5);
   g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   optimizeRig(g);
   return g;
@@ -712,39 +979,100 @@ export function buildMushroom(def) {
 export function buildStar() {
   const shape = new THREE.Shape();
   for (let i = 0; i < 10; i++) {
-    const r = i % 2 ? 0.22 : 0.5, a = i / 10 * Math.PI * 2 + Math.PI / 2;
+    const r = i % 2 ? 0.21 : 0.5, a = i / 10 * Math.PI * 2 + Math.PI / 2;
     const x = Math.cos(a) * r, y = Math.sin(a) * r;
     if (i === 0) shape.moveTo(x, y); else shape.lineTo(x, y);
   }
-  const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.15, bevelEnabled: true, bevelSize: 0.04, bevelThickness: 0.04, bevelSegments: 1 });
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.08, bevelEnabled: true, bevelSize: 0.06, bevelThickness: 0.1, bevelSegments: 4 });
   geo.center();
-  return new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: '#ffd21a', emissive: '#a07000' }));
+  return new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: '#ffcc33', emissive: '#7a4a00', emissiveIntensity: 0.8, metalness: 1, roughness: 0.22 }));
 }
 
 // ---------------- Augi dārzā ----------------
 export function buildCrop(crop, stage, color) {
   const g = new THREE.Group();
-  if (stage === 0) {
-    for (const s of [-1, 1]) {
-      const l = mesh(S(0.08, 6, 4), '#5fbf3a', s * 0.06, 0.08, 0, g); l.scale.set(1, 0.4, 0.6);
-    }
+  const leafM = (c = '#4f9a32') => mat(c, { side: THREE.DoubleSide, roughness: 0.75 });
+  const LF = leafShape(false), OAK = leafShape(true);
+  const leaf = (x, y, z, ry, rx, s = 1, c, geo = LF) => { const l = new THREE.Mesh(geo, leafM(c)); l.position.set(x, y, z); l.rotation.set(rx, ry, 0, 'YXZ'); l.scale.setScalar(s); g.add(l); return l; };
+  const stemM = mat('#5a8a2a', { roughness: 0.8 });
+  const stem = (x0, z0, x1, y1, z1, r = 0.008) => {
+    const a = new THREE.Vector3(x0, 0, z0), b = new THREE.Vector3(x1, y1, z1), d = b.clone().sub(a);
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.7, r, d.length(), 5), stemM);
+    m.position.copy(a).add(b).multiplyScalar(0.5); m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()); g.add(m); return b;
+  };
+  if (stage === 0) { // dīglis ar divām dīgļlapām
+    stem(0, 0, 0, 0.07, 0, 0.006);
+    for (const s of [-1, 1]) leaf(0, 0.07, 0, s * Math.PI / 2, -1.1, 0.5, '#7acb4a');
     return g;
   }
-  const h = stage === 1 ? 0.35 : 0.55;
-  for (let i = 0; i < 5; i++) {
-    const a = i / 5 * Math.PI * 2;
-    const l = mesh(new THREE.ConeGeometry(0.07, h, 4), '#4caf35', Math.cos(a) * 0.08, h / 2, Math.sin(a) * 0.08, g);
-    l.rotation.set(Math.sin(a) * 0.4, 0, -Math.cos(a) * 0.4);
-  }
-  if (stage === 2) {
-    switch (crop) {
-      case 'burkans': { const c = mesh(new THREE.ConeGeometry(0.11, 0.35, 8), color, 0, 0.02, 0, g); c.rotation.x = Math.PI; break; }
-      case 'kartupelis': for (let i = 0; i < 3; i++) mesh(S(0.09, 6, 5), color, (i - 1) * 0.15, 0.06, 0.12, g); break;
-      case 'tomats': for (let i = 0; i < 3; i++) mesh(S(0.09, 8, 6), color, Math.cos(i * 2) * 0.14, 0.35 + i * 0.06, Math.sin(i * 2) * 0.14, g); break;
-      case 'zemene': for (let i = 0; i < 4; i++) mesh(new THREE.ConeGeometry(0.06, 0.12, 6).rotateX(Math.PI), color, Math.cos(i * 1.6) * 0.18, 0.1, Math.sin(i * 1.6) * 0.18, g); break;
-      case 'kirbis': { const p = mesh(S(0.3, 12, 8), color, 0, 0.22, 0.05, g); p.scale.set(1.2, 0.8, 1.2); mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.12, 5), '#4a6a1a', 0, 0.48, 0.05, g); break; }
+  const big = stage === 2;
+  const k = big ? 1 : 0.65;
+  switch (crop) {
+    case 'burkans': // plūksnaini lakstiņi
+      for (let i = 0; i < 7; i++) {
+        const a = i / 7 * Math.PI * 2, tip = stem(0, 0, Math.cos(a) * 0.1 * k, 0.35 * k, Math.sin(a) * 0.1 * k, 0.006);
+        for (let j = 0; j < 4; j++) leaf(tip.x * (0.5 + j * 0.15), tip.y * (0.55 + j * 0.13), tip.z * (0.5 + j * 0.15), -a + Math.PI / 2 + (j % 2 ? 0.8 : -0.8), -0.8, 0.45 * k, '#3f8a2a');
+      }
+      if (big) { const c = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.1, 14), mat(color, { roughness: 0.7 })); c.rotation.x = Math.PI; c.position.y = 0.0; g.add(c); }
+      break;
+    case 'kartupelis': // krūmains, olveida lapas, balti ziedi
+      for (let i = 0; i < 6; i++) {
+        const a = i / 6 * Math.PI * 2, tip = stem(0, 0, Math.cos(a) * 0.14 * k, 0.32 * k, Math.sin(a) * 0.14 * k, 0.01);
+        for (let j = 0; j < 3; j++) leaf(tip.x * (0.6 + j * 0.2), tip.y * (0.6 + j * 0.2), tip.z * (0.6 + j * 0.2), -a + Math.PI / 2 + (j - 1) * 0.9, -0.6, 0.8 * k, '#3d7a28');
+      }
+      if (big) {
+        for (let i = 0; i < 3; i++) { const f = new THREE.Mesh(S(0.025, 8, 6), mat('#f6f2fa')); f.position.set(Math.cos(i * 2) * 0.08, 0.36, Math.sin(i * 2) * 0.08); f.scale.y = 0.4; g.add(f); }
+        for (let i = 0; i < 3; i++) { const p = new THREE.Mesh(S(0.06, 12, 8), new THREE.MeshStandardMaterial({ color, roughness: 0.95, map: cachedTex('stone', 32) })); p.position.set((i - 1) * 0.16, 0.03, 0.16); p.scale.set(1.2, 0.8, 0.9); g.add(p); }
+      }
+      break;
+    case 'tomats': { // miets, stublājs, lapas, tomāti ar kauslapām
+      const stake = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.75, 0.025), mat('#8a6a42')); stake.position.set(0.04, 0.37, 0); g.add(stake);
+      let prev = new THREE.Vector3(0, 0, 0);
+      for (let j = 0; j < 5; j++) {
+        const nx = Math.sin(j * 1.7) * 0.03, ny = (j + 1) * 0.12 * k;
+        const st = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.01, 0.12 * k, 5), stemM); st.position.set((prev.x + nx) / 2, (prev.y + ny) / 2, 0); g.add(st);
+        prev = new THREE.Vector3(nx, ny, 0);
+        for (const s of [-1, 1]) leaf(nx, ny, 0, s * Math.PI / 2 + j, -0.5, 0.7 * k, '#3b7a2a', OAK);
+      }
+      if (big) for (let i = 0; i < 4; i++) {
+        const t = new THREE.Mesh(S(0.055, 16, 12), mat(color, { roughness: 0.22 })); t.position.set(Math.cos(i * 1.9) * 0.1, 0.2 + i * 0.1, Math.sin(i * 1.9) * 0.1); t.scale.y = 0.85; g.add(t);
+        const cx = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.02, 5), stemM); cx.position.set(t.position.x, t.position.y + 0.05, t.position.z); g.add(cx);
+      }
+      break;
+    }
+    case 'zemene': // zema trīsdaļīgu lapu rozete, ogas ar kauslapām
+      for (let i = 0; i < 6; i++) {
+        const a = i / 6 * Math.PI * 2, tip = stem(0, 0, Math.cos(a) * 0.12 * k, 0.14 * k, Math.sin(a) * 0.12 * k, 0.006);
+        for (let j = -1; j <= 1; j++) leaf(tip.x, tip.y, tip.z, -a + Math.PI / 2 + j * 0.7, -1.2, 0.7 * k, '#3f8a30');
+      }
+      if (big) for (let i = 0; i < 4; i++) {
+        const b = new THREE.Mesh(new THREE.SphereGeometry(0.035, 12, 10), mat(color, { roughness: 0.3 }));
+        b.scale.set(1, 1.35, 1); b.position.set(Math.cos(i * 1.6 + 0.4) * 0.17, 0.04, Math.sin(i * 1.6 + 0.4) * 0.17); g.add(b);
+        const cx = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.015, 6), stemM); cx.position.set(b.position.x, 0.09, b.position.z); g.add(cx);
+      }
+      break;
+    case 'kirbis': { // lielas apaļas lapas uz stīgām, rievots ķirbis
+      for (let i = 0; i < 5; i++) {
+        const a = i / 5 * Math.PI * 2 + 0.3, tip = stem(0, 0, Math.cos(a) * 0.3 * k, 0.18 * k, Math.sin(a) * 0.3 * k, 0.012);
+        const l = new THREE.Mesh(new THREE.CircleGeometry(0.13 * k, 10), leafM('#3d7a28')); l.position.copy(tip); l.rotation.set(-1.25, -a, 0, 'YXZ'); g.add(l);
+      }
+      if (big) {
+        const pg = new THREE.SphereGeometry(0.3, 32, 20);
+        const p = pg.attributes.position;
+        for (let i = 0; i < p.count; i++) {
+          const x = p.getX(i), y = p.getY(i), z = p.getZ(i), a = Math.atan2(z, x);
+          const kk = 1 - 0.07 * Math.pow(Math.abs(Math.cos(a * 5)), 0.5) * (1 - Math.abs(y) / 0.3);
+          p.setXYZ(i, x * kk, y, z * kk);
+        }
+        pg.computeVertexNormals();
+        const pm = new THREE.Mesh(pg, mat(color, { roughness: 0.55 })); pm.position.set(0, 0.2, 0.08); pm.scale.set(1.2, 0.75, 1.2); g.add(pm);
+        const st = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.04, 0.12, 8), mat('#6a6a3a')); st.position.set(0, 0.45, 0.08); st.rotation.z = 0.3; g.add(st);
+      }
+      break;
     }
   }
+  g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  optimizeRig(g);
   return g;
 }
 
@@ -753,6 +1081,7 @@ export function buildHeart() {
   shape.moveTo(0, -0.3);
   shape.bezierCurveTo(-0.5, 0.05, -0.25, 0.4, 0, 0.18);
   shape.bezierCurveTo(0.25, 0.4, 0.5, 0.05, 0, -0.3);
-  const geo = new THREE.ShapeGeometry(shape);
-  return new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: '#ff3a6a', side: THREE.DoubleSide, transparent: true }));
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.06, bevelEnabled: true, bevelSize: 0.03, bevelThickness: 0.03, bevelSegments: 3, curveSegments: 16 });
+  geo.center();
+  return new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: '#ff3a6a', transparent: true }));
 }

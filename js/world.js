@@ -331,105 +331,180 @@ export class World {
 
   buildTrackMesh() {
     const P = this.trackPts, T = this.trackTan, W = TRACK_WIDTH / 2, Y = TRACK_Y + 0.04;
-    const verts = [], idx = [];
+    // asfalts ar UV: u šķērsām, v gar trasi (pēc attāluma)
+    const verts = [], uvs = [], idx = [];
+    let dist = 0;
     for (let i = 0; i <= TRACK_N; i++) {
       const p = P[i % TRACK_N], t = T[i % TRACK_N];
+      if (i > 0) { const q = P[i - 1]; dist += Math.hypot(p.x - q.x, p.z - q.z); }
       const lx = -t.z, lz = t.x;
       verts.push(p.x + lx * W, Y, p.z + lz * W, p.x - lx * W, Y, p.z - lz * W);
+      uvs.push(0, dist / 12, 1, dist / 12);
       if (i < TRACK_N) { const a = i * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
     }
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
     g.setIndex(idx);
     g.computeVertexNormals();
-    const road = new THREE.Mesh(g, mat('#5a5a60'));
+    const asphalt = canvasTexture(256, 512, (c, w, h) => {
+      c.fillStyle = '#5c5c60'; c.fillRect(0, 0, w, h);
+      for (let k = 0; k < 26000; k++) { const l = 50 + Math.random() * 90; c.fillStyle = `rgba(${l},${l},${l + 4},0.55)`; c.fillRect(Math.random() * w, Math.random() * h, 1 + Math.random(), 1 + Math.random()); }
+      // nobraukta braukšanas līnija un riepu pēdas
+      const grd = c.createLinearGradient(0, 0, w, 0);
+      grd.addColorStop(0.25, 'rgba(20,20,22,0)'); grd.addColorStop(0.5, 'rgba(20,20,22,0.22)'); grd.addColorStop(0.75, 'rgba(20,20,22,0)');
+      c.fillStyle = grd; c.fillRect(0, 0, w, h);
+      for (let k = 0; k < 6; k++) { c.strokeStyle = 'rgba(15,15,15,0.18)'; c.lineWidth = 5; const x = w * (0.3 + Math.random() * 0.4); c.beginPath(); c.moveTo(x, 0); c.bezierCurveTo(x + 20, h / 3, x - 20, h * 2 / 3, x + (Math.random() - 0.5) * 30, h); c.stroke(); }
+      for (let k = 0; k < 5; k++) { c.strokeStyle = 'rgba(25,25,25,0.6)'; c.lineWidth = 1; let x = Math.random() * w, y = Math.random() * h; c.beginPath(); c.moveTo(x, y); for (let j = 0; j < 6; j++) { x += (Math.random() - 0.5) * 30; y += Math.random() * 25; c.lineTo(x, y); } c.stroke(); }
+      // baltās malu līnijas
+      c.fillStyle = 'rgba(235,235,230,0.92)'; c.fillRect(w * 0.035, 0, w * 0.025, h); c.fillRect(w * 0.94, 0, w * 0.025, h);
+    });
+    asphalt.wrapT = THREE.RepeatWrapping; asphalt.anisotropy = 8;
+    const road = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: asphalt, roughness: 0.85, metalness: 0 }));
+    road.receiveShadow = true;
     this.group.add(road);
 
-    // apmales sarkanbaltas
+    // paceltas sarkanbaltas apmales ar slīpumu un sānu malu
     const cv = [], cc = [];
-    const red = new THREE.Color('#e03030'), white = new THREE.Color('#f4f4f4');
+    const red = new THREE.Color('#c8282a'), white = new THREE.Color('#ecebe6');
     for (const side of [1, -1]) {
       for (let i = 0; i < TRACK_N; i++) {
         const p0 = P[i], p1 = P[(i + 1) % TRACK_N], t0 = T[i], t1 = T[(i + 1) % TRACK_N];
         const col = Math.floor(i / 3) % 2 ? red : white;
-        const a = [p0.x - t0.z * W * side, p0.z + t0.x * W * side];
-        const b = [p0.x - t0.z * (W + 0.9) * side, p0.z + t0.x * (W + 0.9) * side];
-        const c = [p1.x - t1.z * W * side, p1.z + t1.x * W * side];
-        const d = [p1.x - t1.z * (W + 0.9) * side, p1.z + t1.x * (W + 0.9) * side];
-        const tri = [a, b, c, b, d, c];
-        for (const q of tri) { cv.push(q[0], Y + 0.03, q[1]); cc.push(col.r, col.g, col.b); }
+        const at = (p, t, o, y) => [p.x - t.z * o * side, Y + y, p.z + t.x * o * side];
+        const quad = (o0, y0, o1, y1, cMul) => {
+          const a = at(p0, t0, o0, y0), b = at(p0, t0, o1, y1), c2 = at(p1, t1, o0, y0), d = at(p1, t1, o1, y1);
+          for (const q of [a, b, c2, b, d, c2]) { cv.push(...q); cc.push(col.r * cMul, col.g * cMul, col.b * cMul); }
+        };
+        quad(W - 0.05, 0.005, W + 0.55, 0.09, 1);
+        quad(W + 0.55, 0.09, W + 0.95, 0.09, 0.95);
+        quad(W + 0.95, 0.09, W + 0.95, -0.4, 0.6);
       }
     }
     const cg = new THREE.BufferGeometry();
     cg.setAttribute('position', new THREE.Float32BufferAttribute(cv, 3));
     cg.setAttribute('color', new THREE.Float32BufferAttribute(cc, 3));
     cg.computeVertexNormals();
-    this.group.add(new THREE.Mesh(cg, new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide })));
+    const kerb = new THREE.Mesh(cg, new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide, roughness: 0.6 }));
+    kerb.receiveShadow = true;
+    this.group.add(kerb);
+
+    // riepu barjeras līkumu ārpusē
+    const tyres = [];
+    for (let i = 0; i < TRACK_N; i += 2) {
+      const t0 = T[i], t1 = T[(i + 6) % TRACK_N];
+      const turn = t0.x * t1.z - t0.z * t1.x;
+      if (Math.abs(turn) < 0.05) continue;
+      const side = turn > 0 ? 1 : -1;
+      const o = W + 3.2;
+      const x = P[i].x + t0.z * o * side, z = P[i].z - t0.x * o * side;
+      if (this.trackDist(x, z) < W + 2.5 || this.roadDist(x, z).d < 3) continue;
+      if (Math.hypot(x - P[0].x, z - P[0].z) < 10) continue;
+      const h = this.getHeight(x, z);
+      for (let k = 0; k < 3; k++) tyres.push({ x, y: h + 0.12 + k * 0.24, z, c: k % 2 });
+      this.addCollider(x, z, 0.5);
+    }
+    if (tyres.length) {
+      const tg = new THREE.TorusGeometry(0.36, 0.13, 6, 12); tg.rotateX(Math.PI / 2);
+      const tim = new THREE.InstancedMesh(tg, new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.9 }), tyres.length);
+      const dm = new THREE.Object3D(), tc = new THREE.Color();
+      tyres.forEach((d, i) => { dm.position.set(d.x, d.y, d.z); dm.updateMatrix(); tim.setMatrixAt(i, dm.matrix); tim.setColorAt(i, d.c ? tc.set('#d8d8d4') : tc.set('#1a1a1a')); });
+      tim.castShadow = true; tim.receiveShadow = true; tim.computeBoundingSphere();
+      this.group.add(tim);
+    }
 
     // starta līnija
-    const checker = canvasTexture(128, 32, (g2, w, h) => {
+    const checker = canvasTexture(128, 32, (g2) => {
       for (let x = 0; x < 16; x++) for (let y = 0; y < 4; y++) {
-        g2.fillStyle = (x + y) % 2 ? '#111' : '#fff'; g2.fillRect(x * 8, y * 8, 8, 8);
+        g2.fillStyle = (x + y) % 2 ? '#141414' : '#eeeeea'; g2.fillRect(x * 8, y * 8, 8, 8);
       }
     });
-    const sl = new THREE.Mesh(new THREE.PlaneGeometry(TRACK_WIDTH, 2), new THREE.MeshStandardMaterial({ map: checker }));
+    const sl = new THREE.Mesh(new THREE.PlaneGeometry(TRACK_WIDTH, 2), new THREE.MeshStandardMaterial({ map: checker, roughness: 0.7 }));
     sl.rotation.order = 'YXZ';
     sl.rotation.y = Math.atan2(T[0].x, T[0].z);
     sl.rotation.x = -Math.PI / 2;
     sl.position.set(P[0].x, Y + 0.02, P[0].z);
+    sl.receiveShadow = true;
     this.group.add(sl);
-    // starta vārti
+    // starta vārti: metāla kopņu torņi ar reklāmas joslu
     const gate = new THREE.Group();
-    const poleG = new THREE.CylinderGeometry(0.25, 0.25, 6, 8);
+    const steel = new THREE.MeshStandardMaterial({ color: '#c4c8cc', metalness: 0.85, roughness: 0.35 });
+    const bar = (a, b, r = 0.035) => {
+      const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), d = B.clone().sub(A);
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, d.length(), 6), steel);
+      m.position.copy(A).add(B).multiplyScalar(0.5); m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()); gate.add(m);
+    };
+    const tw = 0.25;
     for (const s of [1, -1]) {
-      const pole = new THREE.Mesh(poleG, mat('#dddddd'));
-      pole.position.set(s * (W + 1.2), 3, 0);
-      gate.add(pole);
+      const cx = s * (W + 1.2);
+      for (const [dx, dz] of [[-tw, -tw], [tw, -tw], [tw, tw], [-tw, tw]]) bar([cx + dx, 0, dz], [cx + dx, 6.2, dz], 0.05);
+      for (let y = 0; y < 6; y += 0.6) {
+        const c4 = [[-tw, -tw], [tw, -tw], [tw, tw], [-tw, tw]];
+        for (let k = 0; k < 4; k++) { const a = c4[k], b = c4[(k + 1) % 4]; bar([cx + a[0], y, a[1]], [cx + b[0], y + 0.6, b[1]], 0.02); }
+      }
+      const foot = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.15, 0.9), mat('#8a8a86')); foot.position.set(cx, 0.07, 0); gate.add(foot);
     }
-    const banner = new THREE.Mesh(new THREE.BoxGeometry(TRACK_WIDTH + 2.4, 1.4, 0.2), new THREE.MeshStandardMaterial({
-      map: canvasTexture(512, 64, (g2, w, h) => {
-        g2.fillStyle = '#d23b3b'; g2.fillRect(0, 0, w, h);
-        g2.fillStyle = '#fff'; g2.font = 'bold 48px sans-serif'; g2.textAlign = 'center'; g2.textBaseline = 'middle';
-        g2.fillText('STARTS • FINIŠS', w / 2, h / 2 + 2);
-      })
+    for (const y of [5.0, 6.2]) for (const dz of [-tw, tw]) bar([-(W + 1.2), y, dz], [W + 1.2, y, dz], 0.05);
+    const banner = new THREE.Mesh(new THREE.BoxGeometry(TRACK_WIDTH + 1.6, 1.0, 0.05), new THREE.MeshStandardMaterial({
+      roughness: 0.6,
+      map: canvasTexture(1024, 96, (g2, w, h) => {
+        const grd = g2.createLinearGradient(0, 0, 0, h); grd.addColorStop(0, '#b8282a'); grd.addColorStop(1, '#8a1a1c');
+        g2.fillStyle = grd; g2.fillRect(0, 0, w, h);
+        for (let x = 0; x < 24; x++) for (let y = 0; y < 2; y++) { g2.fillStyle = (x + y) % 2 ? '#111' : '#fff'; g2.fillRect(x * 12, y * 12 + 36, 12, 12); g2.fillRect(w - 288 + x * 12, y * 12 + 36, 12, 12); }
+        g2.fillStyle = '#fff'; g2.font = 'bold 60px sans-serif'; g2.textAlign = 'center'; g2.textBaseline = 'middle';
+        g2.fillText('STARTS • FINIŠS', w / 2, h / 2 + 3);
+      }),
     }));
     banner.position.y = 5.6;
     gate.add(banner);
     optimizeRig(gate);
+    gate.traverse((o) => { if (o.isMesh) o.castShadow = true; });
     gate.position.set(P[0].x, TRACK_Y, P[0].z);
     gate.rotation.y = Math.atan2(T[0].x, T[0].z);
     this.group.add(gate);
     for (const s of [1, -1]) {
-      this.addCollider(P[0].x - T[0].z * (W + 1.2) * s, P[0].z + T[0].x * (W + 1.2) * s, 0.4);
+      this.addCollider(P[0].x - T[0].z * (W + 1.2) * s, P[0].z + T[0].x * (W + 1.2) * s, 0.5);
     }
 
-    // paātrinājuma joslas
-    const arrowTex = canvasTexture(64, 64, (g2, w, h) => {
-      g2.fillStyle = '#ffd21a'; g2.fillRect(0, 0, w, h);
-      g2.fillStyle = '#ff7a00';
-      g2.beginPath(); g2.moveTo(32, 6); g2.lineTo(58, 34); g2.lineTo(44, 34); g2.lineTo(44, 58); g2.lineTo(20, 58); g2.lineTo(20, 34); g2.lineTo(6, 34); g2.closePath(); g2.fill();
+    // paātrinājuma joslas: krāsotas, mirdzošas bultas uz asfalta
+    const arrowTex = canvasTexture(128, 128, (g2, w, h) => {
+      g2.clearRect(0, 0, w, h);
+      for (let k = 0; k < 3; k++) {
+        const y = 14 + k * 36;
+        g2.fillStyle = k === 1 ? '#ffb000' : '#ffd21a';
+        g2.beginPath(); g2.moveTo(64, y); g2.lineTo(118, y + 34); g2.lineTo(96, y + 34); g2.lineTo(64, y + 14); g2.lineTo(32, y + 34); g2.lineTo(10, y + 34); g2.closePath(); g2.fill();
+      }
     });
     this.boostPads = [];
+    const padM = new THREE.MeshStandardMaterial({ map: arrowTex, emissiveMap: arrowTex, emissive: '#ffaa00', emissiveIntensity: 0.6, transparent: true, depthWrite: false, roughness: 0.4 });
     for (const f of [0.22, 0.5, 0.78]) {
       const i = Math.floor(f * TRACK_N);
       const p = P[i], t = T[i];
-      const pad = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 3.2), new THREE.MeshBasicMaterial({ map: arrowTex }));
+      const pad = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 3.4), padM);
       pad.rotation.order = 'YXZ';
-      pad.rotation.y = Math.atan2(t.x, t.z);
+      pad.rotation.y = Math.atan2(t.x, t.z) + Math.PI;
       pad.rotation.x = -Math.PI / 2;
-      pad.position.set(p.x, Y + 0.05, p.z);
+      pad.position.set(p.x, Y + 0.03, p.z);
+      pad.renderOrder = 1;
       this.group.add(pad);
       this.boostPads.push({ x: p.x, z: p.z });
     }
 
-    // kartu stāvvieta
+    // kartu stāvvieta: betona laukums ar marķējumu
     const k = 14, pk = P[k], tk = T[k];
     this.kartSpot = { x: pk.x + tk.z * (W + 6), z: pk.z - tk.x * (W + 6), heading: Math.atan2(tk.x, tk.z) };
     const sign = makeTextSprite('🏎️ Kartings', { fontSize: 48, bg: 'rgba(210,40,40,0.85)' });
     sign.position.set(this.kartSpot.x, TRACK_Y + 3.4, this.kartSpot.z);
     this.group.add(sign);
-    const pad2 = new THREE.Mesh(new THREE.CircleGeometry(2.6, 24), mat('#e8e0c8'));
+    const concrete = canvasTexture(256, 256, (c, w, h) => {
+      c.fillStyle = '#b8b4aa'; c.fillRect(0, 0, w, h);
+      for (let i = 0; i < 9000; i++) { const l = 140 + Math.random() * 80; c.fillStyle = `rgba(${l},${l},${l - 6},0.5)`; c.fillRect(Math.random() * w, Math.random() * h, 1.5, 1.5); }
+      c.strokeStyle = 'rgba(70,70,65,0.5)'; c.lineWidth = 2; c.beginPath(); c.moveTo(w / 2, 0); c.lineTo(w / 2, h); c.moveTo(0, h / 2); c.lineTo(w, h / 2); c.stroke();
+      c.strokeStyle = '#e8c020'; c.lineWidth = 6; c.beginPath(); c.arc(w / 2, h / 2, w * 0.44, 0, 7); c.stroke();
+    });
+    const pad2 = new THREE.Mesh(new THREE.CircleGeometry(2.8, 32), new THREE.MeshStandardMaterial({ map: concrete, roughness: 0.95 }));
     pad2.rotation.x = -Math.PI / 2;
+    pad2.receiveShadow = true;
     pad2.position.set(this.kartSpot.x, this.getHeight(this.kartSpot.x, this.kartSpot.z) + 0.06, this.kartSpot.z);
     this.group.add(pad2);
   }
@@ -837,7 +912,7 @@ export class World {
       if (s > 0.7) this.addCollider(x, z, s * 0.85);
     }
     // akmens: noapaļots laukakmens ar sūnām augšpusē
-    const rg = new THREE.IcosahedronGeometry(1, 3);
+    const rg = new THREE.IcosahedronGeometry(1, 2);
     const rn = makeNoise2D(this.seed + 4);
     const rp = rg.attributes.position;
     for (let i = 0; i < rp.count; i++) {
@@ -952,46 +1027,112 @@ export class World {
       if (this.forest(x, z) > 0.03 || rnd() > 0.3) continue;
       flowers.push({ x, y: h + 0.2 + rnd() * 0.12, z, c: fc[Math.floor(rnd() * fc.length)] });
     }
-    // ziedi: stiebrs + mazi ziedlapu kauliņi
-    const fg = mergeGeometries([
-      new THREE.CylinderGeometry(0.006, 0.008, 0.25, 3).translate(0, -0.12, 0).toNonIndexed(),
-      new THREE.IcosahedronGeometry(0.04, 0).scale(1, 0.45, 1).toNonIndexed(),
-    ]);
+    // ziedi: stiebrs, divas lapiņas un zieds ar 5 ziedlapām
+    const fparts = [new THREE.CylinderGeometry(0.005, 0.007, 0.25, 4).translate(0, -0.125, 0).toNonIndexed()];
+    for (let k = 0; k < 5; k++) {
+      const pg = new THREE.CircleGeometry(0.022, 4); pg.scale(1, 0.55, 1); pg.translate(0.026, 0, 0); pg.rotateX(-Math.PI / 2 + 0.25); pg.rotateY(k / 5 * Math.PI * 2);
+      fparts.push(pg.toNonIndexed());
+    }
+    fparts.push(new THREE.SphereGeometry(0.012, 4, 2).scale(1, 0.5, 1).translate(0, 0.004, 0).toNonIndexed());
+    for (const sd of [-1, 1]) { const lg = new THREE.CircleGeometry(0.03, 3); lg.scale(0.35, 1, 1); lg.rotateZ(sd * 0.6); lg.translate(sd * 0.012, -0.17, 0); fparts.push(lg.toNonIndexed()); }
+    const fg = mergeGeometries(fparts.map((g) => { for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; }));
     const fcols = new Float32Array(fg.attributes.position.count * 3);
     for (let i = 0; i < fg.attributes.position.count; i++) {
-      const stem = fg.attributes.position.getY(i) < -0.02;
-      fcols.set(stem ? [0.2, 0.32, 0.1] : [1, 1, 1], i * 3);
+      const y = fg.attributes.position.getY(i), r = Math.hypot(fg.attributes.position.getX(i), fg.attributes.position.getZ(i));
+      const stem = y < -0.015, centre = !stem && r < 0.013 && y > 0.0;
+      fcols.set(stem ? [0.2, 0.34, 0.1] : centre ? [1.6, 1.2, 0.1] : [1, 1, 1], i * 3);
     }
     fg.setAttribute('color', new THREE.BufferAttribute(fcols, 3));
-    const fim = new THREE.InstancedMesh(fg, natureMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8 }), { wind: 0.3 }), flowers.length);
+    const fim = new THREE.InstancedMesh(fg, natureMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, side: THREE.DoubleSide }), { wind: 0.3 }), flowers.length);
     flowers.forEach((d, i) => {
-      dummy.position.set(d.x, d.y, d.z); dummy.scale.set(1, 1, 1); dummy.rotation.set(0, 0, 0);
+      dummy.position.set(d.x, d.y, d.z); dummy.scale.setScalar(1.3); dummy.rotation.set(0, d.x * 7 % 6.28, 0);
       dummy.updateMatrix(); fim.setMatrixAt(i, dummy.matrix); fim.setColorAt(i, col.set(d.c));
     });
     fim.computeBoundingSphere();
     this.group.add(fim);
+
+    // niedres, vilkvālītes un ūdensrozes ezeru malās
+    const reeds = [], pads = [];
+    for (let i = 0; i < 60000 && reeds.length < 2200; i++) {
+      const x = (rnd() - 0.5) * 2 * 175, z = (rnd() - 0.5) * 2 * 175;
+      const h = this.getHeight(x, z);
+      if (h > -0.6 && h < 0.35 && this.trackDist(x, z) > TRACK_WIDTH && rnd() < 0.7) reeds.push({ x, y: Math.min(h, 0) - 0.05, z, s: 0.8 + rnd() * 0.6, ry: rnd() * 6.28, cat: rnd() < 0.25 });
+      else if (h < -0.9 && h > -2.5 && pads.length < 260 && rnd() < 0.08) pads.push({ x, z, s: 0.6 + rnd() * 0.6, ry: rnd() * 6.28, fl: rnd() < 0.2 });
+    }
+    const rparts = [];
+    for (let k = 0; k < 7; k++) {
+      const a = k / 7 * Math.PI * 2, r = 0.05 + (k % 3) * 0.04, hh = 1.0 + (k % 4) * 0.25;
+      const b = new THREE.PlaneGeometry(0.035, hh, 1, 2); b.translate(0, hh / 2, 0);
+      const bp = b.attributes.position;
+      for (let j = 0; j < bp.count; j++) { const y = bp.getY(j); bp.setX(j, bp.getX(j) * (1 - y / hh * 0.8)); bp.setZ(j, (y / hh) * (y / hh) * 0.18); }
+      b.rotateY(a); b.translate(Math.cos(a) * r, 0, Math.sin(a) * r);
+      rparts.push(b);
+    }
+    const reedG = mergeGeometries(rparts);
+    reedG.computeVertexNormals();
+    const rcol = new Float32Array(reedG.attributes.position.count * 3);
+    for (let j = 0; j < reedG.attributes.position.count; j++) { const t = Math.min(1, reedG.attributes.position.getY(j) / 1.6); rcol.set([0.25 + t * 0.35, 0.36 + t * 0.25, 0.12 + t * 0.06], j * 3); }
+    reedG.setAttribute('color', new THREE.BufferAttribute(rcol, 3));
+    const rim2 = new THREE.InstancedMesh(reedG, natureMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide, roughness: 0.9 }), { wind: 0.08 }), reeds.length);
+    const cats = reeds.filter((d) => d.cat);
+    const catG = mergeGeometries([new THREE.CylinderGeometry(0.006, 0.006, 1.5, 3).translate(0, 0.75, 0).toNonIndexed(), new THREE.CapsuleGeometry(0.035, 0.16, 2, 5).translate(0, 1.45, 0).toNonIndexed().deleteAttribute('uv')].map((g) => { if (g.attributes.uv) g.deleteAttribute('uv'); return g; }));
+    const ccol = new Float32Array(catG.attributes.position.count * 3);
+    for (let j = 0; j < catG.attributes.position.count; j++) ccol.set(catG.attributes.position.getY(j) > 1.35 ? [0.32, 0.2, 0.1] : [0.35, 0.45, 0.18], j * 3);
+    catG.setAttribute('color', new THREE.BufferAttribute(ccol, 3));
+    const cim = new THREE.InstancedMesh(catG, natureMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85 }), { wind: 0.06 }), Math.max(1, cats.length));
+    reeds.forEach((d, i) => { dummy.position.set(d.x, d.y, d.z); dummy.scale.set(d.s, d.s, d.s); dummy.rotation.set(0, d.ry, 0); dummy.updateMatrix(); rim2.setMatrixAt(i, dummy.matrix); });
+    cats.forEach((d, i) => { dummy.position.set(d.x + 0.1, d.y, d.z); dummy.scale.setScalar(d.s); dummy.rotation.set(0.05, d.ry, 0); dummy.updateMatrix(); cim.setMatrixAt(i, dummy.matrix); });
+    cim.count = cats.length;
+    for (const im of [rim2, cim]) { im.castShadow = true; im.receiveShadow = true; im.computeBoundingSphere(); this.group.add(im); }
+    // ūdensrožu lapas ar iegriezumu un daži balti ziedi
+    const padShape = new THREE.Shape(); padShape.moveTo(0, 0); padShape.absarc(0, 0, 0.35, 0.25, Math.PI * 2 - 0.05, false); padShape.lineTo(0, 0);
+    const padG = new THREE.ShapeGeometry(padShape, 12); padG.rotateX(-Math.PI / 2);
+    const pim = new THREE.InstancedMesh(padG, new THREE.MeshStandardMaterial({ color: '#3f6a2a', roughness: 0.4, side: THREE.DoubleSide }), pads.length);
+    pads.forEach((d, i) => { dummy.position.set(d.x, WATER_Y + 0.02, d.z); dummy.scale.setScalar(d.s); dummy.rotation.set(0, d.ry, 0); dummy.updateMatrix(); pim.setMatrixAt(i, dummy.matrix); pim.setColorAt(i, col.setRGB(0.8 + (i % 5) * 0.08, 0.9 + (i % 3) * 0.06, 0.8)); });
+    pim.receiveShadow = true; pim.computeBoundingSphere(); this.group.add(pim);
+    const lilies = pads.filter((d) => d.fl);
+    if (lilies.length) {
+      const lparts = [];
+      for (let k = 0; k < 8; k++) { const pe = new THREE.SphereGeometry(0.06, 6, 3); pe.scale(0.45, 0.25, 1); pe.translate(0, 0.03, 0.06); pe.rotateX(-0.5); pe.rotateY(k / 8 * Math.PI * 2); lparts.push(pe); }
+      lparts.push(new THREE.SphereGeometry(0.025, 8, 6).translate(0, 0.05, 0));
+      const lg = mergeGeometries(lparts);
+      const lim = new THREE.InstancedMesh(lg, new THREE.MeshStandardMaterial({ color: '#f6f3ea', roughness: 0.6 }), lilies.length);
+      lilies.forEach((d, i) => { dummy.position.set(d.x + 0.1, WATER_Y + 0.02, d.z); dummy.scale.setScalar(1.2); dummy.rotation.set(0, d.ry, 0); dummy.updateMatrix(); lim.setMatrixAt(i, dummy.matrix); });
+      lim.computeBoundingSphere(); this.group.add(lim);
+    }
   }
 
   buildClouds() {
     const rnd = mulberry32(this.seed + 5);
     this.clouds = new THREE.Group();
-    const tex = canvasTexture(128, 128, (g, w, h) => {
-      for (let i = 0; i < 40; i++) {
-        const x = 18 + Math.random() * 92, y = 50 + Math.random() * 30 - Math.abs(x - 64) * 0.25, r = 10 + Math.random() * 18;
-        const grd = g.createRadialGradient(x, y, 0, x, y, r);
-        grd.addColorStop(0, 'rgba(255,255,255,0.35)'); grd.addColorStop(1, 'rgba(255,255,255,0)');
-        g.fillStyle = grd; g.fillRect(0, 0, w, h);
+    // gubu mākoņi: daudz mīkstu kamolu, gaišāka augša un pelēcīgāka, plakana apakša
+    const mkTex = () => canvasTexture(256, 128, (g, w, h) => {
+      const puffs = [];
+      for (let i = 0; i < 70; i++) {
+        const x = 30 + Math.random() * 196, base = 92;
+        const hump = Math.max(0, 1 - Math.abs(x - 128) / 110);
+        const y = base - Math.random() * 50 * hump - 6;
+        puffs.push([x, y, 10 + Math.random() * 22 * (0.4 + hump)]);
       }
+      for (const [x, y, r] of puffs) {
+        const grd = g.createRadialGradient(x, y - r * 0.3, 0, x, y, r);
+        const shade = Math.min(1, Math.max(0, (92 - y) / 60));
+        const l = 200 + shade * 55 | 0;
+        grd.addColorStop(0, `rgba(${l},${l},${l + 4},0.5)`); grd.addColorStop(0.6, `rgba(${l - 10},${l - 8},${l},0.25)`); grd.addColorStop(1, 'rgba(255,255,255,0)');
+        g.fillStyle = grd; g.fillRect(x - r, y - r, r * 2, r * 2);
+      }
+      // nogriež apakšu plakanāku
+      const fade = g.createLinearGradient(0, 88, 0, 112); fade.addColorStop(0, 'rgba(0,0,0,0)'); fade.addColorStop(1, 'rgba(0,0,0,1)');
+      g.globalCompositeOperation = 'destination-out'; g.fillStyle = fade; g.fillRect(0, 88, w, h - 88);
     });
-    for (let i = 0; i < 16; i++) {
+    const texs = [mkTex(), mkTex(), mkTex()];
+    for (let i = 0; i < 20; i++) {
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: texs[i % 3], transparent: true, depthWrite: false, fog: false, opacity: 0.92, toneMapped: false, color: '#e8ecf0' }));
+      const s = 70 + rnd() * 70;
+      sp.scale.set(s, s * 0.5, 1);
       const c = new THREE.Group();
-      for (let k = 0; k < 1; k++) {
-        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, fog: false, opacity: 0.9 }));
-        const s = 60 + rnd() * 50;
-        sp.scale.set(s, s * 0.5, 1);
-        c.add(sp);
-      }
-      c.position.set((rnd() - 0.5) * 600, 90 + rnd() * 30, (rnd() - 0.5) * 600);
+      c.add(sp);
+      c.position.set((rnd() - 0.5) * 640, 85 + rnd() * 35, (rnd() - 0.5) * 640);
       this.clouds.add(c);
     }
     this.group.add(this.clouds);

@@ -173,7 +173,7 @@ export class Game {
 
   buildVendors() {
     this.vendors = VENDORS.map((v) => {
-      const cart = buildCart(v.cart);
+      const cart = buildCart(v.cart, false, v.id === 'hats' ? 'hats' : v.id === 'seeds' ? 'seeds' : 'veg');
       const face = Math.atan2(-v.x, -v.z);
       cart.position.set(v.x, VILLAGE_Y, v.z);
       cart.rotation.y = face;
