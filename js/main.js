@@ -5,6 +5,7 @@ import { buildAnimal } from './characters.js';
 import { Net, randomCode } from './net.js';
 import { Game } from './game.js';
 import { $, initAudio } from './ui.js';
+import { VERSION, BUILD_DATE } from './version.js';
 
 const EMOJI = { lacis: '🐻', lapsa: '🦊', zakis: '🐰', kakis: '🐱', cuka: '🐷', suns: '🐶', varde: '🐸', pile: '🦆' };
 let save = null;
@@ -21,6 +22,8 @@ function show(id) {
   for (const s of ['scr-name', 'scr-char', 'scr-room']) $(s).classList.toggle('hidden', s !== id);
   if (id === 'scr-char') startPreview(); else stopPreview();
 }
+
+$('version').textContent = `Versija ${VERSION} · ${BUILD_DATE}`;
 
 // ---------- 1. vārds ----------
 $('in-name').value = lastProfileName();

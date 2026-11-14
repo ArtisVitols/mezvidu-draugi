@@ -2,6 +2,10 @@
 
 Kopīga 3D piedzīvojumu spēle telefona pārlūkam līdz 4 draugiem. Viss latviski.
 
+▶️ **Spēlēt:** https://artisvitols.github.io/mezvidu-draugi/
+
+Pašreizējā versija: **1.3.1** (redzama sākuma ekrānā un ☰ izvēlnē). Izmaiņas: [CHANGELOG.md](CHANGELOG.md).
+
 ## Kā spēlēt
 1. Atver spēles saiti telefonā (vislabāk guļus).
 2. Ieraksti vārdu un izvēlies dzīvnieku (lācis, lapsa, zaķis, kaķis, cūciņa, suns, varde, pīle) un krāsas.
@@ -19,6 +23,7 @@ Datorā: WASD / bultiņas, atstarpe, E, peles vilkšana.
 - 🧺 Tirgus: Ūdrs Ojārs (sēklas), Āpsis Arnolds (uzpērk ražu), Pūce Paula (cepures, kartinga krāsas), Bebrs Bruno ar saldējuma ratiņiem
 - 🏎️ Kartinga trase ar turbo bultām — 3 apļu sacīkstes ar draugiem un robotiem
 - 🦌 Meža dzīvnieki: stirnas, zaķi, eži, mežacūkas, vāveres, stārķi — tos var paglaudīt
+- 🌲 Dabiska pasaule: egļu, priežu, bērzu un ozolu meži, kas šūpojas vējā, pļavas ar ziediem, ezeri ar niedrēm un ūdensrozēm, guļbūvju ciemats
 - ⭐ 15 zelta zvaigznes paslēptas kalnu virsotnēs
 - 📜 Uzdevumi ar balvām
 
@@ -29,7 +34,8 @@ Katra spēlētāja progress (monētas, soma, dārzs, zvaigznes, uzdevumi, cepure
 ## Tehniski
 - Tīrs HTML + JavaScript, [three.js](https://threejs.org) 3D grafikai, [PeerJS](https://peerjs.com) (WebRTC) tiešiem savienojumiem.
 - Nav sava servera: saimnieka telefons ir „serveris”. PeerJS bezmaksas serviss palīdz tikai savienoties.
-- Pasaule ģenerēta procedurāli no fiksētas sēklas (`WORLD_SEED` failā `js/data.js`), tāpēc tā katram ir vienāda.
+- Pasaule ģenerēta procedurāli no fiksētas sēklas (`WORLD_SEED`), tāpēc tā katram ir vienāda. Visi 3D modeļi un faktūras tiek uzzīmēti kodā — nav ārēju attēlu failu.
+- Versija: `js/version.js`.
 
 ### Publicēšana GitHub Pages
 Repozitorijā: **Settings → Pages → Deploy from a branch → `main` / root**. Saite būs
@@ -40,6 +46,9 @@ Repozitorijā: **Settings → Pages → Deploy from a branch → `main` / root**
 python3 -m http.server 8000
 ```
 un atver `http://localhost:8000`.
+
+### Grafika
+☰ izvēlnē ir poga **„🎨 Grafika: Augsta/Zema”**. Lēnos telefonos spēle pati samazina izšķirtspēju un izslēdz ēnas.
 
 ### Zināmie ierobežojumi
 - Ja saimnieks aizver spēli vai telefons aizmieg, istaba beidzas (pārējo progress saglabājas).

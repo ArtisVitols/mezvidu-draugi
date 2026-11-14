@@ -5,6 +5,7 @@ import { Controls } from './controls.js';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS } from './data.js';
 import { writeSave } from './save.js';
+import { VERSION, BUILD_DATE } from './version.js';
 import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js';
 import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js';
 
@@ -1665,6 +1666,7 @@ export class Game {
       b.append(el('button', { className: 'pbtn', onclick: () => { this.persist(); toast('💾 Saglabāts!', 'good'); } }, '💾 Saglabāt'));
       b.append(' ');
       b.append(el('button', { className: 'pbtn', style: 'background:#c94a3a', onclick: () => this.quit() }, '🚪 Saglabāt un iziet'));
+      b.append(el('div', { style: 'margin-top:12px;font-size:12px;opacity:0.6;text-align:center' }, `Versija ${VERSION} · ${BUILD_DATE}`));
     });
   }
 
