@@ -1,5 +1,16 @@
 # Izmaiņu žurnāls
 
+## 1.5.0 — 2026-11-14
+- 🎣 Makšķerēšana: makšķere pie Ūdra Ojāra, zivis ezeros (rauda, asaris, līdaka, reta zelta zivtiņa), no laipas ķeras labāk.
+- 🫐 Ogu lasīšana: mellenes, avenes un dzērvenes.
+- 🐾 Mājdzīvnieki, kas seko saimniekam (Suns Sprīdis), 🏡 dārza rotājumi (Lapsa Liene) — tos redz arī draugi.
+- 🗺️ 5 īpašās vietas: skatu tornis, ugunskura vieta, purvs ar laipu, pilsdrupas, makšķernieku laipa ar laivu.
+- 💰 Dārgumu medības: 3 kartes gabali → lāde pilsdrupās (+150🪙 un bruņinieka ķivere). Pie ugunskura var izcept sēnes.
+- ⭐ Zvaigznes kartē parādās pēc uzkāpšanas skatu tornī.
+- 🎲 Ķeramais un paslēpes ar draugiem.
+- 🤝 Nedēļas kopīgais mērķis, kas mainās katru pirmdienu un saglabājas starp spēlēm.
+- 📜 10 jauni uzdevumi.
+
 ## 1.4.0 — 2026-11-14
 - Pasaule ~2,3 reizes platāka (spēles laukums 840 m diametrā, ~5 reizes lielāka platība):
   vairāk ezeru, mežu, līdzenumu un pauguru apgabalu.

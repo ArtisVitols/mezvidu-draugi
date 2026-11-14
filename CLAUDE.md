@@ -34,6 +34,9 @@ Static site: plain HTML + ES modules, no build step. three.js r160 and PeerJS 1.
 | `js/net.js` | PeerJS wrapper. Host is authoritative; peer ID prefix `mezvidu-draugi-lv-v1-` + 5-char room code |
 | `js/save.js` | localStorage saves per player name (`mezvidi_save_v1_<name>`) |
 | `js/data.js` | Game data: animals, crops, mushrooms, hats, quests, NPC types |
+| `js/places.js` | Special places (tower, camp, swamp, ruins, pier): deterministic site search before the height grid, terrain flattening (`placeHeight`), models, walkable platforms, berry bush spots |
+| `js/props.js` | Berry bushes (cloned templates), garden decorations + `DECOR_SPOTS`, fishing rod, bobber |
+| `js/activities.js` | `Activities` mixin on `Game.prototype`: fishing, berries, pets, decor, discovery, treasure, tag/hide-and-seek (host-run), weekly team goal |
 | `js/version.js` | Version shown in the UI |
 | `tools/bump-version.mjs` | Sets the version and cache-busting `?v=` tags |
 
@@ -46,6 +49,9 @@ Static site: plain HTML + ES modules, no build step. three.js r160 and PeerJS 1.
 - Small details (rocks, flowers, reeds, lilies) use `world.chunked(...)` with a max view distance.
 - `world.updateVisibility(camX, camZ)` runs every 0.3 s from the game loop.
 - Grass is a GPU field around the player, sampling height and ground-colour textures.
+- Special places come from `findPlaces` in the `World` constructor (needs `computeHeight`, runs before `computeHeights`).
+  `world.groundAt(x, z, y)` = terrain or a platform (pier, tower top, swamp boardwalk); player walking uses it.
+  Trees, rocks and mushrooms skip `inPlace(...)` areas.
 - Minimap: `mapBase` is a canvas of the whole world; the HUD minimap shows ~130 m around the player, and tapping it opens the full map.
 
 ## Conventions / gotchas
@@ -57,6 +63,10 @@ Static site: plain HTML + ES modules, no build step. three.js r160 and PeerJS 1.
 - World generation must stay deterministic (`WORLD_SEED`, seeded `mulberry32`) so every player sees the same world.
   Random visual-only details (canvas textures) may use `Math.random`.
 - Don't share object references between host state and client state (clone), as earlier bugs came from that.
+- Host-authoritative shared things: mushroom/berry picks (`pick`/`pickB`), weekly team goal (`teamAdd`, merged by max
+  from each player's `save.weekly` on `hello`), mini-games (`mgStart`, `hostMgTick`). Unknown messages fall through to
+  `hostActivity` / `onActivityMessage` in `activities.js`.
+- `ANIM` order in `game.js` is the network encoding of animation states; only append to it.
 
 ## Testing
 - Local server: `python3 -m http.server 8765` in the project root.

@@ -37,6 +37,7 @@ export const HATS = {
   ozols:   { name: 'Ozollapu vainags', price: 80 },
   cilindrs:{ name: 'Cilindrs', price: 100 },
   kronis:  { name: 'Kronis', price: 150 },
+  kivere:  { name: 'Bruņinieka ķivere', price: 0, hidden: true }, // tikai no dārguma lādes
 };
 
 export const KART_COLORS = [
@@ -62,7 +63,80 @@ export const QUESTS = [
   { id: 'q10', text: 'Novāc 15 dārzeņus', stat: 'harvested', need: 15, reward: 100 },
   { id: 'q11', text: 'Atrodi visas 15 zvaigznes', stat: 'stars', need: 15, reward: 200 },
   { id: 'q12', text: 'Uzvari kartinga sacīkstēs', stat: 'wins', need: 1, reward: 60 },
+  { id: 'q13', text: 'Noķer 5 zivis', stat: 'fish', need: 5, reward: 25 },
+  { id: 'q14', text: 'Salasi 10 saujas ogu', stat: 'berries', need: 10, reward: 20 },
+  { id: 'q15', text: 'Iegādājies mājdzīvnieku', stat: 'pets', need: 1, reward: 20 },
+  { id: 'q16', text: 'Izrotā dārzu ar 3 rotājumiem', stat: 'decor', need: 3, reward: 30 },
+  { id: 'q17', text: 'Uzkāp skatu tornī', stat: 'tower', need: 1, reward: 15 },
+  { id: 'q18', text: 'Izcep 5 sēnes pie ugunskura', stat: 'cooked', need: 5, reward: 20 },
+  { id: 'q19', text: 'Atklāj visas 5 īpašās vietas', stat: 'places', need: 5, reward: 50 },
+  { id: 'q20', text: 'Atrodi apslēpto dārgumu', stat: 'treasure', need: 1, reward: 100 },
+  { id: 'q21', text: 'Uzvari ķeramajā vai paslēpēs', stat: 'mgwins', need: 1, reward: 40 },
+  { id: 'q22', text: 'Noķer zelta zivtiņu', stat: 'goldfish', need: 1, reward: 50 },
 ];
+
+// ---------- Makšķerēšana ----------
+export const ROD_PRICE = 25;
+// w — iespējamība, pier — iespējamība no laipas (tur labāk ķeras)
+export const FISH = {
+  rauda:   { name: 'Rauda', icon: '🐟', sell: 4, w: 45, pier: 35 },
+  asaris:  { name: 'Asaris', icon: '🐠', sell: 6, w: 30, pier: 30 },
+  lidaka:  { name: 'Līdaka', icon: '🐊', sell: 12, w: 15, pier: 22 },
+  zelta:   { name: 'Zelta zivtiņa', icon: '✨', sell: 40, w: 3, pier: 8 },
+  zabaks:  { name: 'Vecs zābaks', icon: '👢', sell: 0, w: 7, pier: 5, junk: true },
+};
+
+// ---------- Ogas ----------
+export const BERRIES = {
+  mellene:  { name: 'Mellenes', icon: '🫐', sell: 4, color: '#2a3a7a' },
+  avene:    { name: 'Avenes', icon: '🍇', sell: 5, color: '#d0283a' },
+  dzervene: { name: 'Dzērvenes', icon: '🔴', sell: 7, color: '#b0101e' },
+};
+export const COOKED = { name: 'Cepta sēne', icon: '🍢', sell: 12 };
+
+// ---------- Mājdzīvnieki (seko saimniekam) ----------
+export const PETS = {
+  ezitis:   { name: 'Ezītis', npc: 'ezis', scale: 0.8, price: 60 },
+  zakitis:  { name: 'Zaķēns', npc: 'zakis', scale: 0.6, price: 80 },
+  vaverite: { name: 'Vāverīte', npc: 'vavere', scale: 1.0, price: 90 },
+  sivens:   { name: 'Mežacūciņa', npc: 'mezacuka', scale: 0.45, price: 120 },
+  stirnens: { name: 'Stirnēns', npc: 'stirna', scale: 0.5, price: 150 },
+};
+
+// ---------- Dārza rotājumi (katram sava vieta pie dārza) ----------
+export const DECOR = {
+  pukupods:  { name: 'Puķu pods', icon: '🪴', price: 15 },
+  rukis:     { name: 'Dārza rūķis', icon: '🧙', price: 30 },
+  burits:    { name: 'Putnu būrītis', icon: '🐦', price: 25 },
+  solins:    { name: 'Soliņš', icon: '🪑', price: 35 },
+  laterna:   { name: 'Laterna', icon: '🏮', price: 40 },
+  biedeklis: { name: 'Putnubiedēklis', icon: '🎃', price: 45 },
+  karogs:    { name: 'Latvijas karogs', icon: '🚩', price: 50 },
+  struklaka: { name: 'Strūklaka', icon: '⛲', price: 80 },
+};
+
+// ---------- Īpašās vietas ----------
+export const PLACES = {
+  tornis:  { name: 'Skatu tornis', icon: '🗼' },
+  nometne: { name: 'Ugunskura vieta', icon: '⛺' },
+  purvs:   { name: 'Purvs', icon: '🐸' },
+  drupas:  { name: 'Pilsdrupas', icon: '🏰' },
+  laipa:   { name: 'Makšķernieku laipa', icon: '🎣' },
+};
+export const MAP_PIECES = ['nometne', 'tornis', 'purvs']; // kartes gabali dārguma lādei pilsdrupās
+
+// ---------- Nedēļas kopīgais mērķis (mainās katru pirmdienu) ----------
+export const WEEKLY = [
+  { stat: 'mushrooms', icon: '🍄', text: 'Salasiet kopā {n} ēdamas sēnes', n: 60 },
+  { stat: 'fish', icon: '🐟', text: 'Noķeriet kopā {n} zivis', n: 25 },
+  { stat: 'berries', icon: '🫐', text: 'Salasiet kopā {n} saujas ogu', n: 50 },
+  { stat: 'harvested', icon: '🥕', text: 'Novāciet kopā {n} dārzeņus', n: 40 },
+  { stat: 'petted', icon: '🦌', text: 'Paglaudiet kopā {n} meža dzīvniekus', n: 40 },
+  { stat: 'races', icon: '🏎️', text: 'Nobrauciet kopā {n} sacīkstes', n: 6 },
+];
+export const WEEKLY_REWARD = 60;
+export function weekNumber(ms) { return Math.floor((ms / 86400000 + 3) / 7); } // nedēļas sākas pirmdienā
+export function weeklyGoal(week) { return WEEKLY[((week % WEEKLY.length) + WEEKLY.length) % WEEKLY.length]; }
 
 export const NPC_TYPES = {
   stirna:   { name: 'Stirna' },

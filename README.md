@@ -4,7 +4,7 @@ Kopīga 3D piedzīvojumu spēle telefona pārlūkam līdz 4 draugiem. Viss latvi
 
 ▶️ **Spēlēt:** https://artisvitols.github.io/mezvidu-draugi/
 
-Pašreizējā versija: **1.4.0** (redzama sākuma ekrānā un ☰ izvēlnē). Izmaiņas: [CHANGELOG.md](CHANGELOG.md).
+Pašreizējā versija: **1.5.0** (redzama sākuma ekrānā un ☰ izvēlnē). Izmaiņas: [CHANGELOG.md](CHANGELOG.md).
 
 ## Kā spēlēt
 1. Atver spēles saiti telefonā (vislabāk guļus).
@@ -18,9 +18,16 @@ Datorā: WASD / bultiņas, atstarpe, E, peles vilkšana.
 
 ## Ko var darīt
 - 🍄 Lasīt baravikas un gailenes mežā (sarkanās mušmires ir indīgas!)
-- 🤝 Kopīgais mērķis — visi kopā salasa noteiktu sēņu skaitu un katrs saņem balvu
+- 🤝 Nedēļas kopīgais mērķis — katru pirmdienu jauns (sēnes, zivis, ogas, raža, dzīvnieki, sacīkstes); skaitās visu draugu darbi, progress saglabājas
 - 🌱 Katram savs dārzs ciematā: stādi, aplaisti (arī draugu dārzus!) un novāc ražu
-- 🧺 Tirgus: Ūdrs Ojārs (sēklas), Āpsis Arnolds (uzpērk ražu), Pūce Paula (cepures, kartinga krāsas), Bebrs Bruno ar saldējuma ratiņiem
+- 🧺 Tirgus: Ūdrs Ojārs (sēklas, makšķere), Āpsis Arnolds (uzpērk ražu, zivis, ogas), Pūce Paula (cepures, kartinga krāsas), Suns Sprīdis (mājdzīvnieki), Lapsa Liene (dārza rotājumi), Bebrs Bruno ar saldējuma ratiņiem
+- 🎣 Makšķerēšana ezeros: kad pludiņš raustās — „VILKT!”. Raudas, asari, līdakas un reta zelta zivtiņa (no laipas ķeras labāk)
+- 🫐 Ogas: mellenes mežā, avenes meža malās, dzērvenes purvā
+- 🐾 Mājdzīvnieki, kas skrien līdzi: ezītis, zaķēns, vāverīte, mežacūciņa, stirnēns
+- 🏡 Dārza rotājumi: rūķis, puķu pods, putnu būrītis, soliņš, laterna, putnubiedēklis, Latvijas karogs, strūklaka — tos redz arī draugi
+- 🗺️ Īpašās vietas: 🗼 skatu tornis (no tā kartē redz visas zvaigznes), ⛺ ugunskura vieta (tur var izcept sēnes), 🐸 purvs, 🏰 pilsdrupas, 🎣 makšķernieku laipa
+- 💰 Dārgumu medības: savāc 3 kartes gabalus un atver lādi pilsdrupās (+150🪙 un bruņinieka ķivere)
+- 🎲 Ķeramais un paslēpes ar draugiem
 - 🏎️ Kartinga trase ar turbo bultām — 3 apļu sacīkstes ar draugiem un robotiem
 - 🦌 Meža dzīvnieki: stirnas, zaķi, eži, mežacūkas, vāveres, stārķi — tos var paglaudīt
 - 🗺️ Liela pasaule (~840 m diametrā) — pieskaries minikartei, lai redzētu visu karti
@@ -29,7 +36,7 @@ Datorā: WASD / bultiņas, atstarpe, E, peles vilkšana.
 - 📜 Uzdevumi ar balvām
 
 ## Saglabāšana
-Katra spēlētāja progress (monētas, soma, dārzs, zvaigznes, uzdevumi, cepures, labākais aplis) tiek saglabāts
+Katra spēlētāja progress (monētas, soma, dārzs, zvaigznes, uzdevumi, cepures, mājdzīvnieki, rotājumi, atklātās vietas, kartes gabali, nedēļas mērķis, labākais aplis) tiek saglabāts
 **tā telefona pārlūkā** zem spēlētāja vārda — ik pēc 5 sekundēm un aizverot spēli. Nākamreiz ieraksti to pašu vārdu.
 
 ## Tehniski

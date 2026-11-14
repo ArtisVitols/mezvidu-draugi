@@ -21,6 +21,16 @@ export function defaultSave(name) {
     bestLap: null,
     pos: null,
     playTime: 0,
+    rod: false,
+    pet: null, ownedPets: [],
+    decor: [],        // pie dārza noliktie rotājumi
+    ownedDecor: [],   // nopirktie rotājumi
+    trophies: 0,
+    places: [],       // atklātās īpašās vietas
+    pieces: [],       // savāktie kartes gabali
+    treasure: false,
+    revealed: false,  // skatu tornī redzētas visas zvaigznes
+    weekly: null,     // {w, c, done} — nedēļas kopīgā mērķa progress
   };
 }
 

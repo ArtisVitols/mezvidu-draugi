@@ -1,15 +1,18 @@
 import * as THREE from 'three';
-import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotPos, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.4.0';
-import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop } from './characters.js?v=1.4.0';
-import { Controls } from './controls.js?v=1.4.0';
+import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotPos, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.5.0';
+import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop } from './characters.js?v=1.5.0';
+import { Controls } from './controls.js?v=1.5.0';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS } from './data.js?v=1.4.0';
-import { writeSave } from './save.js?v=1.4.0';
-import { VERSION, BUILD_DATE } from './version.js?v=1.4.0';
-import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.4.0';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.4.0';
+import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS } from './data.js?v=1.5.0';
+import { writeSave } from './save.js?v=1.5.0';
+import { VERSION, BUILD_DATE } from './version.js?v=1.5.0';
+import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.5.0';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.5.0';
+import { Activities, makeTeam } from './activities.js?v=1.5.0';
+import { buildRod, buildDecor } from './props.js?v=1.5.0';
+import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.5.0';
 
-const ANIM = ['idle', 'walk', 'run', 'jump', 'swim', 'sit', 'pet', 'wave'];
+const ANIM = ['idle', 'walk', 'run', 'jump', 'swim', 'sit', 'pet', 'wave', 'fish'];
 const MUSH_RESPAWN = 120000;
 const EPOCH = 1.7e12;
 const BOTS = [
@@ -32,7 +35,7 @@ export class Game {
     this.remotes = new Map();
     this.profiles = new Map();
     this.picked = {};
-    this.team = { count: 0, target: 20 };
+    this.team = makeTeam(Date.now(), save.weekly);
     this.race = { phase: 'none', id: 0 };
     this.myRace = null;
     this.hs = null;
@@ -126,6 +129,8 @@ export class Game {
     this.myName.position.y = 2.25;
     this.avatar.root.add(this.myName);
 
+    this.initActivities();
+
     this.cam = { yaw: Math.PI * 0.25, pitch: 0.38, dist: 7.5 };
     this.controls = new Controls($('touch'));
     this.bindHud();
@@ -174,12 +179,21 @@ export class Game {
 
   buildVendors() {
     this.vendors = VENDORS.map((v) => {
-      const cart = buildCart(v.cart, false, v.id === 'hats' ? 'hats' : v.id === 'seeds' ? 'seeds' : 'veg');
+      const cart = buildCart(v.cart, false, v.id === 'hats' ? 'hats' : v.id === 'seeds' ? 'seeds' : v.id === 'buyer' ? 'veg' : 'none');
+      if (v.id === 'pets') {
+        [['ezis', -0.7, 0.9], ['zakis', 0.1, 0.55], ['vavere', 0.8, 1.0]].forEach(([k, x, s]) => {
+          const n = buildNPC(k); n.root.scale.multiplyScalar(s * 0.8); n.root.position.set(x, 1.5, 0.05); n.root.rotation.y = Math.PI / 2; cart.add(n.root);
+        });
+      } else if (v.id === 'decor') {
+        [['rukis', -0.85, 0.75], ['pukupods', 0, 0.7], ['laterna', 0.85, 0.42]].forEach(([k, x, s]) => {
+          const d = buildDecor(k); d.scale.setScalar(s); d.position.set(x, 1.5, 0.05); d.rotation.y = Math.PI / 2; cart.add(d);
+        });
+      }
       const face = Math.atan2(-v.x, -v.z);
       cart.position.set(v.x, VILLAGE_Y, v.z);
       cart.rotation.y = face;
       this.scene.add(cart);
-      const av = buildAnimal({ animal: v.animal, fur: v.fur, shirt: v.shirt, hat: v.id === 'hats' ? 'cilindrs' : v.id === 'seeds' ? 'salmu' : null });
+      const av = buildAnimal({ animal: v.animal, fur: v.fur, shirt: v.shirt, hat: v.id === 'hats' ? 'cilindrs' : v.id === 'seeds' ? 'salmu' : v.id === 'decor' ? 'vainags' : null });
       av.root.position.set(v.x - Math.sin(face) * 1.4, VILLAGE_Y, v.z - Math.cos(face) * 1.4);
       av.root.rotation.y = face;
       this.scene.add(av.root);
@@ -296,9 +310,17 @@ export class Game {
   }
 
   mapMarkers(g, toPx, big) {
+    g.font = (big ? 16 : 11) + 'px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    for (const p of this.world.places) { const [px, py] = toPx(p.x, p.z); g.fillText(PLACES[p.id].icon, px, py); }
+    const mg = this.mg;
+    if (this.mgIn && this.mgIn()) {
+      const [cx, cy] = toPx(mg.cx, mg.cz), [ex] = toPx(mg.cx + mg.R, mg.cz);
+      g.strokeStyle = '#ff3030'; g.lineWidth = 2; g.setLineDash([5, 4]);
+      g.beginPath(); g.arc(cx, cy, Math.abs(ex - cx), 0, 6.3); g.stroke(); g.setLineDash([]);
+    }
     g.fillStyle = '#ffe14a';
     this.world.stars.forEach((s) => {
-      if (this.save.stars.includes(s.id)) return;
+      if (this.save.stars.includes(s.id) || !this.save.revealed) return;
       const [px, py] = toPx(s.x, s.z);
       g.beginPath(); g.arc(px, py, big ? 3.5 : 2, 0, 6.3); g.fill();
     });
@@ -306,6 +328,7 @@ export class Game {
     const [vx, vy] = toPx(0, 0); g.fillText('🏡', vx, vy);
     const [kx, ky] = toPx(this.world.kartSpot.x, this.world.kartSpot.z); g.fillText('🏎️', kx, ky);
     for (const [, r] of this.remotes) {
+      if (this.mgHidden && this.mgHidden(r.id)) continue;
       const [px, py] = toPx(r.pos.x, r.pos.z);
       g.fillStyle = PLAYER_DOT[(r.prof.slot || 0) % 4];
       g.beginPath(); g.arc(px, py, big ? 5 : 3.5, 0, 6.3); g.fill();
@@ -345,7 +368,7 @@ export class Game {
       g.drawImage(this.mapBase, 0, 0, 420, 420);
       const R = this.mapR;
       this.mapMarkers(g, (x, z) => [(x + R) / (2 * R) * 420, (z + R) / (2 * R) * 420], true);
-      b.append(el('div', { style: 'text-align:center;font-size:13px;margin-top:6px;opacity:0.75' }, '⭐ — zvaigznes · 🏡 — ciemats · 🏎️ — kartings'));
+      b.append(el('div', { style: 'text-align:center;font-size:13px;margin-top:6px;opacity:0.75' }, (this.save.revealed ? '⭐ zvaigznes' : '⭐ — uzkāp 🗼 tornī') + ' · 🏡 ciemats · 🏎️ trase · ⛺🗼🐸🏰🎣 īpašās vietas'));
     });
   }
 
@@ -364,6 +387,7 @@ export class Game {
     press('btn-room', () => this.openRoom());
     press('btn-exit-kart', () => this.exitKart());
     press('btn-race', () => { this.net.toHost({ t: 'raceReq' }); sfx('beep'); });
+    press('btn-games', () => this.openGames());
     $('panel-close').addEventListener('click', () => closePanel());
     $('panel').addEventListener('pointerdown', (e) => { if (e.target.id === 'panel') closePanel(); });
     const em = $('emote-menu');
@@ -391,7 +415,9 @@ export class Game {
   updateCoins() { $('coins').textContent = `🪙 ${this.save.coins}`; }
 
   updateTeamBar() {
-    $('team-bar').textContent = `🤝 Kopīgais mērķis: 🍄 ${this.team.count}/${this.team.target}`;
+    const tm = this.team;
+    const done = tm.c >= tm.target;
+    $('team-bar').textContent = `🤝 Nedēļas mērķis: ${done ? '🏆' : ''}${(this.weeklyIcon && this.weeklyIcon()) || ''} ${Math.min(tm.c, tm.target)}/${tm.target}`;
   }
 
   addCoins(n, silent = false) {
@@ -404,6 +430,7 @@ export class Game {
 
   stat(name, n = 1) {
     this.save.stats[name] = (this.save.stats[name] || 0) + n;
+    if (this.team && name === this.team.stat && this.myId >= 0) this.net.toHost({ t: 'teamAdd', n, w: this.team.w });
     this.checkQuests();
   }
 
@@ -422,7 +449,7 @@ export class Game {
   // ======================= Tīkls =======================
   myProf() {
     const s = this.save;
-    return { name: s.name, animal: s.animal, fur: s.fur, shirt: s.shirt, hat: s.hat, kartColor: s.kartColor, garden: this.gardenView() };
+    return { name: s.name, animal: s.animal, fur: s.fur, shirt: s.shirt, hat: s.hat, kartColor: s.kartColor, garden: this.gardenView(), pet: s.pet || null, decor: s.decor || [] };
   }
 
   setupNet() {
@@ -435,10 +462,10 @@ export class Game {
 
   start() {
     if (this.net.isHost) {
-      this.hs = { profiles: new Map(), positions: new Map(), picked: {}, team: { count: 0, target: 20 }, race: { phase: 'none', id: 0 } };
+      this.hs = { profiles: new Map(), positions: new Map(), picked: {}, pickedB: {}, team: makeTeam(Date.now(), this.save.weekly), race: { phase: 'none', id: 0 }, mg: { kind: null, phase: 'none' } };
       this.hostTimer = setInterval(() => this.hostTick(), 100);
     }
-    this.net.toHost({ t: 'hello', prof: this.myProf() });
+    this.net.toHost({ t: 'hello', prof: this.myProf(), weekly: this.save.weekly });
     this.clock = new THREE.Clock();
     const loop = () => {
       if (this.ended) return;
@@ -482,8 +509,10 @@ export class Game {
         let slot = 0; while (used.has(slot)) slot++;
         const prof = { ...m.prof, slot };
         hs.profiles.set(from, prof);
-        net.sendTo(from, { t: 'welcome', id: from, now, profiles: [...hs.profiles.entries()], picked: hs.picked, team: hs.team, race: hs.race });
+        this.hostMergeWeekly(m.weekly);
+        net.sendTo(from, { t: 'welcome', id: from, now, profiles: [...hs.profiles.entries()], picked: hs.picked, pickedB: hs.pickedB, team: hs.team, race: hs.race, mg: hs.mg });
         net.broadcast({ t: 'join', id: from, prof });
+        net.broadcast({ t: 'team', team: hs.team });
         break;
       }
       case 'pos': hs.positions.set(from, m.p); break;
@@ -500,14 +529,6 @@ export class Game {
         if (!mu || hs.picked[m.id] > now) return;
         hs.picked[m.id] = now + MUSH_RESPAWN;
         net.broadcast({ t: 'picked', id: m.id, until: hs.picked[m.id], by: from });
-        if (!MUSHROOMS[mu.type].poison) {
-          hs.team.count++;
-          if (hs.team.count >= hs.team.target) {
-            net.broadcast({ t: 'teamDone', reward: 30 });
-            hs.team = { count: 0, target: hs.team.target + 10 };
-          }
-          net.broadcast({ t: 'team', team: hs.team });
-        }
         break;
       }
       case 'emote': net.broadcast({ t: 'emote', id: from, text: String(m.text).slice(0, 30) }); break;
@@ -541,6 +562,7 @@ export class Game {
         net.broadcast({ t: 'race', race: r });
         break;
       }
+      default: this.hostActivity(from, m);
     }
   }
 
@@ -563,6 +585,12 @@ export class Game {
 
   hostTick() {
     const hs = this.hs, net = this.net, now = Date.now();
+    this.hostMgTick(now);
+    if (now - (this.weekCheck || 0) > 10000) {
+      this.weekCheck = now;
+      const nt = makeTeam(now, null);
+      if (nt.w !== hs.team.w) { hs.team = nt; net.broadcast({ t: 'team', team: hs.team }); }
+    }
     const list = [];
     for (const [id, p] of hs.positions) list.push([id, ...p]);
     net.broadcast({ t: 's', l: list });
@@ -601,8 +629,10 @@ export class Game {
         this.timeOffset = this.net.isHost ? 0 : m.now - Date.now();
         for (const [id, prof] of m.profiles) this.applyProfile(id, prof);
         this.picked = { ...(m.picked || {}) };
-        this.team = m.team; this.updateTeamBar();
+        this.berryPicked = { ...(m.pickedB || {}) };
+        this.onTeam(m.team);
         this.onRace(m.race);
+        if (m.mg) this.onMg(m.mg);
         break;
       case 'join':
         if (m.id === this.myId) return;
@@ -648,12 +678,6 @@ export class Game {
         }
         break;
       }
-      case 'team': this.team = m.team; this.updateTeamBar(); break;
-      case 'teamDone':
-        this.addCoins(m.reward);
-        sfx('win');
-        toast(`🎉 Komanda sasniedza kopīgo mērķi! Visiem +${m.reward}🪙`, 'good', 4500);
-        break;
       case 'emote': this.showEmote(m.id, m.text); break;
       case 'water': {
         if (m.owner === this.myId) {
@@ -672,6 +696,7 @@ export class Game {
       }
       case 'race': this.onRace(m.race); break;
       case 'toast': toast(m.text); break;
+      default: this.onActivityMessage(m);
     }
   }
 
@@ -681,6 +706,7 @@ export class Game {
       this.mySlot = prof.slot;
       this.setGardenSign(prof.slot, prof.name);
       this.renderGarden(prof.slot, prof.garden);
+      this.renderDecor(prof.slot, prof.decor);
       return;
     }
     let r = this.remotes.get(id);
@@ -691,6 +717,7 @@ export class Game {
       this.updateRoomButton();
     } else if (r.prof.slot !== prof.slot) {
       this.renderGarden(r.prof.slot, null);
+      this.renderDecor(r.prof.slot, null);
       this.setGardenSign(r.prof.slot, null);
     }
     if (r.appearance !== appearance) {
@@ -699,6 +726,8 @@ export class Game {
       const ns = makeTextSprite(prof.name, { bg: 'rgba(30,60,140,0.7)' });
       ns.position.y = 2.25;
       r.avatar.root.add(ns);
+      r.nameSprite = ns;
+      r.rod = null;
       if (r.kart) r.kart.seat.add(r.avatar.root); else this.scene.add(r.avatar.root);
       r.appearance = appearance;
     } else if (r.prof.hat !== prof.hat) r.avatar.setHat(prof.hat);
@@ -706,6 +735,7 @@ export class Game {
     r.prof = prof;
     this.setGardenSign(prof.slot, prof.name);
     this.renderGarden(prof.slot, prof.garden);
+    this.renderDecor(prof.slot, prof.decor);
   }
 
   removeRemote(id) {
@@ -713,7 +743,9 @@ export class Game {
     if (!r) return;
     if (r.avatar.root.parent) r.avatar.root.parent.remove(r.avatar.root);
     if (r.kart) this.scene.remove(r.kart.root);
+    if (r.pet) this.scene.remove(r.pet.model.root);
     this.renderGarden(r.prof.slot, null);
+    this.renderDecor(r.prof.slot, null);
     this.setGardenSign(r.prof.slot, null);
     this.remotes.delete(id);
     this.profiles.delete(id);
@@ -737,7 +769,8 @@ export class Game {
     const camIn = ctl.consumeCam();
     let jump = ctl.consumeJump();
     const action = ctl.consumeAction();
-    if (panelOpen()) { mv = { x: 0, y: 0, run: false }; jump = false; }
+    if (panelOpen() || this.mgFrozen()) { mv = { x: 0, y: 0, run: false }; jump = false; }
+    if (this.fishing && (Math.hypot(mv.x, mv.y) > 0.3 || jump || this.me.inKart)) this.stopFishing();
     if (this.me.dizzy > 0) {
       this.me.dizzy -= dt;
       const w = Math.sin(t / 300) * 0.6;
@@ -761,6 +794,7 @@ export class Game {
     this.updateSun(dt);
     this.updateRemotes(dt);
     this.updateWorldObjects(dt, t);
+    this.updateActivities(dt, t);
     this.updateRace(dt, t);
     this.updateEffects(dt);
     this.world.updateClouds(dt, this.camera.position);
@@ -802,7 +836,7 @@ export class Game {
     const rx = Math.cos(yaw), rz = -Math.sin(yaw);
     const dx = fx * mv.y + rx * mv.x, dz = fz * mv.y + rz * mv.x;
     const mag = Math.min(1, Math.hypot(dx, dz));
-    const ground0 = W.getHeight(me.pos.x, me.pos.z);
+    const ground0 = W.groundAt(me.pos.x, me.pos.z, me.pos.y);
     const swimming = ground0 < WATER_Y - 0.9 && me.pos.y < WATER_Y + 0.3;
     let speed = mag * 8.5 * (mv.run ? 1.3 : 1);
     if (swimming) speed *= 0.55;
@@ -812,7 +846,7 @@ export class Game {
       const ux = dx / mag, uz = dz / mag;
       const tryMove = (ax, az) => {
         const nx = me.pos.x + ax * speed * dt, nz = me.pos.z + az * speed * dt;
-        const nh = W.getHeight(nx, nz);
+        const nh = W.groundAt(nx, nz, me.pos.y);
         const climb = nh - ground0;
         if (climb > Math.max(0.12, speed * dt * 1.6) && me.onGround && nh > WATER_Y) return false;
         me.pos.x = nx; me.pos.z = nz;
@@ -823,7 +857,7 @@ export class Game {
     }
     W.collide(me.pos, 0.4);
     this.collideIce(me.pos, 0.4);
-    const ground = W.getHeight(me.pos.x, me.pos.z);
+    const ground = W.groundAt(me.pos.x, me.pos.z, me.pos.y);
     const deep = ground < WATER_Y - 0.9;
     if (deep && me.pos.y <= WATER_Y + 0.2) {
       me.pos.y = lerp(me.pos.y, WATER_Y - 0.75, 1 - Math.exp(-dt * 6));
@@ -838,6 +872,7 @@ export class Game {
       if (jump && me.onGround) { me.vy = 9.5; me.onGround = false; sfx('jump'); }
       if (!me.onGround) me.state = 'jump';
       else if (me.petT > 0) me.state = 'pet';
+      else if (this.fishing) me.state = 'fish';
       else if (me.waveT > 0 && speed < 0.5) me.state = 'wave';
       else me.state = speed > 6.2 ? 'run' : speed > 0.3 ? 'walk' : 'idle';
     }
@@ -1040,6 +1075,9 @@ export class Game {
         const g = this.world.getHeight(r.pos.x, r.pos.z);
         r.avatar.shadow.position.y = Math.max(g, WATER_Y) - r.pos.y + 0.03;
         r.avatar.animate(dt, r.anim, 5);
+        if (r.anim === 'fish' && !r.rod) { r.rod = buildRod(); r.rod.position.set(0, 1.0, 0.32); r.avatar.root.add(r.rod); }
+        if (r.rod) r.rod.visible = r.anim === 'fish';
+        r.avatar.root.visible = !this.mgHidden(r.id) || r.pos.distanceTo(this.me.pos) < 30;
       }
     }
   }
@@ -1193,6 +1231,8 @@ export class Game {
     let best = null, bd = 1e9;
     const consider = (d, max, label, fn) => { if (d < max && d < bd) { bd = d; best = { label, fn }; } };
     const d2 = (x, z) => Math.hypot(x - p.x, z - p.z);
+    const forced = this.findActivityActions(consider, d2);
+    if (forced) return forced;
 
     for (const m of this.world.mushrooms) {
       if (Math.abs(m.x - p.x) > 3 || Math.abs(m.z - p.z) > 3) continue;
@@ -1493,6 +1533,8 @@ export class Game {
   openShop(id) {
     if (id === 'seeds') this.shopSeeds();
     else if (id === 'buyer') this.shopBuyer();
+    else if (id === 'pets') this.shopPets();
+    else if (id === 'decor') this.shopDecor();
     else this.shopHats();
   }
 
@@ -1500,8 +1542,9 @@ export class Game {
 
   shopSeeds() {
     const build = (b) => {
-      b.append(el('p', {}, 'Sveiks! Man ir labākās sēklas visā Mežvidu ciemā. Iestādi tās savā dārzā! 🌱'));
+      b.append(el('p', {}, 'Sveiks! Man ir labākās sēklas visā Mežvidu ciemā — un makšķeres. Ūdri zina, kur ķeras! 🌱🎣'));
       this.coinLine(b);
+      this.rodRow(b, build);
       for (const [k, c] of Object.entries(CROPS)) {
         const have = this.save.inv[k + '_seed'] || 0;
         const buy = (n) => () => {
@@ -1515,19 +1558,22 @@ export class Game {
         ]));
       }
     };
-    showPanel('🌱 Ūdrs Ojārs — sēklas', build);
+    showPanel('🌱 Ūdrs Ojārs — sēklas un makšķeres', build);
   }
 
   sellables() {
     const out = [];
     for (const [k, m] of Object.entries(MUSHROOMS)) if (!m.poison) out.push({ k, name: m.name, icon: MUSH_ICON[k], price: m.sell });
     for (const [k, c] of Object.entries(CROPS)) out.push({ k, name: c.name, icon: c.icon, price: c.sell });
+    for (const [k, f] of Object.entries(FISH)) if (!f.junk) out.push({ k, name: f.name, icon: f.icon, price: f.sell });
+    for (const [k, b] of Object.entries(BERRIES)) out.push({ k, name: b.name, icon: b.icon, price: b.sell });
+    out.push({ k: 'cepta', name: COOKED.name, icon: COOKED.icon, price: COOKED.sell });
     return out;
   }
 
   shopBuyer() {
     const build = (b) => {
-      b.append(el('p', {}, 'Es uzpērku sēnes un dārzeņus. Godīga cena! 🧺'));
+      b.append(el('p', {}, 'Es uzpērku sēnes, dārzeņus, zivis un ogas. Godīga cena! 🧺'));
       this.coinLine(b);
       let any = false, totalAll = 0;
       for (const it of this.sellables()) {
@@ -1563,6 +1609,7 @@ export class Game {
       this.coinLine(b);
       b.append(el('div', { className: 'sect' }, 'Cepures'));
       for (const [k, h] of Object.entries(HATS)) {
+        if (h.hidden && !this.save.ownedHats.includes(k)) continue;
         const owned = this.save.ownedHats.includes(k);
         const worn = this.save.hat === k;
         const btns = owned
@@ -1629,7 +1676,13 @@ export class Game {
       if (!any) b.append(el('p', {}, 'Soma ir tukša.'));
       b.append(el('div', { className: 'sect' }, 'Mani sasniegumi'));
       const st = this.save.stats;
-      b.append(itemRow('⭐', `Zelta zvaigznes: ${this.save.stars.length}/15`, 'Meklē tās kalnu virsotnēs'));
+      b.append(itemRow('⭐', `Zelta zvaigznes: ${this.save.stars.length}/15`, this.save.revealed ? 'Visas redzamas kartē' : 'Uzkāp 🗼 skatu tornī — no turienes redz visas!'));
+      b.append(itemRow('🗺️', `Īpašās vietas: ${this.save.places.length}/${this.world.places.length}`, this.save.places.map((id) => PLACES[id].icon).join(' ')));
+      b.append(itemRow('📜', `Kartes gabali: ${this.save.pieces.length}/${MAP_PIECES.length}`, this.save.treasure ? 'Dārgums atrasts! 🏰' : 'Ar visiem gabaliem atver lādi 🏰 Pilsdrupās'));
+      b.append(itemRow('🎣', this.save.rod ? `Noķertas zivis: ${st.fish || 0}` : 'Makšķere — pie Ūdra Ojāra', this.save.rod ? `Zelta zivtiņas: ${st.goldfish || 0}` : ''));
+      b.append(itemRow('🫐', `Salasītas ogas: ${st.berries || 0}`));
+      b.append(itemRow('🐾', this.save.pet ? `Mājdzīvnieks: ${PETS[this.save.pet].name}` : 'Mājdzīvnieka vēl nav', 'Suns Sprīdis ciematā'));
+      b.append(itemRow('🏆', `Nedēļas mērķi sasniegti: ${this.save.trophies || 0}`));
       b.append(itemRow('🍄', `Salasītas sēnes: ${st.mushrooms || 0}`));
       b.append(itemRow('🥕', `Novākti dārzeņi: ${st.harvested || 0}`));
       b.append(itemRow('🏎️', `Sacīkstes: ${st.races || 0} · uzvaras: ${st.wins || 0}`, this.save.bestLap ? `Labākais aplis: ${fmtTime(this.save.bestLap)}` : ''));
@@ -1640,7 +1693,8 @@ export class Game {
 
   openQuests() {
     showPanel('📜 Uzdevumi', (b) => {
-      b.append(el('p', {}, `🤝 Kopīgais mērķis visiem: salasiet kopā ${this.team.target} sēnes (${this.team.count}/${this.team.target}). Balva — 30🪙 katram!`));
+      const left = 7 - ((Math.floor(Date.now() / 86400000) + 3) % 7);
+      b.append(el('p', {}, `🤝 Šīs nedēļas kopīgais mērķis: ${this.teamText()} (${Math.min(this.team.c, this.team.target)}/${this.team.target}). Skaitās visu draugu darbi, un progress saglabājas! Balva — ${WEEKLY_REWARD}🪙 katram. Jauns mērķis pēc ${left} d.`));
       const sorted = [...QUESTS].sort((a, c) => (!!this.save.quests[a.id]) - (!!this.save.quests[c.id]));
       for (const q of sorted) {
         const done = !!this.save.quests[q.id];
@@ -1680,7 +1734,7 @@ export class Game {
   openMenu() {
     showPanel('☰ Izvēlne', (b) => {
       b.append(el('div', { className: 'sect' }, 'Kā spēlēt'));
-      b.append(el('p', { html: '🕹️ <b>Kreisā puse</b> — velc pirkstu, lai staigātu.<br>👆 <b>Labā puse</b> — velc, lai grozītu kameru (2 pirksti — tuvināt).<br>⤒ — lēkt. Dzeltenā poga parādās, kad vari kaut ko darīt.<br>🍄 Mežā lasi sēnes (bet ne sarkanās mušmires!).<br>🌱 Ciemata dārzā stādi sēklas, aplaisti un novāc ražu.<br>🧺 Pārdod ražu tirgū un pērc cepures.<br>🏎️ Kartinga trase ir uz austrumiem — sēdies kartā un sacenties!<br>⭐ Kalnu virsotnēs paslēptas 15 zelta zvaigznes.' }));
+      b.append(el('p', { html: '🕹️ <b>Kreisā puse</b> — velc pirkstu, lai staigātu.<br>👆 <b>Labā puse</b> — velc, lai grozītu kameru (2 pirksti — tuvināt).<br>⤒ — lēkt. Dzeltenā poga parādās, kad vari kaut ko darīt.<br>🍄 Mežā lasi sēnes (bet ne sarkanās mušmires!).<br>🌱 Ciemata dārzā stādi sēklas, aplaisti un novāc ražu.<br>🧺 Pārdod ražu tirgū un pērc cepures.<br>🏎️ Kartinga trase ir uz austrumiem — sēdies kartā un sacenties!<br>⭐ Kalnu virsotnēs paslēptas 15 zelta zvaigznes — no 🗼 skatu torņa tās redz kartē.<br>🎣 Nopērc makšķeri pie Ūdra Ojāra un makšķerē ezeros; kad pludiņš raustās — spied „VILKT!”.<br>🫐 Mežā lasi mellenes un avenes, purvā — dzērvenes.<br>⛺ Pie ugunskura var izcept sēnes (dārgāk pārdot).<br>🗺️ Atrodi 3 kartes gabalus (ugunskurs, tornis, purvs) un atver dārguma lādi 🏰 Pilsdrupās!<br>🐾 Suns Sprīdis pārdod mājdzīvniekus, Lapsa Liene — dārza rotājumus.<br>🎲 Ar draugiem spēlē ķeramo un paslēpes.<br>🤝 Katru nedēļu jauns kopīgais mērķis visiem draugiem.' }));
       b.append(el('div', { className: 'sect' }, 'Iestatījumi'));
       b.append(el('button', { className: 'pbtn', onclick: () => {
         try { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); } catch (e) { /* */ }
@@ -1708,3 +1762,6 @@ export class Game {
     location.href = location.pathname;
   }
 }
+
+Object.assign(Game.prototype, Activities);
+Game.prototype.weeklyIcon = function () { return ({ mushrooms: '🍄', fish: '🐟', berries: '🫐', harvested: '🥕', petted: '🦌', races: '🏎️' })[this.team.stat] || ''; };

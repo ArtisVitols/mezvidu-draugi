@@ -1,9 +1,10 @@
 import * as THREE from 'three';
-import { makeNoise2D, mulberry32 } from './noise.js?v=1.4.0';
-import { MUSHROOMS } from './data.js?v=1.4.0';
+import { makeNoise2D, mulberry32 } from './noise.js?v=1.5.0';
+import { MUSHROOMS } from './data.js?v=1.5.0';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mat, smoothstep, lerp, makeTextSprite, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.4.0';
-import { optimizeRig } from './characters.js?v=1.4.0';
+import { mat, smoothstep, lerp, makeTextSprite, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.5.0';
+import { optimizeRig } from './characters.js?v=1.5.0';
+import { findPlaces, placeHeight, inPlace, buildPlaces, updatePlaces, placeBerries } from './places.js?v=1.5.0';
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
@@ -39,6 +40,8 @@ export const VENDORS = [
   { id: 'seeds', name: 'Ūdrs Ojārs', title: '🌱 Sēklas', x: 14, z: -12, animal: 'udrs', fur: '#6b4a2e', shirt: '#2fa84f', cart: '#3c9a4a' },
   { id: 'buyer', name: 'Āpsis Arnolds', title: '🧺 Uzpērku', x: 18, z: 0, animal: 'apsis', fur: '#7d7d7d', shirt: '#2f6fd6', cart: '#2f6fd6' },
   { id: 'hats', name: 'Pūce Paula', title: '🎩 Cepures', x: 14, z: 12, animal: 'puce', fur: '#9a7348', shirt: '#9b3bd2', cart: '#b04ad2' },
+  { id: 'pets', name: 'Suns Sprīdis', title: '🐾 Mājdzīvnieki', x: -9, z: -15, animal: 'suns', fur: '#c89b5e', shirt: '#f07b2a', cart: '#e0902a' },
+  { id: 'decor', name: 'Lapsa Liene', title: '🏡 Dārzam', x: -9, z: 15, animal: 'lapsa', fur: '#e8742a', shirt: '#2fa84f', cart: '#3a9a9a' },
 ];
 
 export const SPAWN = { x: 5, z: 5 };
@@ -52,6 +55,9 @@ export class World {
     this.group = new THREE.Group();
     this.grid = new Map();
     this.buildTrackCurve();
+    this.places = [];
+    this.platforms = [];
+    findPlaces(this, EDGE);
     this.computeHeights();
   }
 
@@ -138,6 +144,7 @@ export class World {
     h = lerp(h, lerp(VILLAGE_Y, TRACK_Y, rd.t), 1 - smoothstep(3, 9, rd.d));
     const td = this.trackDist(x, z);
     h = lerp(h, TRACK_Y - 0.05, 1 - smoothstep(TRACK_WIDTH / 2 + 3, TRACK_WIDTH / 2 + 16, td));
+    if (this.places.length) h = placeHeight(this, x, z, h);
     if (d > EDGE) h += Math.min(22, (d - EDGE) * (d - EDGE) * 0.045);
     return h;
   }
@@ -165,6 +172,18 @@ export class World {
     const ha = H[iz * n + ix], hb = H[(iz + 1) * n + ix], hc = H[(iz + 1) * n + ix + 1], hd = H[iz * n + ix + 1];
     if (u + v <= 1) return ha + (hd - ha) * u + (hb - ha) * v;
     return hc + (hb - hc) * (1 - u) + (hd - hc) * (1 - v);
+  }
+
+  // zeme vai laipa/torņa platforma zem kājām (y — pašreizējais augstums)
+  groundAt(x, z, y = 1e9) {
+    let h = this.getHeight(x, z);
+    for (const p of this.platforms) {
+      const dx = x - p.x, dz = z - p.z;
+      const c = Math.cos(p.ang), s = Math.sin(p.ang);
+      const lx = dx * c + dz * s, lz = -dx * s + dz * c;
+      if (Math.abs(lx) <= p.hw && Math.abs(lz) <= p.hl && y >= p.y - 0.7 && p.y > h) h = p.y;
+    }
+    return h;
   }
 
   isWater(x, z) { return this.getHeight(x, z) < WATER_Y - 0.2; }
@@ -207,12 +226,14 @@ export class World {
     this.buildWater();
     this.buildTrackMesh();
     this.buildVillage();
+    buildPlaces(this);
     this.buildTrees();
     this.buildRocksAndFlowers();
     this.buildClouds();
     this.placeMushrooms();
     this.placeStars();
     this.placeNpcHomes();
+    placeBerries(this, PLAY_RADIUS);
   }
 
   // dabiska zemes krāsa konkrētā vietā (izmanto gan reljefs, gan zāle)
@@ -243,6 +264,9 @@ export class World {
       if (r < 30) c.lerp(P.village, 0.4);
       if (h > 13 && r < EDGE + 4) c.lerp(P.rock, Math.min(0.6, (h - 13) / 10));
       if (r > EDGE + 4) c.lerp(P.forestG, 0.8);
+      const sw = this.swampPlace || (this.swampPlace = this.places.find((p) => p.id === 'purvs') || { x: 1e9, z: 0, swamp: 1 });
+      const sd = Math.hypot(x - sw.x, z - sw.z);
+      if (sd < sw.swamp * 1.5) c.lerp(P.swamp || (P.swamp = new THREE.Color('#5e5a2c')), 0.6 * (1 - smoothstep(sw.swamp * 0.7, sw.swamp * 1.5, sd)));
       const rd = this.roadDist(x, z).d;
       if (rd < 3.4) c.lerp(P.road, (1 - smoothstep(1.8, 3.4, rd)) * (0.85 + v2 * 0.15));
     }
@@ -706,7 +730,7 @@ export class World {
         if (r > PLAY_RADIUS + 35 || r < 42) { rnd(); rnd(); continue; }
         const h = this.getHeight(x, z);
         if (h < 1.2 || h > 45) { rnd(); rnd(); continue; }
-        if (this.roadDist(x, z).d < 5) { rnd(); rnd(); continue; }
+        if (this.roadDist(x, z).d < 5 || inPlace(this, x, z)) { rnd(); rnd(); continue; }
         if (r > EDGE + 8 && (r > PLAY_RADIUS + 20 || rnd() < 0.4)) { rnd(); continue; }
         const f = r > EDGE + 8 ? 0.5 : this.forest(x, z);
         const p = f > 0.12 ? 0.62 : f > 0.0 ? 0.08 : 0.02;
@@ -1041,7 +1065,7 @@ export class World {
       if (r > PLAY_RADIUS - 2 || r < 38) continue;
       const h = this.getHeight(x, z);
       if (h < 0.3) continue;
-      if (this.trackDist(x, z) < TRACK_WIDTH / 2 + 4 || this.roadDist(x, z).d < 4) continue;
+      if (this.trackDist(x, z) < TRACK_WIDTH / 2 + 4 || this.roadDist(x, z).d < 4 || inPlace(this, x, z)) continue;
       if (rnd() > (h > 10 ? 0.5 : 0.12)) continue;
       const s = 0.35 + rnd() * rnd() * 1.6;
       rocks.push({ x, y: h - s * 0.12, z, s, ry: rnd() * 6, c: 0.8 + rnd() * 0.3 });
@@ -1270,6 +1294,8 @@ export class World {
       if (c.position.z - cz > 320) c.position.z -= 640; else if (c.position.z - cz < -320) c.position.z += 640;
     }
     this.updateWater(dt);
+    this._pt = (this._pt || 0) + dt;
+    updatePlaces(this, dt, this._pt);
   }
 
   placeMushrooms() {
@@ -1282,7 +1308,7 @@ export class World {
       const h = this.getHeight(x, z);
       if (h < 1.3 || h > 32) continue;
       if (this.forest(x, z) < 0.2) continue;
-      if (this.trackDist(x, z) < TRACK_WIDTH) continue;
+      if (this.trackDist(x, z) < TRACK_WIDTH || inPlace(this, x, z)) continue;
       const type = tr < 0.45 ? 'baravika' : tr < 0.85 ? 'gailene' : 'musmire';
       const p = { x, z };
       this.collide(p, 0.3);

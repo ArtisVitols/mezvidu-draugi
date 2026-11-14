@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mat, makeBlobShadow, noiseTexture, lerp, canvasTexture } from './util.js?v=1.4.0';
+import { mat, makeBlobShadow, noiseTexture, lerp, canvasTexture } from './util.js?v=1.5.0';
 
 // kažoka/auduma materiāli ar smalku faktūru
 let furTex = null, clothTex = null;
@@ -366,6 +366,11 @@ export function buildAnimal({ animal = 'lacis', fur = '#8b5a2b', shirt = '#d23b3
         T.hip = [0, 0]; T.knee = [0.05, 0.05]; T.bY = HIP; T.spX = 0;
         T.sh = [0, -0.4]; T.shZ = [-0.07, 2.5]; T.el = [-0.15, 0]; T.hY = 0.15;
         T.shZ[1] = 2.4 + Math.sin(this.phase) * 0.25;
+      } else if (state === 'fish') {
+        // tur makšķeri ar abām rokām priekšā
+        T.hip = [0, 0]; T.knee = [0.08, 0.08]; T.bY = HIP; T.spX = 0.06;
+        T.sh = [-0.85, -0.85]; T.shZ = [0.32, -0.32]; T.el = [-0.55, -0.55];
+        T.hY = Math.sin(this.t * 0.5) * 0.1;
       } else {
         // stāvēšana: elpošana un apkārtnes vērošana
         T.hip = [0, 0]; T.knee = [0.05, 0.05]; T.sh = [0.03, 0.03]; T.el = [-0.18, -0.18];
@@ -498,6 +503,18 @@ export function buildHat(id) {
         const ball = new THREE.Mesh(S(0.016, 8, 6), gold); ball.position.set(Math.cos(a) * 0.24, 0.205, Math.sin(a) * 0.24); g.add(ball);
         const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.022, 0), new THREE.MeshStandardMaterial({ color: ['#c0102a', '#1a4ad0', '#10a050'][i % 3], metalness: 0.2, roughness: 0.05 }));
         gem.position.set(Math.cos(a) * 0.248, 0.05, Math.sin(a) * 0.248); gem.rotation.y = -a; gem.scale.set(1, 1, 0.5); g.add(gem);
+      }
+      break;
+    }
+    case 'kivere': { // bruņinieka ķivere ar redeli un spalvu
+      const steel = new THREE.MeshStandardMaterial({ color: '#b8bcc4', metalness: 1, roughness: 0.3, side: THREE.DoubleSide });
+      g.add(new THREE.Mesh(LATHE([[0.29, -0.2], [0.29, -0.05], [0.285, 0.08], [0.25, 0.2], [0.17, 0.29], [0.0, 0.32]], 28), steel));
+      const slit = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.035, 0.05), M('#111', { roughness: 0.6 })); slit.position.set(0, -0.02, 0.28); g.add(slit);
+      const ridge = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.018, 6, 24, Math.PI), steel); ridge.rotation.y = Math.PI / 2; ridge.position.y = 0.0; ridge.scale.set(1, 1.05, 1); g.add(ridge);
+      const band = new THREE.Mesh(new THREE.TorusGeometry(0.292, 0.016, 6, 32), M('#d8b040', { metalness: 1, roughness: 0.3 })); band.rotation.x = Math.PI / 2; band.position.y = -0.12; g.add(band);
+      for (let i = 0; i < 5; i++) {
+        const pl = new THREE.Mesh(S(0.06, 10, 8), M(i % 2 ? '#e8302a' : '#f4f4f4', { roughness: 0.8 }));
+        pl.position.set(0, 0.36 + i * 0.03, -0.05 - i * 0.07); pl.scale.set(0.5, 0.8, 1.5); g.add(pl);
       }
       break;
     }
@@ -922,6 +939,8 @@ export function buildCart(color = '#3c9a4a', iceCream = false, goodsKind = 'veg'
       const pk = P(new THREE.BoxGeometry(0.16, 0.22, 0.03), new THREE.MeshStandardMaterial({ roughness: 0.6, map: canvasTexture(32, 48, (cx, w, h) => { cx.fillStyle = '#f2ead8'; cx.fillRect(0, 0, w, h); cx.fillStyle = c; cx.beginPath(); cx.arc(w / 2, h * 0.45, 9, 0, 7); cx.fill(); cx.fillStyle = '#3a6a2a'; cx.fillRect(w / 2 - 2, 4, 4, 10); }) }), x, 1.62, -0.38);
       pk.rotation.x = -0.25;
     });
+  } else if (goodsKind === 'none') {
+    // preces pievieno spēle
   } else {
     // koka kastes ar dārzeņiem
     const crateM = new THREE.MeshStandardMaterial({ color: '#d8c4a0', map: planks(), roughness: 0.9 });
