@@ -1,9 +1,9 @@
 // Īpašās vietas pasaulē: skatu tornis, ugunskura vieta, purvs, pilsdrupas, makšķernieku laipa.
 // Vietas atrod deterministiski pēc reljefa (visiem spēlētājiem vienādas), būvē to modeļus un ogu krūmu vietas.
 import * as THREE from 'three';
-import { mulberry32 } from './noise.js?v=1.11.1';
-import { mat, noiseTexture, makeTextSprite, smoothstep } from './util.js?v=1.11.1';
-import { optimizeRig, flattenStatic } from './characters.js?v=1.11.1';
+import { mulberry32 } from './noise.js?v=1.12.0';
+import { mat, noiseTexture, makeTextSprite, smoothstep } from './util.js?v=1.12.0';
+import { optimizeRig, flattenStatic } from './characters.js?v=1.12.0';
 
 const TAU = Math.PI * 2;
 const angDiff = (a, b) => { let d = Math.abs(a - b) % TAU; return d > Math.PI ? TAU - d : d; };
@@ -16,7 +16,7 @@ export function findPlaces(W, edge) {
     const h = H(x, z);
     return Math.max(Math.abs(H(x + 4, z) - h), Math.abs(H(x - 4, z) - h), Math.abs(H(x, z + 4) - h), Math.abs(H(x, z - 4) - h));
   };
-  const far = (x, z, min) => W.places.every((p) => angDiff(Math.atan2(z, x), Math.atan2(p.z, p.x)) > min || Math.hypot(p.x - x, p.z - z) > 90);
+  const far = (x, z, min) => W.places.every((p) => angDiff(Math.atan2(z, x), Math.atan2(p.z, p.x)) > min || Math.hypot(p.x - x, p.z - z) > 130);
   const okBase = (x, z) => W.trackDist(x, z) > 45 && W.roadDist(x, z).d > 12;
   const sample = (r0, r1) => { const a = rnd() * TAU, r = r0 + rnd() * (r1 - r0); return [Math.cos(a) * r, Math.sin(a) * r]; };
   const add = (p) => { W.places.push(p); return p; };
@@ -24,7 +24,7 @@ export function findPlaces(W, edge) {
   // 1) skatu tornis — augstākajā kalnā
   let best = null;
   for (let i = 0; i < 900; i++) {
-    const [x, z] = sample(80, edge - 25);
+    const [x, z] = sample(110, edge - 35);
     if (!okBase(x, z)) continue;
     const h = H(x, z);
     if (!best || h > best.h) best = { x, z, h };
@@ -34,7 +34,7 @@ export function findPlaces(W, edge) {
   // 2) ugunskura vieta — līdzena klajuma malā pie meža
   best = null;
   for (let i = 0; i < 3000; i++) {
-    const [x, z] = sample(70, edge - 30);
+    const [x, z] = sample(90, edge - 40);
     if (!okBase(x, z) || !far(x, z, 1.1)) continue;
     const h = H(x, z);
     if (h < 2.5 || h > 12) continue;
@@ -47,26 +47,26 @@ export function findPlaces(W, edge) {
     if (sl < 1.5 && fn > 0.15 && (!best || score > best.score)) best = { x, z, h, score };
     if (best && i > 1200) break;
   }
-  if (!best) best = { x: 100, z: 80, h: H(100, 80) };
+  if (!best) best = { x: 150, z: 120, h: H(150, 120) };
   add({ id: 'nometne', x: best.x, z: best.z, h: best.h, flat: 8, blend: 8 });
 
   // 3) pilsdrupas — paugurā, citā pusē nekā tornis
   best = null;
   for (let i = 0; i < 1500; i++) {
-    const [x, z] = sample(85, edge - 25);
+    const [x, z] = sample(120, edge - 35);
     if (!okBase(x, z) || !far(x, z, 1.0)) continue;
     const h = H(x, z);
     if (h < 5 || h > 32) continue;
     const score = h - slope(x, z) * 1.5;
     if (!best || score > best.score) best = { x, z, h, score };
   }
-  if (!best) best = { x: -120, z: 100, h: H(-120, 100) };
+  if (!best) best = { x: -180, z: 150, h: H(-180, 150) };
   add({ id: 'drupas', x: best.x, z: best.z, h: best.h, flat: 10, blend: 8 });
 
   // 4) purvs — zemiene ar daudz mitras zemes
   best = null;
   for (let i = 0; i < 2500; i++) {
-    const [x, z] = sample(70, edge - 30);
+    const [x, z] = sample(90, edge - 40);
     if (!okBase(x, z) || !far(x, z, 0.7)) continue;
     const h = H(x, z);
     if (h < 0.7 || h > 1.8) continue;
@@ -79,13 +79,13 @@ export function findPlaces(W, edge) {
     if (low >= 13 && (!best || low > best.low)) best = { x, z, h, low };
     if (best && best.low >= 16) break;
   }
-  if (!best) best = { x: -90, z: -120, h: 1 };
+  if (!best) best = { x: -120, z: -160, h: 1 };
   add({ id: 'purvs', x: best.x, z: best.z, h: 1.0, swamp: 26 });
 
   // 5) makšķernieku laipa — ezera krastā, kur ūdens dziļš
   best = null;
   for (let i = 0; i < 5000 && !best; i++) {
-    const [x, z] = sample(60, edge - 20);
+    const [x, z] = sample(60, edge - 30);
     if (!okBase(x, z) || !far(x, z, 0.5)) continue;
     const h = H(x, z);
     if (h < 0.9 || h > 1.5) continue;
@@ -458,10 +458,10 @@ export function placeBerries(W, radius) {
     }
   };
   const any = () => [(rnd() - 0.5) * 2 * (radius - 10), (rnd() - 0.5) * 2 * (radius - 10)];
-  tryAdd('mellene', (h, f) => h > 1.5 && h < 30 && f > 0.18, 70, any);
-  tryAdd('avene', (h, f) => h > 1.5 && h < 25 && f > -0.08 && f < 0.12, 45, any);
+  tryAdd('mellene', (h, f) => h > 1.5 && h < 30 && f > 0.18, 150, any);
+  tryAdd('avene', (h, f) => h > 1.5 && h < 25 && f > -0.08 && f < 0.12, 100, any);
   const sw = W.places.find((p) => p.id === 'purvs');
   if (sw) tryAdd('dzervene', (h) => h > 0.3 && h < 1.8, 34, () => { const a = rnd() * TAU, r = rnd() * sw.swamp * 1.3; return [sw.x + Math.cos(a) * r, sw.z + Math.sin(a) * r]; });
-  tryAdd('dzervene', (h) => h > 0.6 && h < 1.3, 8, any);
+  tryAdd('dzervene', (h) => h > 0.6 && h < 1.3, 14, any);
   W.berries = out;
 }

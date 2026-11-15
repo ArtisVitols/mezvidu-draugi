@@ -2,11 +2,11 @@
 // Katrai zemei ir savas lokālās koordinātas (centrs 0,0); kopējā kartē zeme ir nobīdīta par ZONE_SIZE.
 // Uz kaimiņu zemi var aiziet pa jebkuru robežas vietu.
 import * as THREE from 'three';
-import { canvasTexture } from './util.js?v=1.11.1';
-import { loadTexture } from './gfx.js?v=1.11.1';
+import { canvasTexture } from './util.js?v=1.12.0';
+import { loadTexture } from './gfx.js?v=1.12.0';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
-export const ZONE_HALF = 210;              // spēles laukuma puse (kvadrāts 420 × 420 m)
+export const ZONE_HALF = 315;              // spēles laukuma puse (kvadrāts 630 × 630 m)
 export const ZONE_SIZE = ZONE_HALF * 2;    // attālums starp zemju centriem kopējā kartē
 export const CROSS_AT = 3;                 // cik metrus aiz robežas notiek pāreja
 export const ZONE_IDS = ['c', 'n', 'e', 's', 'w']; // secība = tīkla kods
@@ -235,7 +235,7 @@ export function plainRoads(id) {
   for (const s of openSides(id)) {
     const [dx, dz] = DIRS[s], H = ZONE_HALF;
     const P = (al, lat) => [dx * al - dz * lat, dz * al + dx * lat];
-    const pts = [P(H + 40, 0), P(H, 0), P(H - 30, 0), P(130, 14), P(70, -12), P(36, 4)];
+    const pts = [P(H + 40, 0), P(H, 0), P(H - 30, 0), P(200, 18), P(110, -14), P(36, 4)];
     // aplis ap centru (r 16)
     for (let k = 0; k <= 16; k++) { const a = 0.5 + k / 16 * Math.PI * 2; pts.push(P(16 * Math.cos(a), 16 * Math.sin(a))); }
     out.push(pts);
@@ -257,8 +257,11 @@ export class PlainZone {
     this.water = null;
     this.platforms = [];
     this.grassCenter = null;
+    this.roadLines = plainRoads(id).map((p) => smoothRoad(p));
+    this.roadIdx = new RoadIndex(this.roadLines);
   }
 
+  roadDist(x, z) { return this.roadIdx.near(x, z).d; }
   getHeight() { return GROUND_Y; }
   groundAt() { return GROUND_Y; }
   collide(pos) { return clampSquare(pos, this.open); }
@@ -276,7 +279,7 @@ export class PlainZone {
     this.group.add(plane);
     this.buildFence();
     this.group.add(buildBorderPosts(this.open, () => GROUND_Y));
-    this.group.add(buildRoadMesh(plainRoads(this.id).map((p) => smoothRoad(p)), () => GROUND_Y, 0.03));
+    this.group.add(buildRoadMesh(this.roadLines, () => GROUND_Y, 0.03));
     parent.add(this.group);
     return this.mat.userData.ready || Promise.resolve();
   }

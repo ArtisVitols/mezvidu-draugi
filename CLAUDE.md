@@ -37,8 +37,9 @@ Static site: plain HTML + ES modules, no build step. Photo textures in `assets/`
 | `js/places.js` | Special places (tower, camp, swamp, ruins, pier): deterministic site search before the height grid, terrain flattening (`placeHeight`), models, walkable platforms, berry bush spots |
 | `js/props.js` | Berry bushes (cloned templates), garden decorations + `DECOR_SPOTS`, fishing rod, bobber |
 | `js/activities.js` | `Activities` mixin on `Game.prototype`: fishing, berries, pets, decor, discovery, treasure, tag/hide-and-seek (host-run), weekly team goal |
-| `js/zones.js` | Lands: `ZONES` (c = Mežvidi + n/e/s/w), `ZONE_HALF` 210, open borders (`neighbour`, `openSides`, `clampSquare`, `buildBorderPosts`), `disposeTree`, dirt roads (`smoothRoad`, `RoadIndex`, `buildRoadMesh`, `plainRoads`), `PlainZone` (flat side land, built on enter and disposed on leave) |
+| `js/zones.js` | Lands: `ZONES` (c = Mežvidi + n/e/s/w), `ZONE_HALF` 315, open borders (`neighbour`, `openSides`, `clampSquare`, `buildBorderPosts`), `disposeTree`, dirt roads (`smoothRoad`, `RoadIndex`, `buildRoadMesh`, `plainRoads`), `PlainZone` (flat side land, built on enter and disposed on leave) |
 | `js/winter.js` | ❄️ North land: `WinterZone` (snow heightfield with ski hill, sparkle snow material + `snow_n` normal map, snowy spruces as `InstanceField`, chairlift with instanced moving chairs, plaza/Christmas tree, snowball arena, reindeer, GPU snowfall) and the `Winter` mixin (skiing physics, lift ride, snowballs incl. host relay, winter clothes on avatars) |
+| `js/vehicles.js` | `Vehicles` mixin: 🚙 car (`buildCar`, open jeep) and 🛷 snowmobile (`buildSled`, winter only). Parking `spots(zone)` (`CAR_SPOT` world.js, `WINTER_CAR`/`SLED_SPOT` winter.js, plain lands near centre), `placeParked()` after every zone switch, `me.veh` driving on any terrain (`terr.roadDist` → faster on roads, slope gravity, airtime), crossing borders by car (`vehicleZoneChanged`), own car stays parked (`myParked`). Net: `pos` p[5] = 1 kart, 2 car, 3 snowmobile; remotes `vehicleRemote()`. Models live on `stage` |
 | `js/quality.js` | Graphics levels (`QUALITY`), live `applyQuality`, automatic fps-based level switching (`autoQuality`) |
 | `js/instancing.js` | `InstanceField`: many identical objects (mushrooms, berry bushes) as chunked InstancedMeshes with per-item hide |
 | `js/gfx.js` | Realistic graphics: photo terrain material (5-layer `sampler2DArray` splat), HDRI environment, water shader upgrade, `PlanarReflection`, `PostFX` (AO, bloom, ACES + grading) |
@@ -48,7 +49,7 @@ Static site: plain HTML + ES modules, no build step. Photo textures in `assets/`
 | `tools/bump-version.mjs` | Sets the version and cache-busting `?v=` tags |
 
 ## World size & rendering budget
-- `SIZE` 560 m terrain, `SEG` 224 (2.5 m cells), playable **square** half-size `PLAY_RADIUS` = `ZONE_HALF` 210 m.
+- `SIZE` 760 m terrain, `SEG` 304 (2.5 m cells), playable **square** half-size `PLAY_RADIUS` = `ZONE_HALF` 315 m.
 - **Dirt roads** (for a future car): each land's roads meet the border at its midpoint (lat 0), so they line up across borders.
   Mežvidi: `ROADS` waypoints in world.js → `roadLines` (smoothed height profile, terrain flattened in `computeHeight` via `roadIdx`);
   `roadDist()` covers both the old village→track spur (`spurDist`) and the dirt roads (trees/rocks/flowers/grass avoid it).
@@ -66,7 +67,7 @@ Static site: plain HTML + ES modules, no build step. Photo textures in `assets/`
   Garden/decor/sign updates received while away are skipped (`game.centerOn` guards) and re-applied from `profiles` on return.
   `game.terr` = active land terrain (movement, camera, pets); `game.world` is always the centre World.
   Side lands are `PlainZone` (built on enter, disposed on leave). Each land has local coordinates; global map coords =
-  local + `zoneOffset(id)` (420 m steps). `pos` messages carry the zone index at `p[7]` (`ZONE_IDS`); remotes get `r.zone` and are
+  local + `zoneOffset(id)` (630 m steps). `pos` messages carry the zone index at `p[7]` (`ZONE_IDS`); remotes get `r.zone` and are
   drawn in 3D only in the same land. Save: `save.zone`, `save.zones` (reserved). Side-land actions go in `findZoneAction`.
   A side land object may have `update(dt, game)` (called every frame) and `updateVisibility(x, z)`.
 - **Winter land (`n`, js/winter.js):** layout constants `HILL`, `LIFT`, `PISTE`, `ARENA`, `PLAZA`; `winterHeight()` is a pure
@@ -117,6 +118,7 @@ Static site: plain HTML + ES modules, no build step. Photo textures in `assets/`
   `hostActivity` / `onActivityMessage` in `activities.js`.
 - Mixins (`Activities`, `Quality`, `Winter`) share `Game.prototype` with instance fields: never give a method the same name as a
   `this.x = …` field (e.g. `this.pet` is the own-pet object, so animal petting is `petNpc`). `doAction` catches and toasts errors.
+- Skiing: avatar root follows the slope (`skiSlope` pitch/roll) and leans into turns; `av.skiPose` drives the `ski` pose (tuck, snowplough, air). Remote skiers too (`winterRemote`).
 - `ANIM` order in `game.js` is the network encoding of animation states; only append to it.
 
 ## Testing

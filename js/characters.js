@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mat, makeBlobShadow, noiseTexture, lerp, canvasTexture } from './util.js?v=1.11.1';
+import { mat, makeBlobShadow, noiseTexture, lerp, canvasTexture } from './util.js?v=1.12.0';
 
 // kažoka/auduma materiāli ar smalku faktūru
 let furTex = null, clothTex = null;
@@ -528,7 +528,7 @@ export function buildAnimal({ animal = 'lacis', fur = '#8b5a2b', shirt = '#d23b3
       if (on) {
         const g = new THREE.Group();
         for (const s of [-1, 1]) {
-          const sk = new THREE.Mesh(skiGeo(), skiMat()); sk.position.set(s * 0.1 * B, 0.015, 0.12); sk.castShadow = true; g.add(sk);
+          const sk = new THREE.Mesh(skiGeo(), skiMat()); sk.position.set(s * 0.1 * B, 0.015, 0.12); sk.castShadow = true; sk.userData.side = s; g.add(sk);
         }
         root.add(g);
         const poles = arms.map((a) => {
@@ -588,10 +588,20 @@ export function buildAnimal({ animal = 'lacis', fur = '#8b5a2b', shirt = '#d23b3
         T.sh = [0, -0.4]; T.shZ = [-0.07, 2.5]; T.el = [-0.15, 0]; T.hY = 0.15;
         T.shZ[1] = 2.4 + Math.sin(this.phase) * 0.25;
       } else if (state === 'ski') {
-        // slēpošana: pietupienā, uz priekšu noliecies, rokas ar nūjām priekšā
-        const s = Math.sin(this.t * 3) * 0.04;
-        T.hip = [-0.62 + s, -0.62 - s]; T.knee = [0.95, 0.95]; T.bY = HIP - 0.13; T.spX = 0.42;
-        T.sh = [-0.55, -0.55]; T.shZ = [-0.28, 0.28]; T.el = [-0.55, -0.55]; T.hX = -0.3;
+        // slēpošana: pietupienā, rokas ar nūjām priekšā. Ķermenis paliek gandrīz vertikāls arī stāvā nogāzē
+        // (skiPose.down — cik slēpes noliektas uz leju), ātrumā — dziļāks pietupiens, bremzējot — arkls
+        const P = this.skiPose || { down: 0, v: 0, brake: 0, air: false, push: false };
+        const s = Math.sin(this.t * 3) * 0.04, tuck = Math.min(1, P.v / 22);
+        const knee = 0.8 + tuck * 0.55 + P.brake * 0.15;
+        T.hip = [-0.55 - tuck * 0.35 + s, -0.55 - tuck * 0.35 - s]; T.knee = [knee, knee];
+        T.bY = HIP - 0.1 - tuck * 0.1; T.spX = 0.38 + tuck * 0.3 - P.down * 0.45;
+        T.sh = [-0.55 - tuck * 0.3, -0.55 - tuck * 0.3]; T.shZ = [-0.28 + tuck * 0.15, 0.28 - tuck * 0.15]; T.el = [-0.55 - tuck * 0.5, -0.55 - tuck * 0.5]; T.hX = -0.3 - tuck * 0.2 + P.down * 0.4;
+        if (P.push) { const ph = Math.sin(this.t * 6); T.sh = [-0.9 + ph * 0.7, -0.9 + ph * 0.7]; T.spX += 0.15; }
+        if (P.air) { T.shZ = [-0.75, 0.75]; T.sh = [-0.3, -0.3]; T.knee = [1.1, 1.1]; }
+        if (this.skis) for (const m of this.skis.g.children) {
+          m.rotation.y = lerp(m.rotation.y, -m.userData.side * P.brake * 0.28, 1 - Math.exp(-dt * 10));
+          m.position.x = m.userData.side * (0.1 + P.brake * 0.08) * B;
+        }
         k = 1 - Math.exp(-dt * 12);
       } else if (state === 'lift') {
         // sēž pacēlāja krēslā
@@ -1080,7 +1090,7 @@ export function buildNPC(type) {
 }
 
 // ---------------- Karts ----------------
-function tyreGeo(r, w) {
+export function tyreGeo(r, w) {
   const ri = r * 0.58, rr = w * 0.3, pts = [];
   // noapaļots riepas šķērsgriezums (r = rādiuss, y = platums)
   const corner = (cx, cy, a0) => { for (let i = 0; i <= 4; i++) { const a = a0 + (i / 4) * Math.PI / 2; pts.push(new THREE.Vector2(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr)); } };

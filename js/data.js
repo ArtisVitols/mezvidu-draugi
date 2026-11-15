@@ -76,6 +76,8 @@ export const QUESTS = [
   { id: 'q23', text: 'Nobrauc ar slēpēm no Ziemas kalna 3 reizes', stat: 'skiRuns', need: 3, reward: 30 },
   { id: 'q24', text: 'Trāpi ar sniega piku 15 reizes', stat: 'snowHits', need: 15, reward: 25 },
   { id: 'q25', text: 'Paglaudi ziemeļbriedi', stat: 'reindeer', need: 1, reward: 15 },
+  { id: 'q26', text: 'Aizbrauc ar mašīnu uz citu zemi', stat: 'carTrips', need: 1, reward: 25 },
+  { id: 'q27', text: 'Pabrauc ar sniega motociklu', stat: 'sledRides', need: 1, reward: 15 },
 ];
 
 // ---------- Makšķerēšana ----------

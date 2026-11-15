@@ -1,5 +1,17 @@
 # Izmaiņu žurnāls
 
+## 1.12.0 — 2026-11-15
+- 🚙 **Mašīna** (atvērts visurgājējs): stāvvieta ciemata malā, katras blakus zemes centrā un pie Ziemas zemes laukuma.
+  Pa grants ceļiem brauc ātri (~70 km/h), pa zāli/sniegu lēnāk, kalnā lēnāk, no kalna ātrāk; virsbūve seko reljefam,
+  priekšējie riteņi stūrējas, pa ceļu var **aizbraukt uz citu zemi** (mašīna brauc līdzi). Izkāpjot mašīna paliek, kur atstāta.
+  Draugi redz tavu mašīnu (tavā kartinga krāsā).
+- 🛷 **Sniega motocikls** Ziemas zemē (pie pacēlāja ceļa): brauc pa visu sniegu un uzbrauc kalnā, uz izciļņiem var palekties.
+- 📐 Zemes atkal par 50 % lielākas: katrs kvadrāts 630 × 630 m. Vairāk koku, sēņu, ogu, dzīvnieku; ceļi pagarināti.
+- ⛰️ Daudz lielāks slēpošanas kalns (~105 m), garāka trase un pacēlājs (trose seko kalna formai).
+- ⛷️ Reālistiskāka slēpošana: slēpes guļ uz nogāzes (uz priekšu un sāņus), līkumos slēpotājs sasveras uz iekšu,
+  ātrumā dziļāks pietupiens, bremzējot slēpes „arklā”, lēcienā rokas izpletas. Arī draugu slēpotāji seko nogāzei.
+- Jauni uzdevumi: aizbrauc ar mašīnu uz citu zemi, pabrauc ar sniega motociklu.
+
 ## 1.11.1 — 2026-11-15
 - 🐞 Meža dzīvniekus (stirnas, zaķus, ežus, mežacūkas, vāveres, stārķus) atkal var paglaudīt — poga parādījās, bet neko nedarīja
   (metodes nosaukums `pet` sakrita ar paša mājdzīvnieka objektu `this.pet`; tagad `petNpc`).
