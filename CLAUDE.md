@@ -37,7 +37,8 @@ Static site: plain HTML + ES modules, no build step. Photo textures in `assets/`
 | `js/places.js` | Special places (tower, camp, swamp, ruins, pier): deterministic site search before the height grid, terrain flattening (`placeHeight`), models, walkable platforms, berry bush spots |
 | `js/props.js` | Berry bushes (cloned templates), garden decorations + `DECOR_SPOTS`, fishing rod, bobber |
 | `js/activities.js` | `Activities` mixin on `Game.prototype`: fishing, berries, pets, decor, discovery, treasure, tag/hide-and-seek (host-run), weekly team goal |
-| `js/zones.js` | Lands: `ZONES` (c = Mežvidi + n/e/s/w), `ZONE_HALF` 420, exits (`corridor`, `clampSquare`, `buildExit` gate + signpost), `PlainZone` (flat side land, built on enter and disposed on leave) |
+| `js/zones.js` | Lands: `ZONES` (c = Mežvidi + n/e/s/w), `ZONE_HALF` 420, open borders (`neighbour`, `openSides`, `clampSquare`, `buildBorderPosts`), `disposeTree`, `PlainZone` (flat side land, built on enter and disposed on leave) |
+| `js/instancing.js` | `InstanceField`: many identical objects (mushrooms, berry bushes) as chunked InstancedMeshes with per-item hide |
 | `js/gfx.js` | Realistic graphics: photo terrain material (5-layer `sampler2DArray` splat), HDRI environment, water shader upgrade, `PlanarReflection`, `PostFX` (AO, bloom, ACES + grading) |
 | `assets/` | Poly Haven CC0 textures (`tex/*_c.jpg` albedo 1024, `*_n.jpg` normal 512) and `sky.hdr` (256×128) |
 | `TODO.md` | Planned next ideas (graphics points 5–6, places not built yet, side land content) |
@@ -45,16 +46,27 @@ Static site: plain HTML + ES modules, no build step. Photo textures in `assets/`
 | `tools/bump-version.mjs` | Sets the version and cache-busting `?v=` tags |
 
 ## World size & rendering budget
-- `SIZE` 960 m terrain, `SEG` 384 (2.5 m cells), playable **square** half-size `PLAY_RADIUS` = `ZONE_HALF` 420 m (edge rises into
-  hills from `EDGE`, except 4 exit corridors in the middle of each side, `EXIT_W` 7 m half-width).
+- `SIZE` 960 m terrain, `SEG` 384 (2.5 m cells), playable **square** half-size `PLAY_RADIUS` = `ZONE_HALF` 420 m.
+  Beyond the border the terrain blends to flat `GROUND_Y` and into the neighbour land's look (`edgeBlend`, splat + colour),
+  and `buildSkirt` adds flat ground to the horizon using the same terrain material (no extra textures). Red-white border posts mark the edge.
 - **Zones (lands):** `game.stage` is the real THREE.Scene; `game.scene` is a Group holding only Mežvidi (centre) content, so
   `this.scene.add` = centre-only object. Shared things (sky, lights, my/remote avatars, pets, floating effects) go on `stage`.
-  In a side land `game.scene` is detached (not disposed: host logic still needs `world`), and a `PlainZone` is built; leaving it disposes it.
-  `game.terr` = active land terrain (movement, camera, pets); `game.world` always stays the centre World (host logic, centre objects).
-  Each land has local coordinates (centre 0,0); global map coords = local + `zoneOffset(id)` (840 m steps). `pos` messages carry the
-  zone index at `p[7]` (`ZONE_IDS`), remotes get `r.zone` and are shown in 3D only when in the same land. Save: `save.zone`, `save.zones` (reserved).
-  Centre-only update code (mushrooms, NPCs, activities, actions) is skipped when `game.zone !== 'c'`; side land actions go in `findZoneAction`.
-- Terrain is 8×8 tiles with normals from the global height grid.
+  Any border point with a neighbour (`neighbour()`/`openSides()`) can be crossed: a HUD sign appears within 18 m, crossing
+  `CROSS_AT` m past the edge shows the loading screen (`travel` → `switchZone`).
+  Leaving Mežvidi calls `unloadCenter()`: the group is removed from the stage and `freeGpu(game.scene)` frees all its GPU buffers
+  and textures (incl. the photo terrain array; render-target textures are skipped). JS data stays, so `reloadCenter()` just re-adds
+  the group and three.js re-uploads on the next render (a full rebuild measured ~4.7 s headless, likely 5–7 s on phones, so we don't).
+  Garden/decor/sign updates received while away are skipped (`game.centerOn` guards) and re-applied from `profiles` on return.
+  `game.terr` = active land terrain (movement, camera, pets); `game.world` is always the centre World.
+  Side lands are `PlainZone` (built on enter, disposed on leave). Each land has local coordinates; global map coords =
+  local + `zoneOffset(id)` (840 m steps). `pos` messages carry the zone index at `p[7]` (`ZONE_IDS`); remotes get `r.zone` and are
+  drawn in 3D only in the same land. Save: `save.zone`, `save.zones` (reserved). Side-land actions go in `findZoneAction`.
+- **Draw calls:** `flattenStatic(group)` merges a static group by material *look* (`bucketKey`): textured materials with the same
+  maps/params share one material with colour baked into vertex colours; untextured ones all share a `plainRM` material that reads
+  roughness/metalness from a per-vertex `rm` attribute. Mark animated subtrees `userData.keep = true`. Used for the village, each
+  special place, all vendors together, garden beds, the ice cart. `optimizeRig(root, skip, { bake: true })` does the same per bone
+  group for animals (pass animated meshes in `skip`; don't bake objects whose material colours change later, e.g. karts).
+  Mushrooms and berry bushes are `InstanceField`s (`js/instancing.js`): instanced per kind and 48–64 m chunk, `setHidden(id)` for picked.
 - Trees are grouped into `LOD_CH` (80 m) chunks in `world.lodChunks`. Near chunks (<100 m) show full instanced trees;
   far chunks show impostors: crossed quads textured from an atlas rendered at startup by `makeImpostorAtlas`
   (needs `world.build(scene, renderer)`).

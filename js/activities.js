@@ -1,13 +1,14 @@
 // Jaunās nodarbes, pievienotas Game klasei: makšķerēšana, ogas, mājdzīvnieki, dārza rotājumi,
 // īpašās vietas ar dārgumu, ķeramais un paslēpes, nedēļas kopīgais mērķis.
 import * as THREE from 'three';
-import { WATER_Y, GARDEN_SLOTS, VILLAGE_Y } from './world.js?v=1.7.0';
-import { buildNPC } from './characters.js?v=1.7.0';
-import { buildBerryBush, buildDecor, DECOR_SPOTS, buildRod, buildBobber } from './props.js?v=1.7.0';
-import { buildScroll } from './places.js?v=1.7.0';
-import { FISH, ROD_PRICE, BERRIES, COOKED, PETS, DECOR, PLACES, MAP_PIECES, weekNumber, weeklyGoal, WEEKLY_REWARD } from './data.js?v=1.7.0';
-import { makeTextSprite, angleLerp } from './util.js?v=1.7.0';
-import { $, toast, showPanel, refreshPanel, closePanel, el, itemRow, sfx, fmtTime } from './ui.js?v=1.7.0';
+import { WATER_Y, GARDEN_SLOTS, VILLAGE_Y } from './world.js?v=1.8.0';
+import { buildNPC } from './characters.js?v=1.8.0';
+import { InstanceField } from './instancing.js?v=1.8.0';
+import { berryTemplate, buildDecor, DECOR_SPOTS, buildRod, buildBobber } from './props.js?v=1.8.0';
+import { buildScroll } from './places.js?v=1.8.0';
+import { FISH, ROD_PRICE, BERRIES, COOKED, PETS, DECOR, PLACES, MAP_PIECES, weekNumber, weeklyGoal, WEEKLY_REWARD } from './data.js?v=1.8.0';
+import { makeTextSprite, angleLerp } from './util.js?v=1.8.0';
+import { $, toast, showPanel, refreshPanel, closePanel, el, itemRow, sfx, fmtTime } from './ui.js?v=1.8.0';
 
 const BERRY_RESPAWN = 150000;
 const MG_NAMES = { tag: '🏃 Ķeramais', hide: '🙈 Paslēpes' };
@@ -20,17 +21,33 @@ export function makeTeam(now, weekly) {
 export const Activities = {
   // ======================= sagatavošana =======================
   initActivities() {
-    const W = this.world;
     this.berryPicked = {};
-    this.berryMeshes = W.berries.map((b) => {
-      const m = buildBerryBush(b.kind);
-      m.root.position.set(b.x, b.y, b.z);
-      m.root.rotation.y = b.id * 1.7;
-      m.root.scale.setScalar(0.9 + (b.id % 5) * 0.06);
-      m.root.visible = false;
-      this.scene.add(m.root);
-      return m;
-    });
+    this.buildCenterActivities();
+    this.chestAnim = 0;
+    // makšķere rokās
+    this.rod = buildRod();
+    this.rod.position.set(0, 1.0, 0.32);
+    this.rod.visible = false;
+    this.avatar.root.add(this.rod);
+    this.fishing = null;
+    // mājdzīvnieks
+    this.pet = null;
+    this.setPet(this.save.pet, true);
+    // minispēles
+    this.mg = { kind: null, phase: 'none' };
+    this.mgMarker = null;
+    this.mgEdgeT = 0;
+    this.timers.places = 0;
+    this.team = makeTeam(Date.now(), this.save.weekly);
+  },
+
+  // Mežvidu objekti nodarbēm (ogu krūmi, kartes gabali, lāde, rotājumi) — atkārtoti, atgriežoties Mežvidos
+  buildCenterActivities() {
+    const W = this.world;
+    // ogu krūmi instancēti; noplūktiem paslēpj tikai ogas
+    this.berryField = new InstanceField(W.berries.map((b) => ({ id: b.id, kind: b.kind, x: b.x, y: b.y, z: b.z, ry: b.id * 1.7, s: 0.9 + (b.id % 5) * 0.06 })),
+      (k) => berryTemplate(k), { chunk: 64, view: 80, hideName: 'berries' });
+    this.berryField.build(this.scene);
     this.placeById = Object.fromEntries(W.places.map((p) => [p.id, p]));
     this.scrolls = {};
     for (const id of MAP_PIECES) {
@@ -42,25 +59,9 @@ export const Activities = {
       this.scrolls[id] = s;
     }
     if (this.save.treasure && W.chest) { W.chest.lid.rotation.x = -1.9; W.chest.coins.visible = false; }
-    this.chestAnim = 0;
-    // makšķere rokās
-    this.rod = buildRod();
-    this.rod.position.set(0, 1.0, 0.32);
-    this.rod.visible = false;
-    this.avatar.root.add(this.rod);
-    this.fishing = null;
-    // mājdzīvnieks
-    this.pet = null;
-    this.setPet(this.save.pet, true);
     // dārza rotājumi
     this.decorObjs = [[], [], [], []];
     this.decorKeys = ['', '', '', ''];
-    // minispēles
-    this.mg = { kind: null, phase: 'none' };
-    this.mgMarker = null;
-    this.mgEdgeT = 0;
-    this.timers.places = 0;
-    this.team = makeTeam(Date.now(), this.save.weekly);
   },
 
   // ======================= kadrs =======================
@@ -69,12 +70,8 @@ export const Activities = {
     this.timers.berry = (this.timers.berry || 0) - dt;
     if (this.timers.berry <= 0) {
       this.timers.berry = 0.3;
-      this.world.berries.forEach((b, i) => {
-        const m = this.berryMeshes[i];
-        const near = Math.abs(b.x - cx) < 55 && Math.abs(b.z - cz) < 55;
-        m.root.visible = near;
-        if (near) m.berries.visible = !(this.berryPicked[b.id] > t);
-      });
+      this.berryField.update(cx, cz);
+      for (const b of this.world.berries) if (Math.abs(b.x - cx) < 130 && Math.abs(b.z - cz) < 130) this.berryField.setHidden(b.id, this.berryPicked[b.id] > t);
     }
     for (const id in this.scrolls) {
       const s = this.scrolls[id];
@@ -241,7 +238,7 @@ export const Activities = {
   // ======================= ogas =======================
   pickBerry(b) {
     this.berryPicked[b.id] = this.now() + 5000;
-    this.berryMeshes[b.id].berries.visible = false;
+    this.berryField.setHidden(b.id, true);
     this.me.petT = 0.5;
     this.net.toHost({ t: 'pickB', id: b.id });
   },
@@ -403,6 +400,7 @@ export const Activities = {
 
   // ======================= dārza rotājumi =======================
   renderDecor(slot, list) {
+    if (!this.centerOn) return;
     const key = (list || []).slice().sort().join(',');
     if (this.decorKeys[slot] === key) return;
     this.decorKeys[slot] = key;

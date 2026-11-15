@@ -1,5 +1,16 @@
 # Izmaiņu žurnāls
 
+## 1.8.0 — 2026-11-15
+- 🧭 Vārtu vairs nav: uz kaimiņu zemi var pāriet pa **jebkuru robežas vietu**. Tuvojoties robežai, ekrānā parādās,
+  kura zeme ir aiz tās; ejot tālāk — ielādes ekrāns, jaunā zeme ielādējas un iepriekšējā tiek noņemta.
+- Mežvidu malās vairs nav kalnu: zeme aiz robežas pāriet kaimiņu zemes līdzenumā (to redz jau no Mežvidiem); robežu iezīmē sarkanbalti stabiņi.
+- Kad esi citā zemē, Mežvidi tiek izņemti no ainas un **visa to grafikas (GPU) atmiņa atbrīvota** — ģeometrijas un faktūras.
+  Atgriežoties dati tikai tiek augšupielādēti no jauna (ātri), nevis pasaule ģenerēta vairākas sekundes.
+- Ātrāka grafika bez kvalitātes zuduma — ~35–40 % mazāk zīmēšanas izsaukumu:
+  ciemats, tirgotāji, īpašās vietas un dārza dobes apvienotas pa materiāliem; sēnes un ogu krūmi instancēti;
+  dzīvnieku detaļas ar vienādu izskatu sapludinātas (krāsa, raupjums un metāliskums glabājas virsotnēs).
+- Karte joprojām rāda visas zemes kopā un katra spēlētāja vietu.
+
 ## 1.7.0 — 2026-11-15
 - 🧭 Pasaule tagad ir 5 zemes: Mežvidi centrā (kvadrāts 840 × 840 m) un četras blakus zemes katrā debespusē —
   ❄️ Ziemeļu klajums, 🌻 Austrumu lauki, 🏖️ Dienvidu kāpas, 🌲 Rietumu sils (pagaidām līdzena zeme, saturs nāks vēlāk).

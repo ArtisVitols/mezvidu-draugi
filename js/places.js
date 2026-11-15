@@ -1,9 +1,9 @@
 // Īpašās vietas pasaulē: skatu tornis, ugunskura vieta, purvs, pilsdrupas, makšķernieku laipa.
 // Vietas atrod deterministiski pēc reljefa (visiem spēlētājiem vienādas), būvē to modeļus un ogu krūmu vietas.
 import * as THREE from 'three';
-import { mulberry32 } from './noise.js?v=1.7.0';
-import { mat, noiseTexture, makeTextSprite, smoothstep } from './util.js?v=1.7.0';
-import { optimizeRig } from './characters.js?v=1.7.0';
+import { mulberry32 } from './noise.js?v=1.8.0';
+import { mat, noiseTexture, makeTextSprite, smoothstep } from './util.js?v=1.8.0';
+import { optimizeRig, flattenStatic } from './characters.js?v=1.8.0';
 
 const TAU = Math.PI * 2;
 const angDiff = (a, b) => { let d = Math.abs(a - b) % TAU; return d > Math.PI ? TAU - d : d; };
@@ -303,11 +303,13 @@ function buildRuins(W, p) {
   put(chest, new THREE.BoxGeometry(1.1, 0.6, 0.7), cw, 0, 0.3, 0);
   for (const x of [-0.45, 0.45]) put(chest, new THREE.BoxGeometry(0.07, 0.62, 0.72), iron, x, 0.3, 0);
   const lid = new THREE.Group(); lid.position.set(0, 0.6, -0.35); chest.add(lid);
+  lid.userData.keep = true; // vāks atveras
   const lg = new THREE.CylinderGeometry(0.35, 0.35, 1.1, 14, 1, false, 0, Math.PI); lg.rotateZ(Math.PI / 2); lg.rotateX(Math.PI / 2);
   put(lid, lg, cw, 0, 0, 0.35);
   put(lid, new THREE.BoxGeometry(0.16, 0.18, 0.06), iron, 0, 0.0, 0.72);
   const coins = new THREE.Mesh(new THREE.SphereGeometry(0.45, 14, 8, 0, TAU, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: '#f2c232', metalness: 1, roughness: 0.3, emissive: '#5a3a00' }));
   coins.scale.set(1.1, 0.3, 0.7); coins.position.y = 0.55; coins.visible = false; chest.add(coins);
+  coins.userData.keep = true;
   chest.position.set(0, 0, -1);
   g.add(chest);
   W.addCollider(p.x, p.z - 1, 0.8);
@@ -397,6 +399,7 @@ function buildPier(W, p) {
   boat.rotation.y = Math.PI / 2;
   inner.add(boat);
   W.boat = boat;
+  boat.userData.keep = true; // laiva šūpojas
   optimizeRig(g);
   g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   g.position.set(p.x, p.h, p.z);
@@ -416,7 +419,7 @@ export function buildPlaces(W) {
     else if (p.id === 'drupas') g = buildRuins(W, p);
     else if (p.id === 'purvs') g = buildSwamp(W, p);
     else if (p.id === 'laipa') g = buildPier(W, p);
-    if (g) root.add(g);
+    if (g) root.add(flattenStatic(g)); // katra vieta — daži zīmēšanas izsaukumi
   }
   W.group.add(root);
   W.stoneMats = (W.stoneMats || []).concat(stoneList);

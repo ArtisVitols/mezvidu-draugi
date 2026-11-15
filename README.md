@@ -31,7 +31,7 @@ Datorā: WASD / bultiņas, atstarpe, E, peles vilkšana.
 - 🏎️ Kartinga trase ar turbo bultām — 3 apļu sacīkstes ar draugiem un robotiem
 - 🦌 Meža dzīvnieki: stirnas, zaķi, eži, mežacūkas, vāveres, stārķi — tos var paglaudīt
 - 🧭 5 zemes: Mežvidi centrā (840 × 840 m) un katrā debespusē sava zeme — ❄️ Ziemeļu klajums, 🌻 Austrumu lauki, 🏖️ Dienvidu kāpas, 🌲 Rietumu sils.
-  Uz tām ved takas ar vārtiem Mežvidu malās (blakus zemes pagaidām ir līdzenas, saturs nāks vēlāk)
+  Pār robežu var pāriet jebkurā vietā (robežu iezīmē sarkanbalti stabiņi); blakus zemes pagaidām ir līdzenas, saturs nāks vēlāk
 - 🗺️ Pieskaries minikartei, lai redzētu karti — visas zemes kopā un kur atrodas katrs draugs
 - 🌲 Dabiska pasaule: egļu, priežu, bērzu un ozolu meži, kas šūpojas vējā, pļavas ar ziediem, ezeri ar niedrēm un ūdensrozēm, guļbūvju ciemats
 - ⭐ 15 zelta zvaigznes paslēptas kalnu virsotnēs

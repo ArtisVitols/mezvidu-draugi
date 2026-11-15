@@ -1,18 +1,19 @@
 import * as THREE from 'three';
-import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotPos, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.7.0';
-import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.7.0';
-import { Controls } from './controls.js?v=1.7.0';
+import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotPos, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.8.0';
+import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.8.0';
+import { Controls } from './controls.js?v=1.8.0';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS } from './data.js?v=1.7.0';
-import { writeSave } from './save.js?v=1.7.0';
-import { VERSION, BUILD_DATE } from './version.js?v=1.7.0';
-import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.7.0';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.7.0';
-import { Activities, makeTeam } from './activities.js?v=1.7.0';
-import { terrainMaterial, hdrEnvironment, upgradeWater, PlanarReflection, PostFX, loadTexture } from './gfx.js?v=1.7.0';
-import { buildRod, buildDecor } from './props.js?v=1.7.0';
-import { PlainZone, ZONES, ZONE_IDS, DIRS, OPP, ZONE_HALF, ZONE_SIZE, EXIT_W, zoneOffset, alongLat } from './zones.js?v=1.7.0';
-import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.7.0';
+import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS } from './data.js?v=1.8.0';
+import { writeSave } from './save.js?v=1.8.0';
+import { VERSION, BUILD_DATE } from './version.js?v=1.8.0';
+import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.8.0';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.8.0';
+import { Activities, makeTeam } from './activities.js?v=1.8.0';
+import { terrainMaterial, hdrEnvironment, upgradeWater, PlanarReflection, PostFX, loadTexture } from './gfx.js?v=1.8.0';
+import { buildRod, buildDecor } from './props.js?v=1.8.0';
+import { InstanceField } from './instancing.js?v=1.8.0';
+import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu } from './zones.js?v=1.8.0';
+import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.8.0';
 
 const ANIM = ['idle', 'walk', 'run', 'jump', 'swim', 'sit', 'pet', 'wave', 'fish'];
 const MUSH_RESPAWN = 120000;
@@ -112,19 +113,10 @@ export class Game {
     }
     window.addEventListener('resize', () => this.onResize());
 
-    this.world = new World(WORLD_SEED);
-    this.world.lowQ = !hi;
     this.hi = hi;
-    this.terr = this.world; // aktīvās zemes reljefs (kustībai un kamerai)
-    this.world.build(this.scene, this.renderer);
     this.camera.layers.enable(1);
     this.setupGfx(hi, ultra);
-
-    this.buildMushrooms();
-    this.buildStars();
-    this.buildNpcs();
-    this.buildVendors();
-    this.buildGardens();
+    this.buildCenter();
     this.buildMinimap();
 
     // mans tēls
@@ -145,7 +137,7 @@ export class Game {
     this.initActivities();
 
     this.cam = { yaw: Math.PI * 0.25, pitch: 0.38, dist: 7.5 };
-    if (sz !== 'c') this.switchZone(sz, sp, null);
+    if (sz !== 'c') this.switchZone(sz, sp, null); // Mežvidi tiek izlādēti, ielādējas saglabātā zeme
     this.controls = new Controls($('touch'));
     this.bindHud();
     this.setupNet();
@@ -162,14 +154,73 @@ export class Game {
         this.post = new PostFX(this.renderer);
       } catch (e) { console.warn('Pēcapstrāde nav pieejama', e); this.refl = null; this.post = null; }
     }
-    upgradeWater(W, this.refl);
     hdrEnvironment(this.renderer, this.sunDir, 1.0).then((env) => { this.stage.environment = env; }).catch((e) => console.warn(e));
     if (!hi) return;
-    terrainMaterial().then((m) => W.usePhotoTerrain(m)).catch((e) => console.warn(e));
-    Promise.all([new Promise((r, j) => { const im = new Image(); im.onload = () => r(im); im.onerror = j; im.src = 'assets/tex/asphalt_c.jpg'; }), loadTexture('assets/tex/asphalt_n.jpg', false)])
-      .then(([im, n]) => W.usePhotoAsphalt(im, n)).catch((e) => console.warn(e));
-    Promise.all([loadTexture('assets/tex/rock_c.jpg', true, 1), loadTexture('assets/tex/rock_n.jpg', false, 1)])
-      .then(([c, n]) => W.usePhotoRock(c, n)).catch((e) => console.warn(e));
+    // foto faktūras ielādē vienreiz; atgriežoties Mežvidos tās tiek augšupielādētas GPU no jauna (bez lejupielādes)
+    const soft = (p) => p.catch((e) => { console.warn(e); return null; });
+    this.photo = {
+      terrain: soft(terrainMaterial()),
+      asphalt: soft(Promise.all([new Promise((r, j) => { const im = new Image(); im.onload = () => r(im); im.onerror = j; im.src = 'assets/tex/asphalt_c.jpg'; }), loadTexture('assets/tex/asphalt_n.jpg', false)])),
+      rock: soft(Promise.all([loadTexture('assets/tex/rock_c.jpg', true, 1), loadTexture('assets/tex/rock_n.jpg', false, 1)])),
+    };
+    void W;
+  }
+
+  // Mežvidu ūdenim un reljefam foto faktūras; atgriež solījumu, kad viss uzlikts
+  applyWorldGfx(W) {
+    upgradeWater(W, this.refl);
+    const ph = this.photo;
+    if (!ph) return Promise.resolve();
+    return Promise.all([
+      ph.terrain.then((m) => { if (m && this.world === W) W.usePhotoTerrain(m); }),
+      ph.asphalt.then((a) => { if (a && this.world === W) W.usePhotoAsphalt(a[0], a[1]); }),
+      ph.rock.then((a) => { if (a && this.world === W) W.usePhotoRock(a[0], a[1]); }),
+    ]);
+  }
+
+  // ---------- Mežvidi: uzbūvēšana, izlādēšana no GPU un atgriešanās ----------
+  // Visi Mežvidu objekti ir grupā this.scene. Aizejot uz citu zemi, grupa tiek izņemta no ainas un visa tās GPU atmiņa
+  // (ģeometriju buferi, faktūras, arī lielā foto reljefa faktūra) atbrīvota. JS dati paliek, tāpēc atgriežoties
+  // nekas nav jābūvē no jauna — three.js tikai augšupielādē datus GPU (ātri), nevis vairākas sekundes ģenerē pasauli.
+  buildCenter() {
+    this.scene = new THREE.Group();
+    this.stage.add(this.scene);
+    const W = this.world = new World(WORLD_SEED);
+    W.lowQ = !this.hi;
+    W.build(this.scene, this.renderer);
+    this.terr = W; // aktīvās zemes reljefs (kustībai, kamerai, mājdzīvniekiem)
+    const ready = this.applyWorldGfx(W);
+    this.buildMushrooms();
+    this.buildStars();
+    this.buildNpcs();
+    this.buildVendors();
+    this.buildGardens();
+    this.bots = [];
+    this.centerOn = true;
+    return ready;
+  }
+
+  unloadCenter() {
+    if (!this.centerOn) return;
+    this.centerOn = false;
+    if (this.fishing) this.stopFishing();
+    this.stage.remove(this.scene);
+    const W = this.world;
+    freeGpu(this.scene, [W.heightTex, W.groundTex]);
+  }
+
+  // atpakaļ uz Mežvidiem: grupa atpakaļ ainā; dārzi/rotājumi, kas mainījās prombūtnē, tiek uzzīmēti
+  reloadCenter() {
+    this.stage.add(this.scene);
+    this.centerOn = true;
+    this.terr = this.world;
+    for (const [, prof] of this.profiles) {
+      this.setGardenSign(prof.slot, prof.name);
+      this.renderGarden(prof.slot, prof.garden);
+      this.renderDecor(prof.slot, prof.decor);
+    }
+    this.timers.vis = 0; this.timers.cull = 0; this.timers.berry = 0;
+    return Promise.resolve();
   }
 
   renderFrame() {
@@ -189,15 +240,12 @@ export class Game {
     this.camera.updateProjectionMatrix();
   }
 
+  // sēnes — instancētas pa veidiem un apgabaliem (daži zīmēšanas izsaukumi visām 420 sēnēm)
   buildMushrooms() {
-    this.mushMeshes = this.world.mushrooms.map((m) => {
-      const g = buildMushroom(MUSHROOMS[m.type]);
-      g.position.set(m.x, m.y, m.z);
-      g.rotation.y = m.id;
-      g.visible = false;
-      this.scene.add(g);
-      return g;
-    });
+    const tpl = {};
+    this.mushField = new InstanceField(this.world.mushrooms.map((m) => ({ id: m.id, kind: m.type, x: m.x, y: m.y, z: m.z, ry: m.id })),
+      (k) => tpl[k] || (tpl[k] = buildMushroom(MUSHROOMS[k])), { chunk: 48, view: 60 });
+    this.mushField.build(this.scene);
   }
 
   buildStars() {
@@ -220,6 +268,7 @@ export class Game {
   }
 
   buildVendors() {
+    const market = new THREE.Group(); // visi tirgotāji kopā — kopīgie izskati (kažoks, koks, drēbes) apvienojas
     this.vendors = VENDORS.map((v) => {
       const cart = buildCart(v.cart, false, v.id === 'hats' ? 'hats' : v.id === 'seeds' ? 'seeds' : v.id === 'buyer' ? 'veg' : 'none');
       if (v.id === 'pets') {
@@ -244,16 +293,16 @@ export class Game {
       const n = makeTextSprite(v.name, { fontSize: 36 });
       n.position.set(0, 2.2, 0);
       av.root.add(n);
-      const flat = flattenStatic(vg); // nekustīgs — viss apvienots dažos zīmēšanas izsaukumos
-      this.scene.add(flat);
+      market.add(vg);
       const t = makeTextSprite(v.title, { fontSize: 48, bg: 'rgba(255,255,255,0.85)', color: '#333' });
       t.position.set(v.x, VILLAGE_Y + 3.6, v.z);
       this.scene.add(t);
       this.world.addCollider(v.x, v.z, 1.5);
-      return { def: v, cart: flat };
+      return { def: v };
     });
+    this.scene.add(flattenStatic(market));
     // saldējuma ratiņi, kas brauc pa apli
-    this.ice = { cart: buildCart('#ff8fb0', true), av: buildAnimal({ animal: 'bebrs', fur: '#7a5230', shirt: '#ffffff', hat: null }) };
+    this.ice = { cart: flattenStatic(buildCart('#ff8fb0', true)), av: buildAnimal({ animal: 'bebrs', fur: '#7a5230', shirt: '#ffffff', hat: null }) };
     this.scene.add(this.ice.cart);
     this.scene.add(this.ice.av.root);
     const it = makeTextSprite('🍦 Saldējums', { fontSize: 48, bg: 'rgba(255,143,176,0.9)' });
@@ -273,6 +322,7 @@ export class Game {
       for (let y = 0; y < h; y += 21) { g.fillStyle = 'rgba(25,15,8,0.35)'; g.fillRect(0, y, w, 5); g.fillStyle = 'rgba(255,230,200,0.08)'; g.fillRect(0, y + 8, w, 6); }
     });
     const soilM = new THREE.MeshStandardMaterial({ color: '#8a7058', map: soilTex, roughness: 1 });
+    const beds = new THREE.Group(); // visas 24 dobes — viens zīmēšanas izsaukums
     GARDEN_SLOTS.forEach((s, slot) => {
       this.gardenCrops[slot] = [];
       this.gardenKeys[slot] = [];
@@ -281,15 +331,17 @@ export class Game {
         const soil = new THREE.Mesh(soilG, soilM);
         soil.receiveShadow = true;
         soil.position.set(p.x, VILLAGE_Y + 0.05, p.z);
-        this.scene.add(soil);
+        beds.add(soil);
         this.gardenCrops[slot][i] = null;
         this.gardenKeys[slot][i] = '';
       }
-      this.setGardenSign(slot, null);
     });
+    this.scene.add(flattenStatic(beds));
+    GARDEN_SLOTS.forEach((s, slot) => this.setGardenSign(slot, null));
   }
 
   setGardenSign(slot, name) {
+    if (!this.centerOn) return; // uzzīmēs, atgriežoties Mežvidos
     const s = GARDEN_SLOTS[slot];
     this.gardenSignNames = this.gardenSignNames || [];
     if (this.gardenSigns[slot] && this.gardenSignNames[slot] === name) return;
@@ -302,6 +354,7 @@ export class Game {
   }
 
   renderGarden(slot, view) {
+    if (!this.centerOn) return;
     for (let i = 0; i < 6; i++) {
       const v = view && view[i];
       const key = v ? v.c + v.s + (v.w ? 'w' : '') : '';
@@ -339,14 +392,14 @@ export class Game {
       if (h < WATER_Y) col = h < -1.5 ? [44, 110, 170] : [59, 143, 205];
       else if (h < 0.9) col = [222, 205, 150];
       else if (W.trackDist(x, z) < TRACK_WIDTH / 2) col = [90, 90, 96];
-      else if (W.roadDist(x, z).d < 2.5 || W.exitPath(x, z) > 0.4) col = [160, 130, 90];
+      else if (W.roadDist(x, z).d < 2.5) col = [160, 130, 90];
       else if (h > 18) col = [150, 148, 132];
       else if (W.forest(x, z) > 0.12) col = [52, 100, 42];
       else col = [111, 170, 72];
       // vieglas ēnas pēc slīpuma
       const sh = Math.max(-25, Math.min(25, (W.getHeight(x - 2, z - 2) - h) * 9));
       col = col.map((v) => Math.max(0, Math.min(255, v + sh)));
-      if (Math.max(Math.abs(x), Math.abs(z)) > PLAY_RADIUS && W.exitPath(x, z) < 0.4) col = [95, 110, 80];
+      if (Math.max(Math.abs(x), Math.abs(z)) > PLAY_RADIUS) col = [77, 90, 64]; // aiz robežas (to pārklāj kaimiņu zemes)
       const k = (py * MS + px) * 4;
       img.data[k] = col[0]; img.data[k + 1] = col[1]; img.data[k + 2] = col[2]; img.data[k + 3] = 255;
     }
@@ -367,10 +420,6 @@ export class Game {
       const [x0, y0] = toPx(ox - H, oz - H), [x1, y1] = toPx(ox + H, oz + H);
       g.fillStyle = Z.map; g.fillRect(x0, y0, x1 - x0, y1 - y0);
       g.strokeStyle = 'rgba(90,60,30,0.8)'; g.lineWidth = 1; g.strokeRect(x0, y0, x1 - x0, y1 - y0);
-      // taka no Mežvidiem
-      const [dx, dz] = DIRS[id];
-      const [p0x, p0y] = toPx(dx * (H - 30), dz * (H - 30)), [p1x, p1y] = toPx(dx * (H + 60), dz * (H + 60));
-      g.strokeStyle = '#a07a50'; g.lineWidth = 2; g.beginPath(); g.moveTo(p0x, p0y); g.lineTo(p1x, p1y); g.stroke();
       if (labels) {
         const [cx, cy] = toPx(ox, oz);
         g.fillStyle = 'rgba(0,0,0,0.75)'; g.font = 'bold 13px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
@@ -457,7 +506,7 @@ export class Game {
         const Z = ZONES[this.zone];
         btn.textContent = this.bigMapAll ? `🔍 Tuvāk: ${Z.icon} ${Z.name}` : '🧭 Visas zemes';
         legend.textContent = this.bigMapAll
-          ? `Tu esi: ${Z.icon} ${Z.name} · zemju malās ir takas ar vārtiem uz citām zemēm`
+          ? `Tu esi: ${Z.icon} ${Z.name} · pār robežu var pāriet jebkurā vietā`
           : (this.save.revealed ? '⭐ zvaigznes' : '⭐ — uzkāp 🗼 tornī') + ' · 🏡 ciemats · 🏎️ trase · ⛺🗼🐸🏰🎣 īpašās vietas';
       };
       btn.addEventListener('click', () => { this.bigMapAll = !this.bigMapAll; draw(); });
@@ -467,24 +516,24 @@ export class Game {
   }
 
   // ======================= Zemes (pāreja uz blakus kartēm) =======================
+  // Robežu var šķērsot jebkurā vietā, ja aiz tās ir kaimiņu zeme: tuvojoties parādās brīdinājums, aiz robežas — pāreja
   updateExits(dt) {
     this.exitWarnT = Math.max(0, (this.exitWarnT || 0) - dt);
     const sign = $('zone-sign');
     if (this.zoneBusy) return;
     const p = this.me.pos, H = ZONE_HALF;
-    const sides = this.zone === 'c' ? ['n', 'e', 's', 'w'] : [OPP[this.zone]];
     let near = null;
-    for (const s of sides) {
+    for (const s of openSides(this.zone)) {
       const al = alongLat(p.x, p.z, s);
-      if (al.lat < EXIT_W + 8 && al.along > H - 40) near = { s, ...al };
+      if (al.along > H - 18 && (!near || al.along > near.along)) near = { s, ...al };
     }
     if (!near) { sign.classList.add('hidden'); return; }
-    const dest = this.zone === 'c' ? near.s : 'c';
+    const dest = neighbour(this.zone, near.s);
     const Z = ZONES[dest];
-    const txt = `🧭 Šī taka ved uz: ${Z.icon} ${Z.name}` + (near.along > H - 12 ? ' — ej cauri vārtiem!' : '');
+    const txt = near.along > H - 4 ? `🧭 Ej tālāk, lai pārietu uz: ${Z.icon} ${Z.name}` : `🧭 Robeža tuvu! Aiz tās — ${Z.icon} ${Z.name}`;
     if (sign.textContent !== txt) sign.textContent = txt;
     sign.classList.remove('hidden');
-    if (near.along > H + 4 && near.lat < EXIT_W) {
+    if (near.along > H + CROSS_AT) {
       const warn = (m) => { if (this.exitWarnT <= 0) { this.exitWarnT = 4; toast(m); } };
       if (this.me.inKart) return warn('🏎️ Ar kartu uz citu zemi nevar — izkāp un ej kājām!');
       if (this.mgIn && this.mgIn()) return warn('🎲 Spēles laikā nevar aiziet uz citu zemi!');
@@ -492,45 +541,58 @@ export class Game {
     }
   }
 
+  // ielādes ekrāns → izlādē veco zemi, ielādē jauno → ielādes ekrāns pazūd
   travel(dest, side) {
     this.zoneBusy = true;
     $('zone-sign').classList.add('hidden');
-    const fade = $('zone-fade');
-    fade.textContent = `${ZONES[dest].icon} ${ZONES[dest].name}`;
-    fade.classList.add('on');
+    const Z = ZONES[dest];
+    $('load-name').textContent = `${Z.icon} ${Z.name}`;
+    const scr = $('zone-load');
+    scr.classList.add('on');
     sfx('beep');
     const [dx, dz] = DIRS[side], p = this.me.pos;
     const along = p.x * dx + p.z * dz;
-    // ierodamies jaunās zemes pretējā malā, saglabājot vietu takā
-    const pos = { x: p.x - dx * along - dx * (ZONE_HALF - 8), z: p.z - dz * along - dz * (ZONE_HALF - 8) };
-    setTimeout(() => {
-      this.switchZone(dest, pos, Math.atan2(dx, dz));
-      setTimeout(() => {
-        fade.classList.remove('on');
-        this.zoneBusy = false;
-        this.persist();
-        toast(`📍 ${ZONES[dest].icon} ${ZONES[dest].name}`, 'good');
-      }, 200);
-    }, 450);
+    // ierodamies jaunās zemes pretējā malā tajā pašā vietā gar robežu
+    const pos = { x: p.x - dx * along - dx * (ZONE_HALF - 6), z: p.z - dz * along - dz * (ZONE_HALF - 6) };
+    const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
+    const t0 = performance.now();
+    (async () => {
+      await new Promise((r) => setTimeout(r, 380)); // ekrāns paspēj aptumšoties
+      let ready;
+      try { ready = this.switchZone(dest, pos, Math.atan2(dx, dz)); } catch (e) { console.error(e); }
+      await Promise.race([ready, new Promise((r) => setTimeout(r, 8000))]);
+      // pirmais kadrs jaunajā zemē (ēnotāju kompilēšana) vēl zem ielādes ekrāna
+      this.updateCamera(0.016); this.renderFrame();
+      await frame();
+      await new Promise((r) => setTimeout(r, Math.max(0, 700 - (performance.now() - t0))));
+      scr.classList.remove('on');
+      this.zoneBusy = false;
+      this.persist();
+      toast(`📍 ${Z.icon} ${Z.name}`, 'good');
+    })();
   }
 
-  // noņem iepriekšējo zemi no ainas un ieliek jauno. Mežvidu stāvoklis (sēnes, dārzi, ogas) dzīvo tālāk —
-  // to glabā saimnieks un tavs saglabājums; blakus zemes tiek pilnībā izmestas no atmiņas.
+  // Noņem iepriekšējo zemi un ieliek jauno. Mežvidi tiek pilnībā izlādēti (to stāvokli glabā saimnieks
+  // un tavs saglabājums) un atgriežoties uzbūvēti no jauna; blakus zemes arī tiek izmestas no atmiņas.
   switchZone(id, pos, heading) {
     const prev = this.zone;
+    let ready = Promise.resolve();
     if (this.fishing) this.stopFishing();
     if (prev !== id) {
-      if (prev === 'c') this.stage.remove(this.scene);
+      if (prev === 'c') this.unloadCenter();
       else if (this.terr && this.terr !== this.world) this.terr.dispose();
       this.zone = id;
-      if (id === 'c') { this.terr = this.world; this.stage.add(this.scene); } else { this.terr = new PlainZone(id, this.hi); this.terr.build(this.stage); }
+      if (id === 'c') ready = this.reloadCenter(); else { this.terr = new PlainZone(id, this.hi); ready = this.terr.build(this.stage); }
     }
-    this.me.pos.set(pos.x, this.terr.groundAt(pos.x, pos.z), pos.z);
+    this.me.pos.set(pos.x, 0, pos.z);
+    this.terr.collide(this.me.pos, 0.6); // neierodamies kokā vai mājā
+    this.me.pos.y = this.terr.groundAt(this.me.pos.x, this.me.pos.z);
     this.me.vy = 0; this.me.onGround = true;
     if (heading != null) { this.me.heading = heading; this.cam.yaw = heading + Math.PI; }
     this.camInit = false;
     if (this.pet) this.pet.init = false;
     this.timers.vis = 0; this.timers.send = 0; this.timers.map = 0; this.timers.action = 0;
+    return ready;
   }
 
   findZoneAction() {
@@ -1241,7 +1303,7 @@ export class Game {
       r.pos.lerp(r.target, k);
       if (r.pos.distanceTo(r.target) > 25) r.pos.copy(r.target);
       r.ry = angleLerp(r.ry, r.tRy, k);
-      if (r.inKart && !r.kart) {
+      if (r.inKart && !r.kart && here) {
         r.kart = buildKart(this.kartColorHex(r.prof.kartColor));
         this.scene.add(r.kart.root);
         if (r.avatar.root.parent) r.avatar.root.parent.remove(r.avatar.root);
@@ -1295,10 +1357,8 @@ export class Game {
     if (doCull) this.timers.cull = 0.3;
     // sēnes
     if (doCull) {
-      this.world.mushrooms.forEach((m, i) => {
-        const vis = !(this.picked[m.id] > t) && Math.abs(m.x - cx) < 50 && Math.abs(m.z - cz) < 50;
-        this.mushMeshes[i].visible = vis;
-      });
+      this.mushField.update(cx, cz);
+      for (const m of this.world.mushrooms) if (Math.abs(m.x - cx) < 110 && Math.abs(m.z - cz) < 110) this.mushField.setHidden(m.id, this.picked[m.id] > t);
     }
     // zvaigznes
     this.starMeshes.forEach((s, i) => {
@@ -1475,7 +1535,7 @@ export class Game {
 
   pickMushroom(m) {
     this.picked[m.id] = this.now() + 5000; // paslēpjam uzreiz, saimnieks apstiprinās
-    this.mushMeshes[m.id].visible = false;
+    this.mushField.setHidden(m.id, true);
     this.me.petT = 0.5;
     this.net.toHost({ t: 'pick', id: m.id });
   }
@@ -1688,6 +1748,7 @@ export class Game {
   }
 
   updateBots(dt, t) {
+    if (!this.centerOn) return;
     const r = this.race;
     if (!this.bots) this.bots = [];
     const active = (r.phase === 'run') ? (r.bots || 0) : 0;

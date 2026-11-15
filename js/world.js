@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import { makeNoise2D, mulberry32 } from './noise.js?v=1.7.0';
-import { MUSHROOMS } from './data.js?v=1.7.0';
+import { makeNoise2D, mulberry32 } from './noise.js?v=1.8.0';
+import { MUSHROOMS } from './data.js?v=1.8.0';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mat, smoothstep, lerp, makeTextSprite, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.7.0';
-import { optimizeRig } from './characters.js?v=1.7.0';
-import { ZONE_HALF, ZONES, DIRS, sqDist, corridor, clampSquare, buildExit, sideOf, alongLat } from './zones.js?v=1.7.0';
-import { findPlaces, placeHeight, inPlace, buildPlaces, updatePlaces, placeBerries } from './places.js?v=1.7.0';
+import { mat, smoothstep, lerp, makeTextSprite, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.8.0';
+import { optimizeRig, flattenStatic } from './characters.js?v=1.8.0';
+import { ZONE_HALF, ZONES, DIRS, GROUND_Y, sqDist, clampSquare, buildBorderPosts } from './zones.js?v=1.8.0';
+import { findPlaces, placeHeight, inPlace, buildPlaces, updatePlaces, placeBerries } from './places.js?v=1.8.0';
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
@@ -17,7 +17,10 @@ export const WATER_Y = 0;
 export const VILLAGE_Y = 4;
 export const TRACK_Y = 3;
 export const PLAY_RADIUS = ZONE_HALF; // kvadrāta puse (vārds palicis no apļa laikiem)
-const EDGE = PLAY_RADIUS - 12; // no šejienes reljefs ceļas mežainos pakalnos (kvadrāta malās, izņemot takas)
+const EDGE = PLAY_RADIUS - 12; // īpašās vietas paliek tālāk no malas
+const BLEND0 = PLAY_RADIUS - 6, BLEND1 = PLAY_RADIUS + 40; // aiz robežas reljefs pāriet kaimiņu zemes līdzenumā
+// foto slāņu svari kaimiņu zemēm aiz robežas: [mežs, smiltis, zeme, akmens] (pļava = atlikums)
+const SKIRT_SPLAT = { n: [0, 0, 0, 0], e: [0, 0, 1, 0], s: [0, 1, 0, 0], w: [1, 0, 0, 0], x: [0.8, 0, 0, 0] };
 const LOD_CH = 80; // apgabala izmērs detalizācijas līmeņiem
 export const TRACK_WIDTH = 12;
 export const TRACK_N = 400;
@@ -147,21 +150,17 @@ export class World {
     h = lerp(h, TRACK_Y - 0.05, 1 - smoothstep(TRACK_WIDTH / 2 + 3, TRACK_WIDTH / 2 + 16, td));
     if (this.places.length) h = placeHeight(this, x, z, h);
     const e = sqDist(x, z);
-    if (e > EDGE - 60) {
-      // taka uz blakus zemi: sausa, līdzena, kalnos izcirsta grava
-      const cr = corridor(x, z);
-      if (cr > 0) h = lerp(h, Math.min(Math.max(h, 1.8), 7), cr * smoothstep(EDGE - 60, EDGE - 20, e));
-      if (e > EDGE) h += Math.min(22, (e - EDGE) * (e - EDGE) * 0.045) * (1 - cr);
-    }
+    if (e > BLEND0) h = lerp(h, GROUND_Y, smoothstep(BLEND0, BLEND1, e));
     return h;
   }
 
-  // 0..1 — takas zemes krāsa pie izejām uz citām zemēm
-  exitPath(x, z) {
-    const e = sqDist(x, z);
-    if (e < EDGE - 56) return 0;
-    const lat = alongLat(x, z, sideOf(x, z)).lat;
-    return (1 - smoothstep(1.8, 3.4, lat)) * smoothstep(EDGE - 56, EDGE - 40, e);
+  // aiz robežas: kuras kaimiņu zemes izskatā pāriet zeme (side = null stūros) un cik stipri (k)
+  edgeBlend(x, z) {
+    const ax = Math.abs(x), az = Math.abs(z);
+    const k = smoothstep(PLAY_RADIUS + 4, PLAY_RADIUS + 38, Math.max(ax, az));
+    if (k <= 0) return null;
+    const side = Math.min(ax, az) > PLAY_RADIUS ? null : ax > az ? (x > 0 ? 'e' : 'w') : (z > 0 ? 's' : 'n');
+    return { side, k };
   }
 
   computeHeights() {
@@ -248,8 +247,8 @@ export class World {
     this.placeStars();
     this.placeNpcHomes();
     placeBerries(this, PLAY_RADIUS);
-    // vārti un ceļa rādītāji uz četrām blakus zemēm
-    for (const s in DIRS) this.group.add(buildExit(s, `${ZONES[s].icon} ${ZONES[s].name}`, (x, z) => this.getHeight(x, z)));
+    this.buildSkirt();
+    this.group.add(buildBorderPosts(Object.keys(DIRS), (x, z) => this.getHeight(x, z)));
   }
 
   // dabiska zemes krāsa konkrētā vietā (izmanto gan reljefs, gan zāle)
@@ -279,9 +278,8 @@ export class World {
       const r = Math.hypot(x, z), e = sqDist(x, z);
       if (r < 30) c.lerp(P.village, 0.4);
       if (h > 13 && e < EDGE + 4) c.lerp(P.rock, Math.min(0.6, (h - 13) / 10));
-      if (e > EDGE + 4) c.lerp(P.forestG, 0.8 * (1 - corridor(x, z)));
-      const ep = this.exitPath(x, z);
-      if (ep > 0) c.lerp(P.road, ep * 0.85);
+      const eb = this.edgeBlend(x, z);
+      if (eb) c.lerp(eb.side ? (P['z' + eb.side] || (P['z' + eb.side] = new THREE.Color(ZONES[eb.side].ground))) : P.forestG, eb.k);
       const sw = this.swampPlace || (this.swampPlace = this.places.find((p) => p.id === 'purvs') || { x: 1e9, z: 0, swamp: 1 });
       const sd = Math.hypot(x - sw.x, z - sw.z);
       if (sd < sw.swamp * 1.5) c.lerp(P.swamp || (P.swamp = new THREE.Color('#5e5a2c')), 0.6 * (1 - smoothstep(sw.swamp * 0.7, sw.swamp * 1.5, sd)));
@@ -298,7 +296,7 @@ export class World {
     if (h < 0.9) wS = 1 - smoothstep(0.45, 0.95, h);
     if (h < -0.3) { wD = clamp01((-h - 0.3) * 0.8); wS *= 1 - wD; }
     if (h >= 0.6) {
-      const f = e > EDGE + 4 ? 0.5 * (1 - corridor(x, z)) : this.forest(x, z);
+      const f = this.forest(x, z);
       wF = clamp01((f - 0.08) * 3.2) * smoothstep(0.6, 1.2, h) * smoothstep(40, 55, r);
       const rd = this.roadDist(x, z).d;
       if (rd < 3.6) wD = Math.max(wD, 1 - smoothstep(1.6, 3.6, rd));
@@ -307,10 +305,14 @@ export class World {
       if (sd < sw.swamp * 1.4) wD = Math.max(wD, 0.55 * (1 - smoothstep(sw.swamp * 0.6, sw.swamp * 1.4, sd)));
       for (const p of this.places) if ((p.id === 'nometne' || p.id === 'drupas') && Math.hypot(x - p.x, z - p.z) < 6) wD = Math.max(wD, 0.6);
       if (r < 4) wD = Math.max(wD, 0.5);
-      wD = Math.max(wD, this.exitPath(x, z));
     }
     wR = smoothstep(0.88, 0.72, ny);
     if (h > 13 && e < EDGE + 4) wR = Math.max(wR, Math.min(0.75, (h - 13) / 9));
+    const eb = this.edgeBlend(x, z);
+    if (eb) {
+      const t = SKIRT_SPLAT[eb.side || 'x'];
+      wF = lerp(wF, t[0], eb.k); wS = lerp(wS, t[1], eb.k); wD = lerp(wD, t[2], eb.k); wR = lerp(wR, t[3], eb.k);
+    }
     const sum = wF + wS + wD + wR;
     const k = sum > 1 ? 1 / sum : 1;
     out[o] = wF * k; out[o + 1] = wS * k; out[o + 2] = wD * k; out[o + 3] = wR * k;
@@ -399,6 +401,41 @@ export class World {
       this.terrainTiles.push(m);
     }
     this.terrain = this.terrainTiles[0];
+  }
+
+  // līdzenums ap reljefu līdz horizontam kaimiņu zemju izskatā (tas pats materiāls kā reljefam — bez jaunām faktūrām)
+  buildSkirt() {
+    const A = HALF, B = 1600, quads = [];
+    for (const side of ['n', 'e', 's', 'w', null]) {
+      const rects = side === 'n' ? [[-A, -B, A, -A]] : side === 's' ? [[-A, A, A, B]] : side === 'e' ? [[A, -A, B, A]] : side === 'w' ? [[-B, -A, -A, A]]
+        : [[-B, -B, -A, -A], [A, -B, B, -A], [-B, A, -A, B], [A, A, B, B]];
+      const col = new THREE.Color(side ? ZONES[side].ground : '#3a4f24').multiplyScalar(0.95);
+      for (const r of rects) quads.push({ r, col, sp: SKIRT_SPLAT[side || 'x'] });
+    }
+    const n = quads.length * 4;
+    const P = new Float32Array(n * 3), N = new Float32Array(n * 3), C = new Float32Array(n * 3), S = new Float32Array(n * 4), U = new Float32Array(n * 2);
+    const idx = [];
+    quads.forEach((q, k) => {
+      const [x0, z0, x1, z1] = q.r;
+      [[x0, z0], [x1, z0], [x1, z1], [x0, z1]].forEach(([x, z], j) => {
+        const i = k * 4 + j;
+        P.set([x, GROUND_Y - 0.01, z], i * 3); N.set([0, 1, 0], i * 3); C.set([q.col.r, q.col.g, q.col.b], i * 3); S.set(q.sp, i * 4);
+        U.set([x / (SIZE / 8), z / (SIZE / 8)], i * 2);
+      });
+      const o = k * 4;
+      idx.push(o, o + 2, o + 1, o, o + 3, o + 2);
+    });
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(P, 3));
+    geo.setAttribute('normal', new THREE.BufferAttribute(N, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(C, 3));
+    geo.setAttribute('splat', new THREE.BufferAttribute(S, 4));
+    geo.setAttribute('uv', new THREE.BufferAttribute(U, 2));
+    geo.setIndex(idx);
+    const m = new THREE.Mesh(geo, this.terrain.material);
+    m.receiveShadow = true;
+    this.group.add(m);
+    this.terrainTiles.push(m);
   }
 
   buildWater() {
@@ -640,7 +677,7 @@ export class World {
   }
 
   buildVillage() {
-    const g = this.group;
+    const g = new THREE.Group(); // visu ciematu beigās apvieno pa materiāliem (dažos zīmēšanas izsaukumos)
     // aka
     const well = new THREE.Group();
     const wst = noiseTexture('stone', 128); wst.repeat.set(5, 1);
@@ -793,6 +830,7 @@ export class World {
     const sign = makeTextSprite('🏡 Mežvidi', { fontSize: 52, bg: 'rgba(60,120,40,0.85)' });
     sign.position.set(30, VILLAGE_Y + 3, -4);
     g.add(sign);
+    this.group.add(flattenStatic(g));
   }
 
   buildTrees() {
@@ -803,13 +841,11 @@ export class World {
       for (let gz = -HALF; gz < HALF; gz += step) {
         const x = gx + (rnd() - 0.5) * step * 0.9, z = gz + (rnd() - 0.5) * step * 0.9;
         const r = Math.hypot(x, z), e = sqDist(x, z);
-        if (e > PLAY_RADIUS + 35 || r < 42) { rnd(); rnd(); continue; }
-        if (e > EDGE - 70 && corridor(x, z) > 0.02) { rnd(); rnd(); continue; } // taka uz blakus zemi
+        if (e > PLAY_RADIUS + 2 || r < 42) { rnd(); rnd(); continue; } // aiz robežas — kaimiņu zemes līdzenums
         const h = this.getHeight(x, z);
         if (h < 1.2 || h > 45) { rnd(); rnd(); continue; }
         if (this.roadDist(x, z).d < 5 || inPlace(this, x, z)) { rnd(); rnd(); continue; }
-        if (e > EDGE + 8 && (e > PLAY_RADIUS + 20 || rnd() < 0.4)) { rnd(); continue; }
-        const f = e > EDGE + 8 ? 0.5 : this.forest(x, z);
+        const f = this.forest(x, z);
         const p = f > 0.12 ? 0.62 : f > 0.0 ? 0.08 : 0.02;
         if (rnd() > p) {
           if (f > 0.05 && rnd() < 0.25 && this.trackDist(x, z) > TRACK_WIDTH / 2 + 3) lists.bush.push({ x, y: h, z, s: 0.6 + rnd() * 0.7, ry: rnd() * 6.28 });
@@ -1067,6 +1103,7 @@ export class World {
   makeImpostorAtlas(types) {
     const r = this.renderer, CW = 256, CHh = 512;
     const rt = new THREE.WebGLRenderTarget(CW * 4, CHh, { minFilter: THREE.LinearMipmapLinearFilter, generateMipmaps: true });
+    this.impostorRT = rt;
     const scene = new THREE.Scene();
     const prevTarget = r.getRenderTarget(), prevColor = new THREE.Color(), prevAlpha = r.getClearAlpha(), prevAuto = r.autoClear;
     r.getClearColor(prevColor);
@@ -1203,6 +1240,7 @@ export class World {
       hTex.magFilter = hTex.minFilter = THREE.LinearFilter; hTex.needsUpdate = true;
       this.heightTex = hTex;
       const gTex = new THREE.DataTexture(gData, R, R, THREE.RGBAFormat);
+      this.groundTex = gTex;
       gTex.colorSpace = THREE.SRGBColorSpace;
       gTex.magFilter = gTex.minFilter = THREE.LinearFilter; gTex.needsUpdate = true;
 

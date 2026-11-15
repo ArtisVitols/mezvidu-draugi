@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mat, makeBlobShadow, noiseTexture, lerp, canvasTexture } from './util.js?v=1.7.0';
+import { mat, makeBlobShadow, noiseTexture, lerp, canvasTexture } from './util.js?v=1.8.0';
 
 // kažoka/auduma materiāli ar smalku faktūru
 let furTex = null, clothTex = null;
@@ -18,79 +18,157 @@ export function clothMat(color, opts = {}) {
   return furCache.get(k);
 }
 
-// Apvieno vienas locītavas detaļas ar vienādu materiālu vienā meshā (mazāk zīmēšanas izsaukumu)
-export function optimizeRig(root, skip = new Set()) {
+// ---------- zīmēšanas izsaukumu apvienošana ----------
+// „Izskata” atslēga: gabalus ar vienādu atslēgu var sapludināt vienā ģeometrijā, materiāla krāsu iecepot virsotnēs.
+// Vienkrāsainiem materiāliem bez faktūrām arī raupjums/metāliskums tiek glabāts virsotnēs (atribūts rm), tāpēc
+// visas acis, degungali, metāla detaļas utt. kļūst par vienu izsaukumu, un izskats nemainās.
+const texId = (t) => (t ? t.uuid : '-');
+function bucketKey(m) {
+  if (!m.isMeshStandardMaterial || m.isMeshPhysicalMaterial || m.transparent || m.envMap || m.lightMap || m.aoMap || m.emissiveMap || m.alphaMap || m.displacementMap) return m;
+  if (m.userData.plainRM) return m; // jau apvienots
+  if (Object.prototype.hasOwnProperty.call(m, 'onBeforeCompile')) return m;
+  const common = [m.side, m.flatShading ? 1 : 0, m.emissive.getHexString(), m.emissiveIntensity, m.alphaTest, m.fog ? 1 : 0].join('|');
+  if (!m.map && !m.normalMap && !m.roughnessMap && !m.metalnessMap && !m.bumpMap) return 'plain|' + common;
+  return ['look', common, texId(m.map), texId(m.normalMap), texId(m.roughnessMap), texId(m.metalnessMap), texId(m.bumpMap), m.bumpScale, m.roughness.toFixed(2), m.metalness.toFixed(2), m.normalMap ? m.normalScale.x.toFixed(2) : ''].join('|');
+}
+const sharedMats = new Map();
+function sharedMaterial(key, m0) {
+  if (sharedMats.has(key)) return sharedMats.get(key);
+  let nm;
+  if (key.startsWith('plain|')) {
+    nm = new THREE.MeshStandardMaterial({ vertexColors: true, side: m0.side, flatShading: m0.flatShading, emissive: m0.emissive, emissiveIntensity: m0.emissiveIntensity, alphaTest: m0.alphaTest, fog: m0.fog });
+    nm.userData.plainRM = true;
+    nm.onBeforeCompile = (sh) => {
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec2 rm;\nvarying vec2 vRM;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvRM = rm;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec2 vRM;')
+        .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = vRM.x;').replace('#include <metalnessmap_fragment>', 'float metalnessFactor = vRM.y;');
+    };
+    nm.customProgramCacheKey = () => 'plainRM';
+  } else {
+    nm = m0.clone();
+    nm.color.set('#ffffff');
+    nm.vertexColors = true;
+  }
+  nm.name = 'baked';
+  sharedMats.set(key, nm);
+  nm.addEventListener('dispose', () => sharedMats.delete(key));
+  return nm;
+}
+// sagatavo gabala ģeometriju apvienošanai (krāsa/raupjums virsotnēs), pārveidota ar matricu mtx
+function prepGeo(c, key, mtx, keepUv) {
+  const m = c.material, g = c.geometry.index ? c.geometry.toNonIndexed() : c.geometry.clone();
+  const n = g.attributes.position.count;
+  const baked = typeof key === 'string';
+  const keepCol = !baked && !!m.vertexColors;
+  const keepRm = !baked && !!m.userData.plainRM;
+  let col = null, rm = null;
+  if (baked) {
+    const cc = m.color, src = m.vertexColors && g.attributes.color;
+    col = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      col[i * 3] = cc.r * (src ? src.getX(i) : 1); col[i * 3 + 1] = cc.g * (src ? src.getY(i) : 1); col[i * 3 + 2] = cc.b * (src ? src.getZ(i) : 1);
+    }
+    if (key.startsWith('plain|')) { rm = new Float32Array(n * 2); for (let i = 0; i < n; i++) { rm[i * 2] = m.roughness; rm[i * 2 + 1] = m.metalness; } }
+  }
+  for (const k of Object.keys(g.attributes)) {
+    if (k === 'position' || k === 'normal' || (keepUv && k === 'uv') || (keepCol && k === 'color') || (keepRm && k === 'rm')) continue;
+    g.deleteAttribute(k);
+  }
+  if (col) g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  if (rm) g.setAttribute('rm', new THREE.BufferAttribute(rm, 2));
+  if (!g.attributes.normal) g.computeVertexNormals();
+  return g.applyMatrix4(mtx);
+}
+function bucketMaterial(key, m0) { return typeof key === 'string' ? sharedMaterial(key, m0) : key; }
+function needsUv(m) { return !!(m.map || m.normalMap || m.roughnessMap || m.metalnessMap || m.bumpMap || m.alphaMap); }
+
+// Apvieno vienas locītavas detaļas vienā meshā (mazāk zīmēšanas izsaukumu). bake — apvieno arī dažādus materiālus
+// ar vienādu izskatu (tikai objektiem, kuru materiālu krāsas vēlāk nemaina).
+export function optimizeRig(root, skip = new Set(), opts = {}) {
   const groups = [];
   root.traverse((o) => { if (!o.isMesh) groups.push(o); });
   for (const g of groups) {
     const buckets = new Map();
     for (const c of g.children) {
-      if (!c.isMesh || c.children.length || skip.has(c) || c.material.transparent) continue;
-      if (!buckets.has(c.material)) buckets.set(c.material, []);
-      buckets.get(c.material).push(c);
+      if (!c.isMesh || c.isInstancedMesh || c.children.length || skip.has(c) || c.material.transparent || Array.isArray(c.material)) continue;
+      const k = opts.bake ? bucketKey(c.material) : c.material;
+      if (!buckets.has(k)) buckets.set(k, []);
+      buckets.get(k).push(c);
     }
-    for (const [m, list] of buckets) {
+    for (const [k, list] of buckets) {
       if (list.length < 2) continue;
-      const keepUv = list.every((c) => c.geometry.attributes.uv);
-      const geos = list.map((c) => {
-        c.updateMatrix();
-        let geo = c.geometry.index ? c.geometry.toNonIndexed() : c.geometry.clone();
-        for (const k of Object.keys(geo.attributes)) if (k !== 'position' && k !== 'normal' && !(keepUv && k === 'uv')) geo.deleteAttribute(k);
-        return geo.applyMatrix4(c.matrix);
-      });
+      const m0 = list[0].material;
+      const keepUv = needsUv(m0) || (typeof k !== 'string' && list.every((c) => c.geometry.attributes.uv));
+      if (keepUv && !list.every((c) => c.geometry.attributes.uv)) continue;
+      const geos = list.map((c) => { c.updateMatrix(); return prepGeo(c, k, c.matrix, keepUv); });
       const merged = mergeGeometries(geos);
+      geos.forEach((x) => x.dispose());
       if (!merged) continue;
+      const cast = list.some((c) => c.castShadow) || !opts.bake;
       for (const c of list) g.remove(c);
-      const mm = new THREE.Mesh(merged, m);
-      mm.castShadow = true;
+      const mm = new THREE.Mesh(merged, bucketMaterial(k, m0));
+      mm.castShadow = cast;
+      mm.receiveShadow = list.some((c) => c.receiveShadow);
       g.add(mm);
     }
   }
 }
 
-// Nekustīgu objektu (tirgotāji, ratiņi) visas daļas apvieno pa materiāliem — daudz mazāk zīmēšanas izsaukumu
-export function flattenStatic(root) {
+// Nekustīgu objektu grupu (tirgotāji, mājas, īpašās vietas) apvieno dažos zīmēšanas izsaukumos pa izskatiem.
+// Kvalitāte nemainās — mainās tikai tas, kā dati nonāk GPU.
+export function flattenStatic(root, opts = {}) {
   root.updateMatrixWorld(true);
   const inv = new THREE.Matrix4().copy(root.matrixWorld).invert();
-  const buckets = new Map(), loose = [];
-  root.traverse((o) => {
-    if (!o.visible && o !== root) return;
-    if (o.isMesh && !o.isInstancedMesh && !Array.isArray(o.material) && !o.material.transparent) {
-      const m = o.material;
-      // vienkrāsaini materiāli bez faktūrām -> viens kopīgs materiāls ar virsotņu krāsām
-      const plain = m.isMeshStandardMaterial && !m.isMeshPhysicalMaterial && !m.map && !m.normalMap && !m.bumpMap && !m.vertexColors && m.emissive.getHex() === 0 && m.side === THREE.FrontSide;
-      const key = plain ? `plain|${m.roughness.toFixed(2)}|${m.metalness.toFixed(2)}` : m;
-      if (!buckets.has(key)) buckets.set(key, []);
-      buckets.get(key).push(o);
-    } else if (o.isMesh || o.isSprite) loose.push(o);
-  });
+  const buckets = new Map(), loose = [], kept = [];
+  // userData.keep — kustīgs apakškoks (vāks, laiva): pārceļ veselu; caurspīdīgi/sprite — pārceļ oriģinālu (atsauces paliek derīgas)
+  const visit = (o) => {
+    if (o !== root && o.userData.keep) { kept.push(o); return; }
+    if (o !== root && !o.visible) return;
+    if (o.isMesh && !o.isInstancedMesh && !o.isSkinnedMesh && !Array.isArray(o.material) && !o.material.transparent) {
+      const k = bucketKey(o.material);
+      if (!buckets.has(k)) buckets.set(k, []);
+      buckets.get(k).push(o);
+    } else if (o !== root && (o.isMesh || o.isSprite || o.isPoints || o.isLine)) loose.push(o);
+    for (const c of o.children) visit(c);
+  };
+  visit(root);
   const out = new THREE.Group();
   const rel = (o) => new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld);
   for (const [key, list] of buckets) {
-    const plain = typeof key === 'string';
-    const keepUv = !plain && list.every((c) => c.geometry.attributes.uv);
-    const geos = list.map((c) => {
-      const g = c.geometry.index ? c.geometry.toNonIndexed() : c.geometry.clone();
-      for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal' && !(keepUv && k === 'uv')) g.deleteAttribute(k);
-      if (plain) {
-        const n = g.attributes.position.count, col = new Float32Array(n * 3), cc = c.material.color;
-        for (let i = 0; i < n; i++) { col[i * 3] = cc.r; col[i * 3 + 1] = cc.g; col[i * 3 + 2] = cc.b; }
-        g.setAttribute('color', new THREE.BufferAttribute(col, 3));
-      }
-      return g.applyMatrix4(rel(c));
-    });
+    const m0 = list[0].material;
+    const allUv = list.every((c) => c.geometry.attributes.uv);
+    if (needsUv(m0) && !allUv) { list.forEach((c) => loose.push(c)); continue; }
+    const keepUv = needsUv(m0) || (typeof key !== 'string' && allUv && !!m0.map);
+    const geos = list.map((c) => prepGeo(c, key, rel(c), keepUv));
     const merged = mergeGeometries(geos);
+    geos.forEach((g) => g.dispose());
     if (!merged) { list.forEach((c) => loose.push(c)); continue; }
-    const m = plain ? new THREE.MeshStandardMaterial({ vertexColors: true, roughness: list[0].material.roughness, metalness: list[0].material.metalness }) : key;
-    const mm = new THREE.Mesh(merged, m);
-    mm.castShadow = true; mm.receiveShadow = true;
+    merged.computeBoundingSphere();
+    const mm = new THREE.Mesh(merged, bucketMaterial(key, m0));
+    mm.castShadow = opts.castShadow != null ? opts.castShadow : list.some((c) => c.castShadow);
+    mm.receiveShadow = opts.receiveShadow != null ? opts.receiveShadow : list.some((c) => c.receiveShadow);
+    if (list[0].layers.mask !== 1) mm.layers.mask = list[0].layers.mask;
     out.add(mm);
   }
-  for (const o of loose) {
-    const c = o.clone(false);
-    rel(o).decompose(c.position, c.quaternion, c.scale);
-    out.add(c);
+  // pārceltie objekti saglabā savu transformāciju; turētājs atkārto vecā vecāka transformāciju
+  // (tā kodā animētās rotācijas/pozīcijas turpina strādāt kā iepriekš)
+  const holders = new Map();
+  const holderFor = (parent) => {
+    if (parent === root) return out;
+    if (!holders.has(parent)) {
+      const h = new THREE.Group();
+      rel(parent).decompose(h.position, h.quaternion, h.scale);
+      holders.set(parent, h);
+    }
+    return holders.get(parent);
+  };
+  const moves = [...loose.map((o) => [o, holderFor(o.parent), true]), ...kept.map((o) => [o, holderFor(o.parent), false])];
+  for (const [o, h, strip] of moves) {
+    if (strip) for (const c of o.children.slice()) o.remove(c); // bērni apstrādāti atsevišķi
+    o.removeFromParent();
+    h.add(o);
   }
+  for (const h of holders.values()) out.add(h);
   out.position.copy(root.position); out.quaternion.copy(root.quaternion); out.scale.copy(root.scale);
   return out;
 }
@@ -444,7 +522,14 @@ export function buildAnimal({ animal = 'lacis', fur = '#8b5a2b', shirt = '#d23b3
       if (this.tail) this.tail.rotation.y = Math.sin(this.t * (state === 'idle' ? 1.5 : 4)) * 0.25;
     },
   };
-  optimizeRig(root);
+  // animētās daļas (galva, aste u.c.) nesapludina
+  const animated = new Set();
+  for (const v of [head, spine, body, tail, ...(legs || []), ...(arms || [])]) {
+    if (!v) continue;
+    if (v.isMesh) animated.add(v);
+    else if (!v.isObject3D) for (const x of Object.values(v)) if (x && x.isMesh) animated.add(x);
+  }
+  optimizeRig(root, animated, { bake: true });
   av.setHat(hat);
   return av;
 }
@@ -764,7 +849,7 @@ export function buildNPC(type) {
     }
   }
   body.traverse((o) => { if (o.isMesh) o.castShadow = true; });
-  optimizeRig(body, new Set(legs));
+  optimizeRig(body, new Set(legs), { bake: true });
   const shadow = makeBlobShadow(type === 'stirna' || type === 'mezacuka' ? 1.6 : 0.9);
   shadow.position.y = 0.03;
   root.add(shadow);

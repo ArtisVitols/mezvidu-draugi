@@ -82,11 +82,21 @@ canvas#game { position: fixed; inset: 0; width: 100%; height: 100%; display: blo
   max-width: 86vw; text-align: center; pointer-events: none;
 }
 #zone-sign.hidden { display: none; }
-#zone-fade {
-  position: fixed; inset: 0; background: #10180e; color: #fff; display: flex; align-items: center; justify-content: center;
-  font-size: 30px; font-weight: 800; opacity: 0; pointer-events: none; transition: opacity .35s; z-index: 50;
+#zone-load {
+  position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 50% 40%, #2f4a28, #0f180d 75%); color: #fff;
+  opacity: 0; pointer-events: none; transition: opacity .35s;
 }
-#zone-fade.on { opacity: 1; pointer-events: auto; }
+#zone-load.on { opacity: 1; pointer-events: auto; }
+#zone-load .load-box { text-align: center; padding: 0 16px; }
+#zone-load .load-title { font-size: 16px; opacity: .75; letter-spacing: .08em; text-transform: uppercase; }
+#load-name { font-size: 32px; font-weight: 900; margin: 6px 0 22px; }
+#zone-load .load-spin {
+  width: 46px; height: 46px; margin: 0 auto 14px; border-radius: 50%;
+  border: 5px solid rgba(255,255,255,.18); border-top-color: #ffd34a; animation: loadspin .9s linear infinite;
+}
+#zone-load .load-hint { font-size: 14px; opacity: .7; }
+@keyframes loadspin { to { transform: rotate(360deg); } }
 #hide-cover {
   position: absolute; inset: 0; background: rgba(10,20,10,.94); color: #fff; display: flex; align-items: center; justify-content: center;
   font-size: 80px; font-weight: 900; z-index: -1;
