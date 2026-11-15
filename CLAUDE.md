@@ -38,6 +38,7 @@ Static site: plain HTML + ES modules, no build step. Photo textures in `assets/`
 | `js/props.js` | Berry bushes (cloned templates), garden decorations + `DECOR_SPOTS`, fishing rod, bobber |
 | `js/activities.js` | `Activities` mixin on `Game.prototype`: fishing, berries, pets, decor, discovery, treasure, tag/hide-and-seek (host-run), weekly team goal |
 | `js/zones.js` | Lands: `ZONES` (c = Mežvidi + n/e/s/w), `ZONE_HALF` 420, open borders (`neighbour`, `openSides`, `clampSquare`, `buildBorderPosts`), `disposeTree`, `PlainZone` (flat side land, built on enter and disposed on leave) |
+| `js/quality.js` | Graphics levels (`QUALITY`), live `applyQuality`, automatic fps-based level switching (`autoQuality`) |
 | `js/instancing.js` | `InstanceField`: many identical objects (mushrooms, berry bushes) as chunked InstancedMeshes with per-item hide |
 | `js/gfx.js` | Realistic graphics: photo terrain material (5-layer `sampler2DArray` splat), HDRI environment, water shader upgrade, `PlanarReflection`, `PostFX` (AO, bloom, ACES + grading) |
 | `assets/` | Poly Haven CC0 textures (`tex/*_c.jpg` albedo 1024, `*_n.jpg` normal 512) and `sky.hdr` (256×128) |
@@ -76,9 +77,14 @@ Static site: plain HTML + ES modules, no build step. Photo textures in `assets/`
 - Special places come from `findPlaces` in the `World` constructor (needs `computeHeight`, runs before `computeHeights`).
   `world.groundAt(x, z, y)` = terrain or a platform (pier, tower top, swamp boardwalk); player walking uses it.
   Trees, rocks and mushrooms skip `inPlace(...)` areas.
-- Quality (`mezvidi_quality`): `high` = photo textures + reflection + PostFX; `mid` = photo textures only; `low` = old look.
+- **Graphics quality** (`js/quality.js`, mixin on `Game`): levels `lowest/low/mid/high` in `QUALITY` (pixel ratio, PostFX,
+  reflection, shadow map size/type, photo terrain, grass density via `world.grassMesh.count`, detail distance `world.detailScale`
+  (0 = camera layer 1 off), fog/far, tree LOD distance). `applyQuality(level)` switches everything live (no reload; shadow
+  on/off recompiles materials; water is re-upgraded when reflection toggles; photo textures/PostFX are created lazily).
+  Mode in localStorage `mezvidi_gfx`: `auto` (default) or a fixed level. `autoQuality()` (called each frame) measures fps in 3 s windows:
+  < 27 → one level down; ≥ 50 for ~6 s → try one level up; a trial level must hold ≥ 40 fps or it is reverted and blocked for 2 days
+  (`mezvidi_auto_block`). Last auto level is remembered (`mezvidi_auto_q`); the first guess uses `deviceMemory`/`hardwareConcurrency`.
   With PostFX the scene renders into a HalfFloat MSAA target, so tone mapping/sRGB happen in the PostFX composite shader.
-  If fps < 32 the game first disables PostFX + reflection, then the older pixel-ratio/shadow fallbacks apply.
 - Terrain splat weights come from `world.splatAt()` (forest, sand, dirt, rock; meadow = remainder) as a `splat` vertex attribute.
 - Layer 1 = small details (grass field, flowers, rocks) that the water reflection camera skips; the main camera enables layer 1.
 - Minimap: `mapBase` is a canvas of the whole world; the HUD minimap shows ~130 m around the player, and tapping it opens the full map.
@@ -87,7 +93,7 @@ Static site: plain HTML + ES modules, no build step. Photo textures in `assets/`
 - Code comments and UI strings are in Latvian; keep it that way.
 - Performance matters (phones): use instancing and chunk instanced meshes for frustum culling,
   merge static parts with `optimizeRig`, and cache textures and materials (never create a canvas texture per instance).
-  There is a "🎨 Grafika: Augsta/Zema" quality toggle (`world.lowQ`) plus an automatic fps fallback.
+  Graphics levels and the automatic fps-based switching live in `js/quality.js` (see above).
 - `optimizeRig` keeps `uv` only if every merged geometry has it.
 - World generation must stay deterministic (`WORLD_SEED`, seeded `mulberry32`) so every player sees the same world.
   Random visual-only details (canvas textures) may use `Math.random`.

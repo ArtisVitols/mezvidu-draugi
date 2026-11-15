@@ -2,8 +2,8 @@
 // Katrai zemei ir savas lokālās koordinātas (centrs 0,0); kopējā kartē zeme ir nobīdīta par ZONE_SIZE.
 // Uz kaimiņu zemi var aiziet pa jebkuru robežas vietu.
 import * as THREE from 'three';
-import { canvasTexture } from './util.js?v=1.8.0';
-import { loadTexture } from './gfx.js?v=1.8.0';
+import { canvasTexture } from './util.js?v=1.9.0';
+import { loadTexture } from './gfx.js?v=1.9.0';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 export const ZONE_HALF = 420;              // spēles laukuma puse (kvadrāts 840 × 840 m)

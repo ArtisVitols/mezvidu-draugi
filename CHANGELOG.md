@@ -1,5 +1,12 @@
 # Izmaiņu žurnāls
 
+## 1.9.0 — 2026-11-15
+- 🎨 Četri grafikas līmeņi: Augsta, Vidēja, Zema un jauns **Viszemākā** (bez ēnām, zāles un sīkām detaļām, zemāka
+  izšķirtspēja, īsāks redzamības attālums) vājākajiem telefoniem.
+- **Auto** (noklusējums): spēle mēra kadru ātrumu un pati pārslēdz līmeni — lēnā telefonā uz leju, jaudīgā telefonā
+  uz augšu līdz Augstai. Ja augstāks līmenis neiztur, tas tiek atcelts un uz laiku vairs netiek mēģināts. Līmenis tiek atcerēts.
+- Grafika mainās uzreiz, bez pārlādes (☰ izvēlnē: Auto → Augsta → Vidēja → Zema → Viszemākā).
+
 ## 1.8.0 — 2026-11-15
 - 🧭 Vārtu vairs nav: uz kaimiņu zemi var pāriet pa **jebkuru robežas vietu**. Tuvojoties robežai, ekrānā parādās,
   kura zeme ir aiz tās; ejot tālāk — ielādes ekrāns, jaunā zeme ielādējas un iepriekšējā tiek noņemta.

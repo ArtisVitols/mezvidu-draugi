@@ -1,19 +1,20 @@
 import * as THREE from 'three';
-import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotPos, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.8.0';
-import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.8.0';
-import { Controls } from './controls.js?v=1.8.0';
+import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotPos, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.9.0';
+import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.9.0';
+import { Controls } from './controls.js?v=1.9.0';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS } from './data.js?v=1.8.0';
-import { writeSave } from './save.js?v=1.8.0';
-import { VERSION, BUILD_DATE } from './version.js?v=1.8.0';
-import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.8.0';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.8.0';
-import { Activities, makeTeam } from './activities.js?v=1.8.0';
-import { terrainMaterial, hdrEnvironment, upgradeWater, PlanarReflection, PostFX, loadTexture } from './gfx.js?v=1.8.0';
-import { buildRod, buildDecor } from './props.js?v=1.8.0';
-import { InstanceField } from './instancing.js?v=1.8.0';
-import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu } from './zones.js?v=1.8.0';
-import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.8.0';
+import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS } from './data.js?v=1.9.0';
+import { writeSave } from './save.js?v=1.9.0';
+import { VERSION, BUILD_DATE } from './version.js?v=1.9.0';
+import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.9.0';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.9.0';
+import { Activities, makeTeam } from './activities.js?v=1.9.0';
+import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel } from './quality.js?v=1.9.0';
+import { hdrEnvironment } from './gfx.js?v=1.9.0';
+import { buildRod, buildDecor } from './props.js?v=1.9.0';
+import { InstanceField } from './instancing.js?v=1.9.0';
+import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu } from './zones.js?v=1.9.0';
+import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.9.0';
 
 const ANIM = ['idle', 'walk', 'run', 'jump', 'swim', 'sit', 'pet', 'wave', 'fish'];
 const MUSH_RESPAWN = 120000;
@@ -57,14 +58,11 @@ export class Game {
   // ======================= Inicializācija =======================
   init() {
     const canvas = $('game');
-    let q = 'high';
-    try { q = localStorage.getItem('mezvidi_quality') || 'high'; } catch (e) { /* */ }
-    if (!['high', 'mid', 'low'].includes(q)) q = 'high';
-    this.quality = q;
-    const hi = q !== 'low';      // ēnas, pilna zāle, foto faktūras
-    const ultra = q === 'high';  // + ūdens atspulgi un pēcapstrāde
+    // grafikas līmenis: Auto (pēc fps) vai izvēlēts izvēlnē; iestatījumi tiek uzlikti pēc pasaules uzbūvēšanas
+    this.qMode = loadQualityMode();
+    const startQ = startLevel(this.qMode);
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, hi ? 1.5 : 1));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, QUALITY[startQ].pr));
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -101,22 +99,17 @@ export class Game {
     this.stage.add(sun);
     this.stage.add(sun.target);
     this.sun = sun;
-    if (hi) {
-      this.renderer.shadowMap.enabled = true;
-      this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-      sun.castShadow = true;
-      sun.shadow.mapSize.set(2048, 2048);
-      const sc = sun.shadow.camera;
-      sc.left = -45; sc.right = 45; sc.top = 45; sc.bottom = -45; sc.near = 1; sc.far = 260;
-      sun.shadow.bias = -0.0004;
-      sun.shadow.normalBias = 0.04;
-    }
+    // ēnu kamera (ēnas ieslēdz/izslēdz grafikas līmenis)
+    const sc = sun.shadow.camera;
+    sc.left = -45; sc.right = 45; sc.top = 45; sc.bottom = -45; sc.near = 1; sc.far = 260;
+    sun.shadow.bias = -0.0004;
+    sun.shadow.normalBias = 0.04;
     window.addEventListener('resize', () => this.onResize());
 
-    this.hi = hi;
     this.camera.layers.enable(1);
-    this.setupGfx(hi, ultra);
+    hdrEnvironment(this.renderer, this.sunDir, 1.0).then((env) => { this.stage.environment = env; }).catch((e) => console.warn(e));
     this.buildCenter();
+    this.applyQuality(startQ);
     this.buildMinimap();
 
     // mans tēls
@@ -145,39 +138,6 @@ export class Game {
     this.onResize();
   }
 
-  // foto faktūras, HDRI gaisma, ūdens atspulgi un pēcapstrāde (ielādējas fonā, spēle sākas uzreiz)
-  setupGfx(hi, ultra) {
-    const W = this.world;
-    if (ultra) {
-      try {
-        this.refl = new PlanarReflection(0.5);
-        this.post = new PostFX(this.renderer);
-      } catch (e) { console.warn('Pēcapstrāde nav pieejama', e); this.refl = null; this.post = null; }
-    }
-    hdrEnvironment(this.renderer, this.sunDir, 1.0).then((env) => { this.stage.environment = env; }).catch((e) => console.warn(e));
-    if (!hi) return;
-    // foto faktūras ielādē vienreiz; atgriežoties Mežvidos tās tiek augšupielādētas GPU no jauna (bez lejupielādes)
-    const soft = (p) => p.catch((e) => { console.warn(e); return null; });
-    this.photo = {
-      terrain: soft(terrainMaterial()),
-      asphalt: soft(Promise.all([new Promise((r, j) => { const im = new Image(); im.onload = () => r(im); im.onerror = j; im.src = 'assets/tex/asphalt_c.jpg'; }), loadTexture('assets/tex/asphalt_n.jpg', false)])),
-      rock: soft(Promise.all([loadTexture('assets/tex/rock_c.jpg', true, 1), loadTexture('assets/tex/rock_n.jpg', false, 1)])),
-    };
-    void W;
-  }
-
-  // Mežvidu ūdenim un reljefam foto faktūras; atgriež solījumu, kad viss uzlikts
-  applyWorldGfx(W) {
-    upgradeWater(W, this.refl);
-    const ph = this.photo;
-    if (!ph) return Promise.resolve();
-    return Promise.all([
-      ph.terrain.then((m) => { if (m && this.world === W) W.usePhotoTerrain(m); }),
-      ph.asphalt.then((a) => { if (a && this.world === W) W.usePhotoAsphalt(a[0], a[1]); }),
-      ph.rock.then((a) => { if (a && this.world === W) W.usePhotoRock(a[0], a[1]); }),
-    ]);
-  }
-
   // ---------- Mežvidi: uzbūvēšana, izlādēšana no GPU un atgriešanās ----------
   // Visi Mežvidu objekti ir grupā this.scene. Aizejot uz citu zemi, grupa tiek izņemta no ainas un visa tās GPU atmiņa
   // (ģeometriju buferi, faktūras, arī lielā foto reljefa faktūra) atbrīvota. JS dati paliek, tāpēc atgriežoties
@@ -186,10 +146,9 @@ export class Game {
     this.scene = new THREE.Group();
     this.stage.add(this.scene);
     const W = this.world = new World(WORLD_SEED);
-    W.lowQ = !this.hi;
     W.build(this.scene, this.renderer);
     this.terr = W; // aktīvās zemes reljefs (kustībai, kamerai, mājdzīvniekiem)
-    const ready = this.applyWorldGfx(W);
+    if (this.Q) this.applyWorldQuality(W);
     this.buildMushrooms();
     this.buildStars();
     this.buildNpcs();
@@ -197,7 +156,7 @@ export class Game {
     this.buildGardens();
     this.bots = [];
     this.centerOn = true;
-    return ready;
+    return Promise.resolve();
   }
 
   unloadCenter() {
@@ -582,7 +541,7 @@ export class Game {
       if (prev === 'c') this.unloadCenter();
       else if (this.terr && this.terr !== this.world) this.terr.dispose();
       this.zone = id;
-      if (id === 'c') ready = this.reloadCenter(); else { this.terr = new PlainZone(id, this.hi); ready = this.terr.build(this.stage); }
+      if (id === 'c') ready = this.reloadCenter(); else { this.terr = new PlainZone(id, this.Q.photo); ready = this.terr.build(this.stage); }
     }
     this.me.pos.set(pos.x, 0, pos.z);
     this.terr.collide(this.me.pos, 0.6); // neierodamies kokā vai mājā
@@ -1263,35 +1222,7 @@ export class Game {
     this.sun.target.position.set(sx, p.y, sz);
     this.sun.position.set(sx + this.sunDir.x * 120, p.y + this.sunDir.y * 120, sz + this.sunDir.z * 120);
     this.sky.position.copy(this.camera.position);
-    // ja telefons ir lēns, samazinām izšķirtspēju
-    if (this.fpsCheck == null) this.fpsCheck = { t: 0, n: 0, done: false };
-    const f = this.fpsCheck;
-    if (!f.done) {
-      f.t += dt; f.n++;
-      if (f.t > 6) {
-        f.done = true;
-        const fps = f.n / f.t;
-        if (fps < 32 && this.post && this.post.enabled) {
-          // vispirms izslēdzam dārgākos efektus un mērām vēlreiz
-          this.post.enabled = false;
-          if (this.refl) this.refl.enabled = false;
-          toast('Spēle raustījās — atspulgi un efekti izslēgti. ☰ izvēlnē var mainīt grafiku.', '', 5000);
-          this.fpsCheck = { t: 0, n: 0, done: false };
-          return;
-        }
-        if (fps < 28 && this.renderer.getPixelRatio() > 1) {
-          this.renderer.setPixelRatio(1);
-          this.onResize();
-        }
-        if (fps < 22 && this.renderer.shadowMap.enabled) {
-          // ļoti lēns telefons: izslēdzam ēnas uzreiz
-          this.renderer.shadowMap.enabled = false;
-          this.sun.castShadow = false;
-          this.stage.traverse((o) => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => { m.needsUpdate = true; }); });
-          toast('Spēle raustījās — ēnas izslēgtas. Izvēlnē ☰ var mainīt grafiku.', '', 5000);
-        }
-      }
-    }
+    this.autoQuality(); // grafikas līmenis pēc fps (quality.js)
   }
 
   updateRemotes(dt) {
@@ -1995,13 +1926,14 @@ export class Game {
         try { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); } catch (e) { /* */ }
       } }, '⛶ Pilnekrāns'));
       b.append(' ');
-      b.append(el('button', { className: 'pbtn', onclick: () => {
-        const nq = { high: 'mid', mid: 'low', low: 'high' }[this.quality] || 'high';
-        try { localStorage.setItem('mezvidi_quality', nq); } catch (e) { /* */ }
-        toast(`${{ high: 'Augsta', mid: 'Vidēja', low: 'Zema' }[nq]} grafika ieslēgsies pēc pārlādes`);
-        this.persist();
-        if (this.net.offline) setTimeout(() => location.reload(), 800);
-      } }, `🎨 Grafika: ${{ high: 'Augsta', mid: 'Vidēja', low: 'Zema' }[this.quality]}`));
+      // Auto → Augsta → Vidēja → Zema → Viszemākā; mainās uzreiz
+      const qb = el('button', { className: 'pbtn' }, `🎨 Grafika: ${this.qualityLabel()}`);
+      qb.addEventListener('click', () => {
+        this.setQualityMode(Q_MODES[(Q_MODES.indexOf(this.qMode) + 1) % Q_MODES.length]);
+        qb.textContent = `🎨 Grafika: ${this.qualityLabel()}`;
+      });
+      b.append(qb);
+      b.append(el('div', { style: 'font-size:12px;opacity:0.65;margin-top:4px' }, 'Auto pats izvēlas grafiku pēc tā, cik ātri telefons zīmē.'));
       b.append(' ');
       b.append(el('button', { className: 'pbtn', onclick: () => { this.persist(); toast('💾 Saglabāts!', 'good'); } }, '💾 Saglabāt'));
       b.append(' ');
@@ -2018,5 +1950,5 @@ export class Game {
   }
 }
 
-Object.assign(Game.prototype, Activities);
+Object.assign(Game.prototype, Activities, Quality);
 Game.prototype.weeklyIcon = function () { return ({ mushrooms: '🍄', fish: '🐟', berries: '🫐', harvested: '🥕', petted: '🦌', races: '🏎️' })[this.team.stat] || ''; };

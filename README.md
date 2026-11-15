@@ -58,12 +58,15 @@ python3 -m http.server 8000
 un atver `http://localhost:8000`.
 
 ### Grafika
-☰ izvēlnē ir poga **„🎨 Grafika: Augsta / Vidēja / Zema”**:
-- **Augsta** — foto faktūras, debesu foto apgaismojums, ūdens atspulgi, mīkstas ēnas un krāsu korekcija;
-- **Vidēja** — foto faktūras bez atspulgiem un pēcapstrādes;
-- **Zema** — vienkāršākā grafika vecākiem telefoniem.
+☰ izvēlnē ir poga **„🎨 Grafika”**: **Auto** (noklusējums) / Augsta / Vidēja / Zema / Viszemākā.
+- **Augsta** — foto faktūras, ūdens atspulgi, mīkstas ēnas, krāsu korekcija, augstāka izšķirtspēja;
+- **Vidēja** — foto faktūras un ēnas, bez atspulgiem un pēcapstrādes;
+- **Zema** — vienkāršas krāsas, asas ēnas, retāka zāle, mazāks redzamības attālums;
+- **Viszemākā** — bez ēnām, zāles un sīkām detaļām, zemāka izšķirtspēja, īsāks redzamības attālums — vājākajiem telefoniem.
 
-Lēnos telefonos spēle pati izslēdz efektus, samazina izšķirtspēju un izslēdz ēnas.
+**Auto** mēra, cik kadru sekundē telefons zīmē: ja spēle raustās, grafika kļūst vienkāršāka; ja telefons
+ilgi tiek galā viegli, tā tiek uzlabota (līdz Augstai). Atrastais līmenis tiek atcerēts nākamajai reizei.
+Grafika mainās uzreiz, bez pārlādes.
 Faktūras un debesu attēls — [Poly Haven](https://polyhaven.com) (CC0), mapē `assets/`.
 
 ### Zināmie ierobežojumi

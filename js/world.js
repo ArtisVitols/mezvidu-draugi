@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import { makeNoise2D, mulberry32 } from './noise.js?v=1.8.0';
-import { MUSHROOMS } from './data.js?v=1.8.0';
+import { makeNoise2D, mulberry32 } from './noise.js?v=1.9.0';
+import { MUSHROOMS } from './data.js?v=1.9.0';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mat, smoothstep, lerp, makeTextSprite, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.8.0';
-import { optimizeRig, flattenStatic } from './characters.js?v=1.8.0';
-import { ZONE_HALF, ZONES, DIRS, GROUND_Y, sqDist, clampSquare, buildBorderPosts } from './zones.js?v=1.8.0';
-import { findPlaces, placeHeight, inPlace, buildPlaces, updatePlaces, placeBerries } from './places.js?v=1.8.0';
+import { mat, smoothstep, lerp, makeTextSprite, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.9.0';
+import { optimizeRig, flattenStatic } from './characters.js?v=1.9.0';
+import { ZONE_HALF, ZONES, DIRS, GROUND_Y, sqDist, clampSquare, buildBorderPosts } from './zones.js?v=1.9.0';
+import { findPlaces, placeHeight, inPlace, buildPlaces, updatePlaces, placeBerries } from './places.js?v=1.9.0';
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
@@ -345,6 +345,11 @@ export class World {
     for (const t of this.terrainTiles) t.material = material;
   }
 
+  // atpakaļ uz vienkāršo (virsotņu krāsu) reljefu — zemākiem grafikas līmeņiem
+  useBaseTerrain() {
+    if (this.terrainBase) for (const t of this.terrainTiles) t.material = this.terrainBase;
+  }
+
   buildTerrain() {
     // reljefs sadalīts 8×8 flīzēs, lai neredzamās nezīmētu; normāles no kopējā augstumu režģa (bez šuvēm)
     const n = SEG + 1, H = this.heights;
@@ -372,6 +377,7 @@ export class World {
     detail.repeat.set(TW / 5.25, TW / 5.25);
     detail.anisotropy = 8;
     const material = new THREE.MeshStandardMaterial({ vertexColors: true, map: detail, roughness: 1, metalness: 0 });
+    this.terrainBase = material;
     this.terrainTiles = [];
     for (let tz = 0; tz < TILES; tz++) for (let tx = 0; tx < TILES; tx++) {
       const geo = new THREE.PlaneGeometry(TW, TW, TS, TS);
@@ -1138,11 +1144,13 @@ export class World {
   updateVisibility(x, z) {
     if (this.lodChunks) for (const ch of this.lodChunks.values()) {
       const d = Math.hypot(ch.cx - x, ch.cz - z);
-      const near = d < 100 || !ch.lo.length;
-      for (const m of ch.hi) m.visible = near && d < 400;
-      for (const m of ch.lo) m.visible = !near && d < 400;
+      const far = Math.min(400, (this.farCull || 450) + 40);
+      const near = d < (this.treeNear || 100) || !ch.lo.length;
+      for (const m of ch.hi) m.visible = near && d < far;
+      for (const m of ch.lo) m.visible = !near && d < far;
     }
-    if (this.distCull) for (const c of this.distCull) c.mesh.visible = Math.hypot(c.cx - x, c.cz - z) < c.max;
+    const ds = this.detailScale || 1;
+    if (this.distCull) for (const c of this.distCull) c.mesh.visible = Math.hypot(c.cx - x, c.cz - z) < c.max * ds;
   }
 
   // Instanču saraksts sadalīts apgabalos, katrs redzams tikai līdz attālumam max
@@ -1244,7 +1252,7 @@ export class World {
       gTex.colorSpace = THREE.SRGBColorSpace;
       gTex.magFilter = gTex.minFilter = THREE.LinearFilter; gTex.needsUpdate = true;
 
-      const COUNT = this.lowQ ? 4500 : 9000, TILE = this.lowQ ? 34 : 46;
+      const COUNT = 9000, TILE = 46; // blīvumu maina grafikas līmenis (grassMesh.count)
       const quads = [];
       for (let k = 0; k < 3; k++) {
         const q = new THREE.PlaneGeometry(0.75, 0.5); q.translate(0, 0.25, 0); q.rotateY(k * Math.PI / 3);
@@ -1288,6 +1296,8 @@ export class World {
       gm.customProgramCacheKey = () => 'grassfield' + COUNT;
       const gim = new THREE.InstancedMesh(tg, gm, COUNT);
       gim.frustumCulled = false;
+      gim.userData.full = COUNT;
+      this.grassMesh = gim;
       gim.layers.set(1);
       gim.receiveShadow = true;
       this.group.add(gim);
