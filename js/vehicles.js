@@ -2,19 +2,19 @@
 // un 🛷 sniega motocikls (tikai Ziemas zemē). Abi stāv stāvvietās; izkāpjot mašīna paliek, kur atstāta.
 // Vehicles — Game papildinājums: iekāpšana, braukšana pa jebkuru reljefu, slīpums, lēcieni, draugu transports.
 import * as THREE from 'three';
-import { mat, lerp, clamp, makeBlobShadow } from './util.js?v=1.14.0';
-import { optimizeRig, tyreGeo } from './characters.js?v=1.14.0';
-import { $, toast, sfx } from './ui.js?v=1.14.0';
-import { DIRS, openSides, neighbour, FARM, FOREST, RACE } from './zones.js?v=1.14.0';
-import { CAR_SPOT, FARM_CAR, WATER_Y } from './world.js?v=1.14.0';
-import { WINTER_CAR, SLED_SPOT } from './winter.js?v=1.14.0';
+import { mat, lerp, clamp, makeBlobShadow } from './util.js?v=1.15.0';
+import { optimizeRig, tyreGeo } from './characters.js?v=1.15.0';
+import { $, toast, sfx } from './ui.js?v=1.15.0';
+import { DIRS, openSides, neighbour, FARM, FOREST, RACE } from './zones.js?v=1.15.0';
+import { CAR_SPOT, FARM_CAR, WATER_Y } from './world.js?v=1.15.0';
+import { WINTER_CAR, SLED_SPOT } from './winter.js?v=1.15.0';
 
 // tīkla kods (pos ziņas 6. lauks): 1 = kartings, 2 = mašīna, 3 = sniega motocikls
 export const VEH_CODE = { car: 2, sled: 3 }; // 4 = pasažieris (p[8] — vadītāja id, p[9] — sēdvieta)
 export const RIDE_CODE = 4;
 const CODE_KIND = { 2: 'car', 3: 'sled' };
 const DEF = {
-  car: { name: 'mašīna', icon: '🚙', road: 19, off: 10, snowOff: 6.5, accel: 9, brake: 16, turn: 1.75, radius: 1.5, len: 1.05, wid: 0.86, cam: 9.5 },
+  car: { name: 'mašīna', icon: '🚙', road: 19, off: 10, snowOff: 6.5, accel: 9, brake: 16, turn: 1.7, radius: 1.75, len: 1.26, wid: 1.04, cam: 10.5 },
   sled: { name: 'sniega motocikls', icon: '🛷', road: 17, off: 20, snowOff: 20, accel: 11, brake: 14, turn: 2.1, radius: 1.1, len: 0.9, wid: 0.46, cam: 8 },
 };
 
@@ -41,68 +41,75 @@ function kit(parent) {
   return { P, B, tube };
 }
 
-// atvērts visurgājējs ar drošības loku (lai brauciējs labi redzams)
+// atvērts visurgājējs ar drošības loku (lai brauciēji labi redzami). Lielāks (×1,2) — 4 braucējiem un mājdzīvniekiem.
+// Virsmas nekur nesakrīt vienā plaknē (citādi krāsas „mirgo” — z-fighting).
+const CAR_S = 1.2;
 export function buildCar(color = '#3a7d44') {
-  const root = new THREE.Group(), body = new THREE.Group();
+  const root = new THREE.Group(), body = new THREE.Group(), shell = new THREE.Group();
   root.add(body);
+  body.add(shell);
+  shell.scale.setScalar(CAR_S);
   const paint = new THREE.MeshPhysicalMaterial({ color, roughness: 0.45, metalness: 0.1, clearcoat: 0.6, clearcoatRoughness: 0.2 });
-  const { P, B, tube } = kit(body);
+  const { P, B, tube } = kit(shell);
   const dark = darkM(), chrome = chromeM();
-  B(1.62, 0.5, 3.1, paint, 0, 0.8, 0);                 // kārba
-  B(1.5, 0.3, 1.05, paint, 0, 1.18, 1.0);              // motora pārsegs
-  B(1.68, 0.1, 3.16, dark, 0, 0.55, 0);                // slieksnis
+  B(1.62, 0.5, 3.1, paint, 0, 0.8, 0);                 // kārba (augša 1.05)
+  B(1.5, 0.3, 1.0, paint, 0, 1.19, 1.0);               // motora pārsegs (līdz z 1.5)
+  B(1.7, 0.1, 3.18, dark, 0, 0.52, 0);                 // slieksnis
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-    B(0.3, 0.1, 1.05, paint, sx * 0.9, 1.06, sz * 1.05); // spārni virs riteņiem
-    B(0.06, 0.28, 1.05, dark, sx * 0.84, 0.92, sz * 1.05);
+    B(0.32, 0.08, 1.08, paint, sx * 0.91, 1.09, sz * 1.05); // spārni virs riteņiem
+    B(0.05, 0.26, 1.04, dark, sx * 0.865, 0.93, sz * 1.05);
   }
-  B(1.24, 0.44, 0.06, dark, 0, 0.98, 1.56);            // reste
-  for (let i = -3; i <= 3; i++) B(0.04, 0.38, 0.03, chrome, i * 0.15, 0.98, 1.6);
+  B(1.24, 0.44, 0.05, dark, 0, 0.98, 1.57);            // reste
+  for (let i = -3; i <= 3; i++) B(0.04, 0.38, 0.05, chrome, i * 0.15, 0.98, 1.6);
   for (const sx of [-1, 1]) {
-    P(new THREE.CylinderGeometry(0.12, 0.12, 0.08, 16), lightM(), sx * 0.58, 1.08, 1.6, Math.PI / 2);
-    P(new THREE.TorusGeometry(0.125, 0.02, 6, 16), chrome, sx * 0.58, 1.08, 1.64);
-    B(0.12, 0.14, 0.04, tailM(), sx * 0.68, 0.92, -1.57);
+    P(new THREE.CylinderGeometry(0.12, 0.12, 0.08, 16), lightM(), sx * 0.6, 1.08, 1.6, Math.PI / 2);
+    P(new THREE.TorusGeometry(0.125, 0.02, 6, 16), chrome, sx * 0.6, 1.08, 1.645);
+    B(0.12, 0.14, 0.04, tailM(), sx * 0.68, 0.92, -1.58);
   }
-  B(1.84, 0.14, 0.18, dark, 0, 0.62, 1.64);            // buferi
-  B(1.84, 0.14, 0.18, dark, 0, 0.62, -1.62);
+  B(1.84, 0.14, 0.16, dark, 0, 0.64, 1.67);            // buferi
+  B(1.84, 0.14, 0.16, dark, 0, 0.64, -1.65);
   // vējstikls ar rāmi
-  const wy = 1.36, wz = 0.4;
-  B(1.48, 0.5, 0.03, glassM(), 0, wy, wz, -0.28);
-  B(1.56, 0.05, 0.06, dark, 0, wy + 0.26, wz - 0.07, -0.28);
-  for (const sx of [-1, 1]) B(0.05, 0.56, 0.06, dark, sx * 0.76, wy, wz, -0.28);
-  // sēdekļi, stūre, kravas kaste
+  const wy = 1.38, wz = 0.4;
+  B(1.46, 0.5, 0.025, glassM(), 0, wy, wz, -0.28);
+  B(1.56, 0.05, 0.07, dark, 0, wy + 0.27, wz - 0.07, -0.28);
+  for (const sx of [-1, 1]) B(0.05, 0.56, 0.07, dark, sx * 0.76, wy, wz, -0.28);
+  // sēdekļi (virs grīdas, nevis tajā pašā plaknē), stūre
   for (const sx of [-1, 1]) {
-    B(0.56, 0.14, 0.55, seatM(), sx * 0.38, 0.98, -0.25);
-    B(0.56, 0.6, 0.12, seatM(), sx * 0.38, 1.3, -0.56, -0.15);
+    B(0.56, 0.14, 0.55, seatM(), sx * 0.38, 1.1, -0.25);
+    B(0.56, 0.6, 0.12, seatM(), sx * 0.38, 1.42, -0.58, -0.15);
   }
-  tube([-0.38, 0.95, 0.5], [-0.38, 1.33, 0.18], 0.025, dark);
-  P(new THREE.TorusGeometry(0.17, 0.025, 8, 22), dark, -0.38, 1.36, 0.15, -1.0);
-  B(1.4, 0.14, 0.55, seatM(), 0, 0.98, -1.15);         // aizmugures sēdeklis diviem
-  B(1.4, 0.5, 0.1, seatM(), 0, 1.25, -1.46, -0.12);
+  tube([-0.38, 1.07, 0.5], [-0.38, 1.4, 0.18], 0.025, dark);
+  P(new THREE.TorusGeometry(0.17, 0.025, 8, 22), dark, -0.38, 1.43, 0.15, -1.0);
+  B(1.44, 0.14, 0.55, seatM(), 0, 1.1, -1.15);         // aizmugures sēdeklis
+  B(1.44, 0.5, 0.1, seatM(), 0, 1.38, -1.47, -0.12);
   // drošības loks un rezerves ritenis
-  tube([-0.74, 1.04, -0.8], [-0.74, 1.8, -0.8], 0.04, dark);
-  tube([0.74, 1.04, -0.8], [0.74, 1.8, -0.8], 0.04, dark);
-  tube([-0.74, 1.8, -0.8], [0.74, 1.8, -0.8], 0.04, dark);
-  tube([-0.74, 1.8, -0.8], [-0.74, 1.06, -1.5], 0.035, dark);
-  tube([0.74, 1.8, -0.8], [0.74, 1.06, -1.5], 0.035, dark);
-  const spare = P(tyreGeo(0.38, 0.26), rubberM(), 0, 1.05, -1.72, 0, Math.PI / 2, 0);
+  tube([-0.76, 1.06, -0.82], [-0.76, 1.86, -0.82], 0.04, dark);
+  tube([0.76, 1.06, -0.82], [0.76, 1.86, -0.82], 0.04, dark);
+  tube([-0.76, 1.86, -0.82], [0.76, 1.86, -0.82], 0.04, dark);
+  tube([-0.76, 1.86, -0.82], [-0.76, 1.08, -1.52], 0.035, dark);
+  tube([0.76, 1.86, -0.82], [0.76, 1.08, -1.52], 0.035, dark);
+  const spare = P(tyreGeo(0.38, 0.26), rubberM(), 0, 1.05, -1.78, 0, Math.PI / 2, 0);
   spare.rotation.set(0, Math.PI / 2, 0);
   // riteņi (priekšējie stūrējas)
   const wheels = [], steer = [];
-  for (const [x, z] of [[-0.86, 1.05], [0.86, 1.05], [-0.86, -1.05], [0.86, -1.05]]) {
-    const s = new THREE.Group(); s.position.set(x, 0.42, z); body.add(s);
-    const w = new THREE.Group(); s.add(w);
+  for (const [x, z] of [[-0.88, 1.05], [0.88, 1.05], [-0.88, -1.05], [0.88, -1.05]]) {
+    const st = new THREE.Group(); st.position.set(x, 0.42, z); shell.add(st);
+    const w = new THREE.Group(); st.add(w);
     P(tyreGeo(0.42, 0.32), rubberM(), 0, 0, 0, 0, 0, 0, w);
-    P(new THREE.CylinderGeometry(0.22, 0.22, 0.3, 14), chrome, 0, 0, 0, 0, 0, Math.PI / 2, w);
-    for (let k = 0; k < 4; k++) B(0.31, 0.05, 0.4, dark, 0, 0, 0, k / 4 * Math.PI, w);
+    P(new THREE.CylinderGeometry(0.22, 0.22, 0.27, 14), chrome, 0, 0, 0, 0, 0, Math.PI / 2, w);
+    for (let k = 0; k < 4; k++) B(0.34, 0.05, 0.4, dark, 0, 0, 0, k / 4 * Math.PI, w);
     wheels.push(w);
-    if (z > 0) steer.push(s);
+    if (z > 0) steer.push(st);
   }
-  // 4 sēdvietas: vadītājs, blakus sēdētājs, divi aizmugurē
-  const seats = [[-0.38, -0.25], [0.38, -0.25], [-0.38, -1.15], [0.38, -1.15]].map(([x, z]) => { const s = new THREE.Group(); s.position.set(x, 0.86, z); body.add(s); return s; });
+  // sēdvietas un mājdzīvnieku vietas — nemērogotā grupā (tēli paliek parastā lielumā)
+  const at = (x, y, z) => { const g = new THREE.Group(); g.position.set(x * CAR_S, y * CAR_S, z * CAR_S); body.add(g); return g; };
+  const lift = 1.17 * CAR_S - 1.05; // sēdekļa virsma (tēla sēdēšanas pozai kā iepriekš)
+  const seats = [[-0.38, -0.25], [0.38, -0.25], [-0.38, -1.15], [0.38, -1.15]].map(([x, z]) => { const g = at(x, 0, z); g.position.y = 0.86 + lift; return g; });
+  const petSpots = [at(0, 1.17, -1.12), at(0, 1.07, -0.3), at(-0.35, 1.34, 1.05), at(0.35, 1.34, 1.05)];
   body.traverse((o) => { if (o.isMesh) o.castShadow = true; });
-  optimizeRig(body);
-  const shadow = makeBlobShadow(3.8); shadow.position.y = 0.04; root.add(shadow);
-  return { kind: 'car', root, body, wheels, steer, seat: seats[0], seats, wheelR: 0.42 };
+  optimizeRig(shell);
+  const shadow = makeBlobShadow(4.6); shadow.position.y = 0.04; root.add(shadow);
+  return { kind: 'car', root, body, wheels, steer, seat: seats[0], seats, petSpots, wheelR: 0.42 * CAR_S };
 }
 
 // sniega motocikls: divas slēpes priekšā, kāpurķēde aizmugurē
@@ -138,7 +145,8 @@ export function buildSled(color = '#d8262a') {
   body.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   optimizeRig(body);
   const shadow = makeBlobShadow(2.8); shadow.position.y = 0.04; root.add(shadow);
-  return { kind: 'sled', root, body, wheels: [], steer: [], seat: seats[0], seats, wheelR: 1 };
+  const petSpots = [new THREE.Group()]; petSpots[0].position.set(0, 0.86, -1.32); body.add(petSpots[0]);
+  return { kind: 'sled', root, body, wheels: [], steer: [], seat: seats[0], seats, petSpots, wheelR: 1 };
 }
 
 const buildVeh = (kind, color) => (kind === 'car' ? buildCar(color) : buildSled(color));
@@ -244,7 +252,8 @@ export const Vehicles = {
     this.avatar.root.rotation.set(0, me.heading, 0);
     // izkāpj kreisajā pusē
     const h = v.heading, side = { x: Math.cos(h), z: -Math.sin(h) };
-    me.pos.x += side.x * 1.9; me.pos.z += side.z * 1.9;
+    const out = DEF[v.kind].radius + 0.6;
+    me.pos.x += side.x * out; me.pos.z += side.z * out;
     this.terr.collide(me.pos, 0.4);
     me.pos.y = this.terr.groundAt(me.pos.x, me.pos.z) + 0.3;
     me.heading = h;
@@ -379,7 +388,7 @@ export const Vehicles = {
     this.avatar.shadow.visible = true;
     // izkāpj blakus mašīnai (kreisās vietas — pa kreisi, labās — pa labi)
     const side = R.seat % 2 === 0 ? 1 : -1, h = me.heading;
-    me.pos.x += Math.cos(h) * 1.9 * side; me.pos.z -= Math.sin(h) * 1.9 * side;
+    me.pos.x += Math.cos(h) * 2.3 * side; me.pos.z -= Math.sin(h) * 2.3 * side;
     this.terr.collide(me.pos, 0.4);
     me.pos.y = this.terr.groundAt(me.pos.x, me.pos.z) + 0.3;
     this.avatar.root.position.copy(me.pos);

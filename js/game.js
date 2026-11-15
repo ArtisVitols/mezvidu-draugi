@@ -1,23 +1,23 @@
 import * as THREE from 'three';
-import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.14.0';
-import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.14.0';
-import { Controls } from './controls.js?v=1.14.0';
+import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.15.0';
+import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.15.0';
+import { Controls } from './controls.js?v=1.15.0';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS } from './data.js?v=1.14.0';
-import { writeSave } from './save.js?v=1.14.0';
-import { VERSION, BUILD_DATE } from './version.js?v=1.14.0';
-import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.14.0';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.14.0';
-import { Activities, makeTeam } from './activities.js?v=1.14.0';
-import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel } from './quality.js?v=1.14.0';
-import { hdrEnvironment } from './gfx.js?v=1.14.0';
-import { buildRod, buildDecor } from './props.js?v=1.14.0';
-import { InstanceField } from './instancing.js?v=1.14.0';
-import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.14.0';
-import { Vehicles } from './vehicles.js?v=1.14.0';
-import { Farm, fmtLeft } from './farm.js?v=1.14.0';
-import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.14.0';
-import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.14.0';
+import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS } from './data.js?v=1.15.0';
+import { writeSave } from './save.js?v=1.15.0';
+import { VERSION, BUILD_DATE } from './version.js?v=1.15.0';
+import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.15.0';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.15.0';
+import { Activities, makeTeam } from './activities.js?v=1.15.0';
+import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel } from './quality.js?v=1.15.0';
+import { hdrEnvironment } from './gfx.js?v=1.15.0';
+import { buildRod, buildDecor } from './props.js?v=1.15.0';
+import { InstanceField } from './instancing.js?v=1.15.0';
+import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.15.0';
+import { Vehicles } from './vehicles.js?v=1.15.0';
+import { Farm, fmtLeft } from './farm.js?v=1.15.0';
+import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.15.0';
+import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.15.0';
 
 const ANIM = ['idle', 'walk', 'run', 'jump', 'swim', 'sit', 'pet', 'wave', 'fish', 'ski', 'lift', 'throw'];
 const MUSH_RESPAWN = 120000;
@@ -75,7 +75,7 @@ export class Game {
     this.scene = new THREE.Group();
     this.stage.add(this.scene);
     this.zone = FOREST; // mežs tiek uzbūvēts pirmais (tā dati vajadzīgi visiem), tad pārejam uz saglabāto zemi
-    this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 450);
+    this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.2, 450); // near 0.2 — precīzāks dziļums (mazāk mirgošanas)
 
     // reālistiskas debesis + apkārtnes apgaismojums no tām
     this.sunDir = new THREE.Vector3().setFromSphericalCoords(1, THREE.MathUtils.degToRad(90 - 38), THREE.MathUtils.degToRad(140));
@@ -573,10 +573,10 @@ export class Game {
   findZoneAction() {
     const p = this.me.pos, t = this.now();
     if (this.zone === 'n') { const w = this.winterActions(); if (w) return w; }
-    if (this.pet && !(this.petCd > t) && Math.hypot(this.pet.x - p.x, this.pet.z - p.z) < 2.1) return { label: `🤗 Paglaudīt: ${PETS[this.pet.id].name}`, fn: () => this.petMyPet() };
     let best = null, bd = 1e9;
     const consider = (d, max, label, fn) => { if (d < max && d < bd) { bd = d; best = { label, fn }; } };
     const d2 = (x, z) => Math.hypot(x - p.x, z - p.z);
+    if (this.pet && !this.pet.inCar && !(this.petCd > t)) consider(d2(this.pet.x, this.pet.z) + 1.2, 2.6, `🤗 Paglaudīt: ${PETS[this.pet.id].name}`, () => this.petMyPet());
     if (this.zone === FARM) this.farmActions(consider, d2);
     if (this.zone === RACE) { const ks = this.raceW.kartSpot; consider(d2(ks.x, ks.z), 3.5, '🏎️ Sēsties kartā', () => this.enterKart()); }
     this.vehicleActions(consider, d2);

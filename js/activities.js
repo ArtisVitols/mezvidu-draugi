@@ -1,15 +1,15 @@
 // Jaunās nodarbes, pievienotas Game klasei: makšķerēšana, ogas, mājdzīvnieki, dārza rotājumi,
 // īpašās vietas ar dārgumu, ķeramais un paslēpes, nedēļas kopīgais mērķis.
 import * as THREE from 'three';
-import { WATER_Y, GARDEN_SLOTS, VILLAGE_Y } from './world.js?v=1.14.0';
-import { buildNPC } from './characters.js?v=1.14.0';
-import { InstanceField } from './instancing.js?v=1.14.0';
-import { berryTemplate, buildDecor, DECOR_SPOTS, buildRod, buildBobber } from './props.js?v=1.14.0';
-import { buildScroll } from './places.js?v=1.14.0';
-import { ZONE_IDS, FOREST } from './zones.js?v=1.14.0';
-import { FISH, ROD_PRICE, BERRIES, COOKED, PETS, DECOR, PLACES, MAP_PIECES, weekNumber, weeklyGoal, WEEKLY_REWARD } from './data.js?v=1.14.0';
-import { makeTextSprite, angleLerp } from './util.js?v=1.14.0';
-import { $, toast, showPanel, refreshPanel, closePanel, el, itemRow, sfx, fmtTime } from './ui.js?v=1.14.0';
+import { WATER_Y, GARDEN_SLOTS, VILLAGE_Y } from './world.js?v=1.15.0';
+import { buildNPC } from './characters.js?v=1.15.0';
+import { InstanceField } from './instancing.js?v=1.15.0';
+import { berryTemplate, buildDecor, DECOR_SPOTS, buildRod, buildBobber } from './props.js?v=1.15.0';
+import { buildScroll } from './places.js?v=1.15.0';
+import { ZONE_IDS, FOREST } from './zones.js?v=1.15.0';
+import { FISH, ROD_PRICE, BERRIES, COOKED, PETS, DECOR, PLACES, MAP_PIECES, weekNumber, weeklyGoal, WEEKLY_REWARD } from './data.js?v=1.15.0';
+import { makeTextSprite, angleLerp } from './util.js?v=1.15.0';
+import { $, toast, showPanel, refreshPanel, closePanel, el, itemRow, sfx, fmtTime } from './ui.js?v=1.15.0';
 
 const BERRY_RESPAWN = 150000;
 const MG_NAMES = { tag: '🏃 Ķeramais', hide: '🙈 Paslēpes' };
@@ -131,7 +131,7 @@ export const Activities = {
       consider(d2(ch.x, ch.z), 2.4, label, () => this.openChest());
     }
     // savs mājdzīvnieks
-    if (this.pet && !(this.petCd > t)) consider(d2(this.pet.x, this.pet.z) + 0.3, 1.8, `🤗 Paglaudīt: ${PETS[this.pet.id].name}`, () => this.petMyPet());
+    if (this.pet && !this.pet.inCar && !(this.petCd > t)) consider(d2(this.pet.x, this.pet.z) + 1.2, 2.6, `🤗 Paglaudīt: ${PETS[this.pet.id].name}`, () => this.petMyPet()); // citas darbības svarīgākas
     // makšķerēt pie ūdens
     if (this.save.rod && me.onGround && me.state !== 'swim') {
       const spot = this.fishSpot();
@@ -347,7 +347,7 @@ export const Activities = {
   },
 
   setPet(id, silent = false) {
-    if (this.pet) { this.stage.remove(this.pet.model.root); this.pet = null; }
+    if (this.pet) { this.pet.model.root.removeFromParent(); this.pet = null; }
     this.save.pet = id || null;
     if (id && PETS[id]) this.pet = this.makePet(id);
     if (!silent) this.sendProfile();
@@ -370,27 +370,72 @@ export const Activities = {
     pet.model.animate(dt, sp > 0.3, sp);
   },
 
+  // mašīna, kurā sēž saimnieks (r — draugs, null — es), un tā sēdvieta: [obj, seat] vai null
+  petVehicle(r) {
+    const me = this.me;
+    if (!r) {
+      if (me.veh) return [me.veh.obj, 0];
+      if (me.ride) { const d = this.remotes.get(me.ride.driver); return d && d.vehObj ? [d.vehObj, me.ride.seat] : null; }
+      return null;
+    }
+    if (r.vehObj && (r.vehCode === 2 || r.vehCode === 3)) return [r.vehObj, 0];
+    if (r.vehCode === 4) {
+      const d = r.rideDriver === this.myId ? null : this.remotes.get(r.rideDriver);
+      const car = r.rideDriver === this.myId ? me.veh && me.veh.obj : d && d.vehObj;
+      return car ? [car, r.rideSeat] : null;
+    }
+    return null;
+  },
+
+  // mājdzīvnieks ielec mašīnā (savā vietā) un brauc līdzi; izkāpjot atkal skrien blakus. true — ir mašīnā
+  petInVehicle(pet, veh, dt) {
+    const root = pet.model.root;
+    if (veh && veh[0].petSpots) {
+      const spots = veh[0].petSpots, spot = spots[veh[1] % spots.length];
+      if (root.parent !== spot) {
+        // lēciens no tagadējās vietas uz sēdekli
+        const wp = new THREE.Vector3();
+        root.getWorldPosition(wp);
+        spot.updateWorldMatrix(true, false);
+        pet.hopFrom = root.parent ? spot.worldToLocal(wp) : new THREE.Vector3();
+        if (pet.hopFrom.length() > 12) pet.hopFrom.set(0, 0, 0);
+        pet.hopT = 0;
+        spot.add(root);
+        root.rotation.set(0, 0, 0);
+      }
+      pet.hopT = Math.min(1, (pet.hopT || 0) + dt * 2.2);
+      const k = pet.hopT;
+      root.position.copy(pet.hopFrom).multiplyScalar(1 - k);
+      root.position.y += Math.sin(k * Math.PI) * 1.1;
+      pet.model.animate(dt, k < 1, k < 1 ? 4 : 0);
+      pet.inCar = true;
+      return true;
+    }
+    if (pet.inCar) { this.stage.add(pet.model.root); pet.inCar = false; pet.init = false; }
+    return false;
+  },
+
   updatePets(dt) {
     const me = this.me;
-    if (this.pet) {
+    if (this.pet && !this.petInVehicle(this.pet, this.petVehicle(null), dt)) {
       const h = me.inKart ? me.kart.heading : me.heading;
       this.movePet(this.pet, me.pos.x, me.pos.z, h, me.pos.y, dt);
     }
     for (const r of this.remotes.values()) {
       const want = r.prof.pet || null;
       if ((r.pet ? r.pet.id : null) !== want) {
-        if (r.pet) this.stage.remove(r.pet.model.root);
+        if (r.pet) r.pet.model.root.removeFromParent();
         r.pet = want && PETS[want] ? this.makePet(want) : null;
       }
       if (!r.pet) continue;
       const near = (r.zone || 'c') === this.zone && Math.abs(r.pos.x - me.pos.x) < 120 && Math.abs(r.pos.z - me.pos.z) < 120;
       r.pet.model.root.visible = near && !this.mgHidden(r.id);
-      if (near) this.movePet(r.pet, r.pos.x, r.pos.z, r.ry, r.pos.y, dt);
+      if (near && !this.petInVehicle(r.pet, this.petVehicle(r), dt)) this.movePet(r.pet, r.pos.x, r.pos.z, r.ry, r.pos.y, dt);
     }
   },
 
   petMyPet() {
-    this.petCd = this.now() + 8000;
+    this.petCd = this.now() + 180000; // paglaudīt var reizi 3 minūtēs (lai poga netraucē)
     this.me.petT = 1.2;
     this.me.heading = Math.atan2(this.pet.x - this.me.pos.x, this.pet.z - this.me.pos.z);
     this.spawnFloat('❤️', this.pet.model.root.position);

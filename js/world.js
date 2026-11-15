@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import { makeNoise2D, mulberry32 } from './noise.js?v=1.14.0';
-import { MUSHROOMS } from './data.js?v=1.14.0';
+import { makeNoise2D, mulberry32 } from './noise.js?v=1.15.0';
+import { MUSHROOMS } from './data.js?v=1.15.0';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mat, smoothstep, lerp, makeTextSprite, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.14.0';
-import { optimizeRig, flattenStatic } from './characters.js?v=1.14.0';
-import { ZONE_HALF, ZONES, DIRS, GROUND_Y, sqDist, clampSquare, buildBorderPosts, smoothRoad, RoadIndex, buildRoadMesh, ROAD_HW, FOREST, neighbour, openSides, buildTerrainFence, wood } from './zones.js?v=1.14.0';
-import { findPlaces, placeHeight, inPlace, buildPlaces, updatePlaces, placeBerries } from './places.js?v=1.14.0';
+import { mat, smoothstep, lerp, makeTextSprite, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.15.0';
+import { optimizeRig, flattenStatic } from './characters.js?v=1.15.0';
+import { ZONE_HALF, ZONES, DIRS, GROUND_Y, sqDist, clampSquare, buildBorderPosts, smoothRoad, RoadIndex, buildRoadMesh, ROAD_HW, FOREST, neighbour, openSides, buildTerrainFence, wood } from './zones.js?v=1.15.0';
+import { findPlaces, placeHeight, inPlace, buildPlaces, updatePlaces, placeBerries } from './places.js?v=1.15.0';
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
@@ -38,26 +38,40 @@ const TUN_WALL = 4.2, TUN_TOP = 7.8, TUN_H = 9.5, TUN_CUT = 12.6;
 // grants ceļi (katras robežas vidū — tur turpinās kaimiņu zemes ceļš)
 const ROADS = {
   forest: [[[-42, 4], [-130, -14], [-210, 10], [-260, 0], [-285, 0], [-318, 0], [-380, 0]]], // no ciemata uz rietumiem (sētu)
-  farm: [
-    [[0, -380], [0, -318], [0, -285], [0, -150], [0, 0], [0, 150], [0, 285], [0, 318], [0, 380]],
-    [[-380, 0], [-318, 0], [-285, 0], [-150, 0], [0, 0], [150, 0], [285, 0], [318, 0], [380, 0]],
-  ],
+  farm: null, // līkumoti ceļi — pēc roadNS / roadEW (zemāk)
   race: null, // pēc kartinga vietas (buildTrackCurve)
 };
 // mašīnas stāvvieta meža ciemata malā un sētas pagalmā
 export const CAR_SPOT = { x: 46, z: 40, heading: 0.9 };
-export const FARM_CAR = { x: 13, z: -13, heading: Math.PI };
+export const FARM_CAR = { x: -10, z: 6, heading: Math.PI / 2 };
 
-// ---------- sēta: 4 spēlētāju lauki (katrs savā ceturtdaļā starp ceļiem un meža joslu) ----------
+// ---------- sēta: 4 spēlētāju lauki (katrs savā ceturtdaļā starp līkumotajiem ceļiem un meža joslu) ----------
 export const PLOT_IN = 9, PLOT_OUT = 266, TILE = 2.5;
+// sētas ceļu līkumi: ziemeļu–dienvidu ceļš x = roadNS(z), rietumu–austrumu ceļš z = roadEW(x)
+// (centrā un robežu vidū 0 — tur ceļi satiekas ar kaimiņu zemju ceļiem)
+const SW = Math.PI / ZONE_HALF;
+export const roadNS = (z) => (Math.abs(z) >= ZONE_HALF ? 0 : 30 * Math.sin(SW * z) + 12 * Math.sin(2 * SW * z));
+export const roadEW = (x) => (Math.abs(x) >= ZONE_HALF ? 0 : -26 * Math.sin(SW * x) + 14 * Math.sin(2 * SW * x));
+{
+  const ns = [[0, -380], [0, -318]], ew = [[-380, 0], [-318, 0]];
+  for (let t = -300; t <= 300; t += 25) { ns.push([roadNS(t), t]); ew.push([t, roadEW(t)]); }
+  ns.push([0, 318], [0, 380]); ew.push([318, 0], [380, 0]);
+  ROADS.farm = [ns, ew];
+}
 export const plotSign = (slot) => [slot % 2 ? 1 : -1, slot < 2 ? -1 : 1];
-// katra lauka "mājas" vieta pie pagalma: zīme ar vārdu un rotājumi
-export const GARDEN_SLOTS = [0, 1, 2, 3].map((s) => { const [sx, sz] = plotSign(s); return { x: sx * 24, z: sz * 24 }; });
+// katra lauka "mājas" vieta pie pagalma (24 m no abiem ceļiem): zīme ar vārdu un rotājumi
+export const GARDEN_SLOTS = [0, 1, 2, 3].map((s) => {
+  const [sx, sz] = plotSign(s);
+  let x = sx * 24, z = sz * 24;
+  for (let k = 0; k < 4; k++) { x = roadNS(z) + sx * 24; z = roadEW(x) + sz * 24; }
+  return { x, z };
+});
 // kura lauka iekšpusē ir punkts (-1 — nevienā)
 export function plotOf(x, z) {
-  const ax = Math.abs(x), az = Math.abs(z);
-  if (ax < PLOT_IN || az < PLOT_IN || ax > PLOT_OUT || az > PLOT_OUT) return -1;
-  return (x > 0 ? 1 : 0) + (z > 0 ? 2 : 0);
+  if (Math.abs(x) > PLOT_OUT || Math.abs(z) > PLOT_OUT) return -1;
+  const u = x - roadNS(z), v = z - roadEW(x);
+  if (Math.abs(u) < PLOT_IN || Math.abs(v) < PLOT_IN) return -1;
+  return (u > 0 ? 1 : 0) + (v > 0 ? 2 : 0);
 }
 
 export const VENDORS = [
@@ -897,7 +911,7 @@ export class World {
         for (let k = 0; k < 5000 && got < n; k++) {
           const x = sx * (PLOT_IN + 6 + rnd() * (PLOT_OUT - PLOT_IN - 14)), z = sz * (PLOT_IN + 6 + rnd() * (PLOT_OUT - PLOT_IN - 14));
           const a = rnd(), b = rnd(), c = rnd();
-          if (Math.hypot(x - home.x, z - home.z) < 24 || this.roadDist(x, z).d < 7) continue;
+          if (plotOf(x, z) !== slot || Math.hypot(x - home.x, z - home.z) < 24 || this.roadDist(x, z).d < 7) continue;
           if (this.plotObjs.some((o) => Math.hypot(o.x - x, o.z - z) < 7)) continue;
           const kind = type === 'tree' ? trees[Math.floor(a * 4)] : type;
           const s = type === 'tree' ? 0.85 + b * 0.5 : type === 'rock' ? 0.5 + b * 0.9 : 0.8 + b * 0.6;
@@ -933,12 +947,14 @@ export class World {
       }
     };
     for (let slot = 0; slot < 4; slot++) {
-      const [sx, sz] = plotSign(slot);
+      const [sx, sz] = plotSign(slot), home = GARDEN_SLOTS[slot];
       const A = [], B = [];
-      for (let t = PLOT_IN; t <= PLOT_OUT - 6; t += 3) {
-        const gap = t > 17 && t < 31; // vārti pretī mājas vietai
-        A.push([sx * t, sz * PLOT_IN, gap]);
-        B.push([sx * PLOT_IN, sz * t, gap]);
+      for (let t = 0; t <= PLOT_OUT - 6; t += 3) {
+        // gar rietumu–austrumu ceļu un gar ziemeļu–dienvidu ceļu (seko līkumiem); vārti pretī mājas vietai
+        let x = sx * t, z = roadEW(x) + sz * PLOT_IN;
+        if ((x - roadNS(z)) * sx >= PLOT_IN) A.push([x, z, Math.abs(x - home.x) < 7]);
+        z = sz * t; x = roadNS(z) + sx * PLOT_IN;
+        if ((z - roadEW(x)) * sz >= PLOT_IN) B.push([x, z, Math.abs(z - home.z) < 7]);
       }
       line(A); line(B);
     }
@@ -953,7 +969,7 @@ export class World {
     this.group.add(rm);
     rails.forEach((g) => g.dispose());
     // ceļa rādītāji krustojumā
-    for (const [x, z, txt] of [[6, -17, '❄️ Ziemas zeme'], [17, 6, '🌲 Mežs · 🛒 tirgus'], [-17, -6, '🏁 Sacīkšu trase'], [-6, 17, '🏖️ Kāpas']]) {
+    for (const [x, z, txt] of [[roadNS(-19) + 6, -19, '❄️ Ziemas zeme'], [19, roadEW(19) + 6, '🌲 Mežs · 🛒 tirgus'], [-19, roadEW(-19) - 6, '🏁 Sacīkšu trase'], [roadNS(19) - 6, 19, '🏖️ Kāpas']]) {
       const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 2.6, 6), wood());
       pole.position.set(x, H(x, z) + 1.3, z); pole.castShadow = true;
       this.group.add(pole);
@@ -1157,6 +1173,25 @@ export class World {
         const kind = f > 0.12 ? (t < 0.5 ? 'egle' : t < 0.78 ? 'priede' : 'berzs') : (t < 0.55 ? 'berzs' : 'ozols');
         lists[kind].push({ x, y: h, z, s, ry: rnd() * 6.28, tilt: (rnd() - 0.5) * 0.06 });
         this.addCollider(x, z, { egle: 0.45, priede: 0.35, berzs: 0.3, ozols: 0.55 }[kind] * s);
+      }
+    }
+    // sētā gar ceļiem — bērzu un ozolu rindas ar krūmiem
+    if (this.mode === 'farm') {
+      const rr = mulberry32(this.seed + 515);
+      for (const l of this.roadLines) for (let i = 4; i < l.length - 4; i += 6 + Math.floor(rr() * 8)) {
+        const a = l[i - 1], b = l[i + 1];
+        let tx = b.x - a.x, tz = b.z - a.z; const tl = Math.hypot(tx, tz) || 1; tx /= tl; tz /= tl;
+        for (const side of [-1, 1]) {
+          const skip = rr() < 0.3, off = 6.2 + rr() * 1.2, t = rr(), s = 0.8 + rr() * 0.45, ry = rr() * 6.28;
+          if (skip) continue;
+          const x = l[i].x - tz * off * side, z = l[i].z + tx * off * side;
+          if (Math.hypot(x, z) < 34 || sqDist(x, z) > 262 || this.roadDist(x, z).d < 4.5 || GARDEN_SLOTS.some((g) => Math.hypot(g.x - x, g.z - z) < 13)) continue;
+          const h = this.getHeight(x, z);
+          if (t < 0.32) { lists.bush.push({ x, y: h, z, s: s + 0.1, ry }); continue; }
+          const kind = t < 0.78 ? 'berzs' : 'ozols';
+          lists[kind].push({ x, y: h, z, s, ry, tilt: (t - 0.5) * 0.08 });
+          this.addCollider(x, z, (kind === 'berzs' ? 0.3 : 0.55) * s);
+        }
       }
     }
     this.treeCount = lists.egle.length + lists.priede.length + lists.berzs.length + lists.ozols.length;
@@ -1552,7 +1587,7 @@ export class World {
       gTex.colorSpace = THREE.SRGBColorSpace;
       gTex.magFilter = gTex.minFilter = THREE.LinearFilter; gTex.needsUpdate = true;
 
-      const COUNT = 9000, TILE = 46; // blīvumu maina grafikas līmenis (grassMesh.count)
+      const COUNT = 26000, TILE = 84; // ~42 m ap spēlētāju; blīvumu maina grafikas līmenis (grassMesh.count)
       const quads = [];
       for (let k = 0; k < 3; k++) {
         const q = new THREE.PlaneGeometry(0.75, 0.5); q.translate(0, 0.25, 0); q.rotateY(k * Math.PI / 3);
@@ -1578,7 +1613,7 @@ export class World {
           float gh = texture2D(uHeightTex, tuv).r;
           vec4 gc = texture2D(uGroundTex, tuv);
           float gd = length(gp - uCenter) / ${(TILE / 2).toFixed(1)};
-          float gs = aOff.w * smoothstep(0.12, 0.45, gc.a) * (1.0 - smoothstep(0.6, 1.0, gd));
+          float gs = aOff.w * smoothstep(0.12, 0.45, gc.a) * (1.0 - smoothstep(0.45, 1.0, gd)); // tālumā stiebri pakāpeniski mazāki — neparādās pēkšņi
           float cs = cos(aOff.z), sn = sin(aOff.z);
           transformed.xz = mat2(cs, -sn, sn, cs) * transformed.xz;
           transformed *= vec3(gs, gs * (0.75 + 0.5 * gc.a), gs);

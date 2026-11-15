@@ -1,5 +1,12 @@
 # Izmaiņu žurnāls
 
+## 1.15.0 — 2026-11-15
+- 🌿 Zāle redzama daudz tālāk (~42 m ap tēlu, nevis ~23 m), un tālumā stiebri pakāpeniski samazinās — zāle vairs „neizaug” pēkšņi priekšā.
+- 🐾 Mājdzīvnieks ielec mašīnā (vai sniega motociklā) un brauc līdzi — arī tad, ja brauc līdzi draugam; izkāpjot atkal skrien blakus.
+- 🤗 Mājdzīvnieku var paglaudīt reizi 3 minūtēs, un citas darbības (art, sēt, lasīt…) vienmēr ir svarīgākas — poga vairs netraucē.
+- 🚙 Mašīna lielāka (×1,2) — ērti 4 braucējiem un mājdzīvniekiem; vairs nemirgo krāsas (salabotas sakrītošas virsmas, precīzāks dziļums).
+- 🛣️ Sētas ceļi līkumoti; lauku žogi seko ceļiem. Gar ceļiem bērzu un ozolu rindas ar krūmiem.
+
 ## 1.14.0 — 2026-11-15
 - 🗺️ Zemes pārkārtotas: **🏡 sēta centrā**, **🌲 Mežvidu mežs austrumos** (viss bijušais Mežvidu mežs ar ciemu, tirgu, sēnēm,
   ogām, dzīvniekiem, īpašajām vietām, zvaigznēm un dārgumu medībām), **🏁 sacīkšu trase rietumos**. Ziemas zeme un kāpas — kā bija.
