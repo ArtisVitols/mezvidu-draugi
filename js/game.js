@@ -1,22 +1,22 @@
 import * as THREE from 'three';
-import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotPos, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.12.0';
-import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.12.0';
-import { Controls } from './controls.js?v=1.12.0';
+import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotPos, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.13.0';
+import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.13.0';
+import { Controls } from './controls.js?v=1.13.0';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS } from './data.js?v=1.12.0';
-import { writeSave } from './save.js?v=1.12.0';
-import { VERSION, BUILD_DATE } from './version.js?v=1.12.0';
-import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.12.0';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.12.0';
-import { Activities, makeTeam } from './activities.js?v=1.12.0';
-import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel } from './quality.js?v=1.12.0';
-import { hdrEnvironment } from './gfx.js?v=1.12.0';
-import { buildRod, buildDecor } from './props.js?v=1.12.0';
-import { InstanceField } from './instancing.js?v=1.12.0';
-import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.12.0';
-import { Vehicles } from './vehicles.js?v=1.12.0';
-import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad } from './zones.js?v=1.12.0';
-import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.12.0';
+import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS } from './data.js?v=1.13.0';
+import { writeSave } from './save.js?v=1.13.0';
+import { VERSION, BUILD_DATE } from './version.js?v=1.13.0';
+import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.13.0';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.13.0';
+import { Activities, makeTeam } from './activities.js?v=1.13.0';
+import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel } from './quality.js?v=1.13.0';
+import { hdrEnvironment } from './gfx.js?v=1.13.0';
+import { buildRod, buildDecor } from './props.js?v=1.13.0';
+import { InstanceField } from './instancing.js?v=1.13.0';
+import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.13.0';
+import { Vehicles } from './vehicles.js?v=1.13.0';
+import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad } from './zones.js?v=1.13.0';
+import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.13.0';
 
 const ANIM = ['idle', 'walk', 'run', 'jump', 'swim', 'sit', 'pet', 'wave', 'fish', 'ski', 'lift', 'throw'];
 const MUSH_RESPAWN = 120000;
@@ -65,7 +65,7 @@ export class Game {
     const startQ = startLevel(this.qMode);
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, QUALITY[startQ].pr));
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer.setSize(window.innerWidth, window.innerHeight, false); // CSS izmēru nosaka style.css (100 %)
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 0.62;
@@ -192,8 +192,10 @@ export class Game {
   }
 
   onResize() {
-    const w = window.innerWidth, h = window.innerHeight;
-    this.renderer.setSize(w, h);
+    // izmērs no paša audekla (CSS 100 %): ar daļskaitļa ekrāna platumu malās nepaliek gaiša josla
+    const cv = this.renderer.domElement;
+    const w = cv.clientWidth || window.innerWidth, h = cv.clientHeight || window.innerHeight;
+    this.renderer.setSize(w, h, false);
     const pr = this.renderer.getPixelRatio();
     if (this.post) this.post.setSize();
     if (this.refl) this.refl.setSize(w * pr, h * pr);
@@ -496,6 +498,7 @@ export class Game {
     this.exitWarnT = Math.max(0, (this.exitWarnT || 0) - dt);
     const sign = $('zone-sign');
     if (this.zoneBusy) return;
+    if (this.me.ride) { sign.classList.add('hidden'); return; } // pasažieris brauc līdzi vadītājam (updateRide)
     const p = this.me.pos, H = ZONE_HALF;
     let near = null;
     for (const s of openSides(this.zone)) {
@@ -600,7 +603,7 @@ export class Game {
     press('btn-quests', () => this.openQuests());
     press('btn-menu', () => this.openMenu());
     press('btn-room', () => this.openRoom());
-    press('btn-exit-kart', () => (this.me.veh ? this.exitVehicle() : this.exitKart()));
+    press('btn-exit-kart', () => (this.me.ride ? this.leaveRide() : this.me.veh ? this.exitVehicle() : this.exitKart()));
     press('btn-race', () => { this.net.toHost({ t: 'raceReq' }); sfx('beep'); });
     press('btn-games', () => this.openGames());
     $('panel-close').addEventListener('click', () => closePanel());
@@ -872,8 +875,17 @@ export class Game {
           if (e[0] === this.myId) continue;
           const r = this.remotes.get(e[0]);
           if (!r) continue;
+          // ātrums no secīgām pozīcijām — braucošas mašīnas kustību prognozējam starp ziņām (gludi, bez raustīšanās)
+          const nowT = performance.now();
+          if (r.netT && nowT - r.netT > 30) {
+            const it = (nowT - r.netT) / 1000;
+            const vx = (e[1] - r.target.x) / it, vy = (e[2] - r.target.y) / it, vz = (e[3] - r.target.z) / it;
+            r.netVel = r.netVel || new THREE.Vector3();
+            if (Math.hypot(vx, vz) > 60) r.netVel.set(0, 0, 0); else r.netVel.lerp(new THREE.Vector3(vx, vy, vz), 0.6);
+          }
+          r.netT = nowT;
           r.target.set(e[1], e[2], e[3]);
-          r.tRy = e[4]; r.anim = ANIM[e[5]] || 'idle'; r.inKart = e[6] === 1; r.vehCode = e[6] | 0; r.progress = e[7] || 0;
+          r.tRy = e[4]; r.anim = ANIM[e[5]] || 'idle'; r.inKart = e[6] === 1; r.vehCode = e[6] | 0; r.rideDriver = e[9] == null ? -1 : e[9]; r.rideSeat = e[10] | 0; r.progress = e[7] || 0;
           const z = ZONE_IDS[e[8] || 0] || 'c';
           if (r.seen && r.zone !== z) {
             r.pos.copy(r.target);
@@ -984,6 +996,7 @@ export class Game {
     this.net.toHost({ t: 'prof', prof });
   }
 
+  remoteSpeed(id) { const r = this.remotes.get(id); return r && r.netVel ? Math.hypot(r.netVel.x, r.netVel.z) : 0; }
   kartColorHex(id) { return (KART_COLORS.find((k) => k.id === id) || KART_COLORS[0]).color; }
 
   // ======================= Galvenais cikls =======================
@@ -1013,6 +1026,7 @@ export class Game {
     for (let i = 0; i < steps; i++) {
       if (this.me.inKart) this.updateKart(dt / steps, mv);
       else if (this.me.veh) this.updateVehicle(dt / steps, mv);
+      else if (this.me.ride) { if (i === 0) this.updateRide(dt); }
       else if (this.me.lift) { if (i === 0) this.updateLift(dt); }
       else if (this.me.ski) this.updateSki(dt / steps, mv, jump && i === 0);
       else this.updateWalk(dt / steps, mv, jump && i === 0);
@@ -1057,7 +1071,7 @@ export class Game {
       const p = this.me.pos;
       const ry = this.me.inKart ? this.me.kart.heading : this.me.veh ? this.me.veh.heading : this.me.heading;
       const r2 = (v) => Math.round(v * 100) / 100;
-      this.net.toHost({ t: 'pos', p: [r2(p.x), r2(p.y), r2(p.z), r2(ry), ANIM.indexOf(this.me.state), this.me.inKart ? 1 : this.vehCode(), r2(this.me.progress || 0), ZONE_IDS.indexOf(this.zone)] });
+      this.net.toHost({ t: 'pos', p: [r2(p.x), r2(p.y), r2(p.z), r2(ry), ANIM.indexOf(this.me.state), this.me.inKart ? 1 : this.vehCode(), r2(this.me.progress || 0), ZONE_IDS.indexOf(this.zone), ...this.rideInfo()] });
     }
 
     this.timers.map -= dt;
@@ -1136,6 +1150,7 @@ export class Game {
     const me = this.me;
     if (me.inKart) return;
     if (me.veh) this.exitVehicle();
+    if (me.ride) this.leaveRide();
     const kart = buildKart(this.kartColorHex(this.save.kartColor));
     const s = spot || this.world.kartSpot;
     me.pos.set(s.x, this.world.getHeight(s.x, s.z), s.z);
@@ -1226,14 +1241,16 @@ export class Game {
 
   updateCamera(dt) {
     const me = this.me;
-    if (me.inKart || me.ski || me.veh) {
-      if (this.controls.camId === null && (me.inKart || (me.veh && Math.abs(me.veh.speed) > 1) || (me.ski && me.ski.v > 1.5))) {
-        const target = (me.inKart ? me.kart.heading : me.veh ? me.veh.heading : me.ski.heading) + Math.PI;
+    const riding = me.veh || me.ride;
+    if (me.inKart || me.ski || riding) {
+      const rideFast = me.veh ? Math.abs(me.veh.speed) > 1 : me.ride ? this.remoteSpeed(me.ride.driver) > 1 : false;
+      if (this.controls.camId === null && (me.inKart || rideFast || (me.ski && me.ski.v > 1.5))) {
+        const target = (me.inKart ? me.kart.heading : me.veh ? me.veh.heading : me.ride ? me.heading : me.ski.heading) + Math.PI;
         this.cam.yaw = angleLerp(this.cam.yaw, target, 1 - Math.exp(-dt * 3.5));
         this.cam.pitch = lerp(this.cam.pitch, 0.3, 1 - Math.exp(-dt * 2));
       }
     }
-    let dist = me.inKart ? Math.max(this.cam.dist, 8) : me.veh ? Math.max(this.cam.dist, 9.5) : this.cam.dist;
+    let dist = me.inKart ? Math.max(this.cam.dist, 8) : riding ? Math.max(this.cam.dist, 9.5) : this.cam.dist;
     const tx = me.pos.x, ty = me.pos.y + 1.5, tz = me.pos.z;
     const cp = Math.cos(this.cam.pitch);
     // ja starp kameru un tēlu ir kalns, pievelkam kameru tuvāk
@@ -1248,6 +1265,16 @@ export class Game {
     const gh = Math.max(this.terr.getHeight(cx, cz), WATER_Y) + 0.6;
     if (cy < gh) cy = gh;
     const k = 1 - Math.exp(-dt * 12);
+    if (riding && this.camInit) {
+      // braucot kamera nevelkas pakaļ ar mainīgu nobīdi (tas izskatās pēc raustīšanās) — tikai attālums mainās mīksti
+      this.camDistS = lerp(this.camDistS || dist, dist, 1 - Math.exp(-dt * 5));
+      const dd = this.camDistS;
+      cx = tx + ox * dd; cz = tz + oz * dd; cy = Math.max(ty + oy * dd, Math.max(this.terr.getHeight(cx, cz), WATER_Y) + 0.6);
+      this.camera.position.set(cx, cy, cz);
+      this.camera.lookAt(tx, ty, tz);
+      return;
+    }
+    this.camDistS = dist;
     if (!this.camInit) { this.camera.position.set(cx, cy, cz); this.camInit = true; }
     else this.camera.position.set(lerp(this.camera.position.x, cx, k), lerp(this.camera.position.y, cy, k), lerp(this.camera.position.z, cz, k));
     this.camera.lookAt(tx, ty, tz);
@@ -1268,7 +1295,13 @@ export class Game {
       const here = (r.zone || 'c') === this.zone; // citā zemē esošos rāda tikai kartē
       if (r.kart) r.kart.root.visible = here;
       const prev = r.pos.clone();
-      r.pos.lerp(r.target, k);
+      if (this.remoteMoving(r) && r.netVel) {
+        // prognozētā vieta: pēdējā zināmā + ātrums × laiks kopš ziņas
+        const age = Math.min(0.25, (performance.now() - r.netT) / 1000);
+        const pred = this._pred || (this._pred = new THREE.Vector3());
+        pred.copy(r.target).addScaledVector(r.netVel, age);
+        r.pos.lerp(pred, 1 - Math.exp(-dt * 9));
+      } else r.pos.lerp(r.target, k);
       if (r.pos.distanceTo(r.target) > 25) r.pos.copy(r.target);
       r.ry = angleLerp(r.ry, r.tRy, k);
       if (r.inKart && !r.kart && here) {
@@ -1450,7 +1483,7 @@ export class Game {
   }
 
   findAction() {
-    if (this.me.inKart || this.me.veh) return null;
+    if (this.me.inKart || this.me.veh || this.me.ride) return null;
     if (this.zone !== 'c') return this.findZoneAction();
     const p = this.me.pos, t = this.now();
     let best = null, bd = 1e9;

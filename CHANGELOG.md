@@ -1,5 +1,14 @@
 # Izmaiņu žurnāls
 
+## 1.13.0 — 2026-11-15
+- 👨‍👩‍👧‍👦 Mašīnā var braukt **4 spēlētāji**: vadītājs un trīs pasažieri (sniega motociklā — divi). Pieej pie drauga
+  mašīnas, kad tā stāv vai brauc lēni, un spied **„Braukt līdzi”**. Pasažieris brauc līdzi arī uz citām zemēm;
+  kad vadītājs izkāpj, izkāpj arī pasažieri. Mašīnai ir jauns aizmugures sēdeklis.
+- 🚙 Gludāka braukšana: mašīna vairs nelēkā augšā–lejā kalnā (augstums un slīpums no visiem četriem riteņiem,
+  mīksts „atsperojums”), kamera braucot neraustās, draugu mašīnas kustas gludi (kustība tiek prognozēta starp tīkla ziņām).
+  Atsitoties pret koku, var aizbraukt prom, nevis iestrēgt.
+- 📱 Ap ekrāna malām vairs nav gaišzilas joslas (spēles attēls aizpilda visu ekrānu, fons aiz tā tumšs).
+
 ## 1.12.0 — 2026-11-15
 - 🚙 **Mašīna** (atvērts visurgājējs): stāvvieta ciemata malā, katras blakus zemes centrā un pie Ziemas zemes laukuma.
   Pa grants ceļiem brauc ātri (~70 km/h), pa zāli/sniegu lēnāk, kalnā lēnāk, no kalna ātrāk; virsbūve seko reljefam,
