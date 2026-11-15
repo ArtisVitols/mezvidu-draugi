@@ -27,8 +27,8 @@ Static site: plain HTML + ES modules, no build step. Photo textures in `assets/`
 | `index.html` | All screens and HUD markup, importmap |
 | `css/style.css` | Mobile layout, safe areas |
 | `js/main.js` | Menu flow (name → character → room), character preview, launches `Game` |
-| `js/game.js` | `Game`: renderer/sky/lights, player movement, karts, race, shops, quests, host logic, net messages |
-| `js/world.js` | Procedural terrain (`WORLD_SEED`), water, track, village houses, trees, GPU grass field, rocks, flowers, reeds, clouds, mushroom/star/NPC spawn points |
+| `js/game.js` | `Game`: renderer/sky/lights, land loading (`switchZone`, `teleport`, `landWorld`), player movement, karts, race (in `raceW`), shops, quests, host logic, net messages |
+| `js/world.js` | `World(seed, zone)`: one generator for the three terrain lands — mode `forest` (zone `e`: village, water, places, mushrooms/stars/NPCs/berries), `farm` (zone `c`: gentle hills, 4 plots, forest belt, plot fences, clearable `plotObjs`), `race` (zone `w`: 1.6 km track `TRACK_PTS`/`TRACK_N` 800, `TUNNELS` with hill/roof/walls, `kartSpot`, `carSpot`). Shared: terrain, trees, GPU grass, rocks, flowers, reeds, clouds, roads, border posts, terrain fence on closed sides |
 | `js/characters.js` | Player animals (rigged, pose-blended animation), hats, NPC forest animals, kart, vendor carts, mushrooms, stars, crops; `optimizeRig` merges meshes per material |
 | `js/util.js` | Text sprites, cached materials, `natureMaterial` (wind shader), procedural canvas textures (leaves, needles, grass, fur, cloth, stone) |
 | `js/net.js` | PeerJS wrapper. Host is authoritative; peer ID prefix `mezvidu-draugi-lv-v1-` + 5-char room code |
@@ -37,8 +37,9 @@ Static site: plain HTML + ES modules, no build step. Photo textures in `assets/`
 | `js/places.js` | Special places (tower, camp, swamp, ruins, pier): deterministic site search before the height grid, terrain flattening (`placeHeight`), models, walkable platforms, berry bush spots |
 | `js/props.js` | Berry bushes (cloned templates), garden decorations + `DECOR_SPOTS`, fishing rod, bobber |
 | `js/activities.js` | `Activities` mixin on `Game.prototype`: fishing, berries, pets, decor, discovery, treasure, tag/hide-and-seek (host-run), weekly team goal |
-| `js/zones.js` | Lands: `ZONES` (c = Mežvidi + n/e/s/w), `ZONE_HALF` 315, open borders (`neighbour`, `openSides`, `clampSquare`, `buildBorderPosts`), `disposeTree`, dirt roads (`smoothRoad`, `RoadIndex`, `buildRoadMesh`, `plainRoads`), `PlainZone` (flat side land, built on enter and disposed on leave) |
+| `js/zones.js` | Lands: `ZONES` (c = farm `FARM`, e = forest `FOREST`, w = race `RACE`, n = winter, s = dunes; `world: true` = built by `World`), `ZONE_HALF` 315, open borders (`neighbour`, `openSides`, `clampSquare`, `buildBorderPosts`), `disposeTree`, dirt roads (`smoothRoad`, `RoadIndex`, `buildRoadMesh`, `plainRoads`), `PlainZone` (flat side land, built on enter and disposed on leave) |
 | `js/winter.js` | ❄️ North land: `WinterZone` (snow heightfield with ski hill, sparkle snow material + `snow_n` normal map, snowy spruces as `InstanceField`, chairlift with instanced moving chairs, plaza/Christmas tree, snowball arena, reindeer, GPU snowfall) and the `Winter` mixin (skiing physics, lift ride, snowballs incl. host relay, winter clothes on avatars) |
+| `js/farm.js` | `Farm` mixin: farm land (`buildFarm`/`loadFarm`/`unloadFarm`, `farmW`, `farmScene`), tile farming in own plot (`save.farm.t` keyed `"ix,iz"` → `{c, at, w}`, `at` = sow time in shared-clock seconds; `save.farm.cl` cleared object ids), actions (`farmActions`: chop/clear, plow, sow, water, harvest; friends can water via `water` msg with tile key), rendering per plot slot (soil mesh, instanced crop plants per crop+stage on a global grid so same-crop neighbours merge; gaps at different neighbours; grass holes via `farmW.setGrassHoles`), visiting (`goToPlot`) |
 | `js/vehicles.js` | `Vehicles` mixin: 🚙 car (`buildCar`, open jeep) and 🛷 snowmobile (`buildSled`, winter only). Parking `spots(zone)` (`CAR_SPOT` world.js, `WINTER_CAR`/`SLED_SPOT` winter.js, plain lands near centre), `placeParked()` after every zone switch, `me.veh` driving on any terrain (`terr.roadDist` → faster on roads, slope gravity, airtime), crossing borders by car (`vehicleZoneChanged`), own car stays parked (`myParked`). Net: `pos` p[5] = 1 kart, 2 car, 3 snowmobile, 4 passenger (p[8] driver id, p[9] seat → remote `rideDriver`/`rideSeat`); remotes `vehicleRemote()`. Passengers (`me.ride`, `joinRide`/`updateRide`/`leaveRide`): position copied from the driver remote, follow the driver into other lands via `travel`; seats `obj.seats` (car 4, sled 2), seat clashes resolved by lower id. Remote vehicles are extrapolated (`r.netVel`) for smooth motion; the camera is not position-lerped while riding. Models live on `stage` |
 | `js/quality.js` | Graphics levels (`QUALITY`), live `applyQuality`, automatic fps-based level switching (`autoQuality`) |
 | `js/instancing.js` | `InstanceField`: many identical objects (mushrooms, berry bushes) as chunked InstancedMeshes with per-item hide |
@@ -57,8 +58,13 @@ Static site: plain HTML + ES modules, no build step. Photo textures in `assets/`
   All drawn with `buildRoadMesh` (one transparent ribbon mesh, shared `roadMaterial()` — keep it when disposing a land).
   Beyond the border the terrain blends to flat `GROUND_Y` and into the neighbour land's look (`edgeBlend`, splat + colour),
   and `buildSkirt` adds flat ground to the horizon using the same terrain material (no extra textures). Red-white border posts mark the edge.
-- **Zones (lands):** `game.stage` is the real THREE.Scene; `game.scene` is a Group holding only Mežvidi (centre) content, so
-  `this.scene.add` = centre-only object. Shared things (sky, lights, my/remote avatars, pets, floating effects) go on `stage`.
+- **Land layout (1.14.0):** centre `c` = 🏡 farm (`game.farmW`, group `farmScene`), east `e` = 🌲 forest with village/market
+  (`game.world`, group `game.scene` — historically "centre", flag `centerOn`), west `w` = 🏁 race (`game.raceW`, `raceScene`, built
+  on first visit), north `n` winter, south `s` plain dunes. Forest only opens west, race only east (closed sides get a fence).
+  Each World land is unloaded with `freeGpu` when leaving and re-added on return. Coordinates in each land are local.
+  Plots: slot s → quadrant `plotSign(s)`, rect `PLOT_IN`..`PLOT_OUT`, tiles `TILE` 2.5 m, home spot `GARDEN_SLOTS[s]`.
+- **Zones (lands):** `game.stage` is the real THREE.Scene; `game.scene` is a Group holding only forest content, so
+  `this.scene.add` = forest-only object. Shared things (sky, lights, my/remote avatars, pets, floating effects) go on `stage`.
   Any border point with a neighbour (`neighbour()`/`openSides()`) can be crossed: a HUD sign appears within 18 m, crossing
   `CROSS_AT` m past the edge shows the loading screen (`travel` → `switchZone`).
   Leaving Mežvidi calls `unloadCenter()`: the group is removed from the stage and `freeGpu(game.scene)` frees all its GPU buffers
@@ -116,7 +122,7 @@ Static site: plain HTML + ES modules, no build step. Photo textures in `assets/`
 - Host-authoritative shared things: mushroom/berry picks (`pick`/`pickB`), weekly team goal (`teamAdd`, merged by max
   from each player's `save.weekly` on `hello`), mini-games (`mgStart`, `hostMgTick`). Unknown messages fall through to
   `hostActivity` / `onActivityMessage` in `activities.js`.
-- Mixins (`Activities`, `Quality`, `Winter`) share `Game.prototype` with instance fields: never give a method the same name as a
+- Mixins (`Activities`, `Quality`, `Winter`, `Vehicles`, `Farm`) share `Game.prototype` with instance fields: never give a method the same name as a
   `this.x = …` field (e.g. `this.pet` is the own-pet object, so animal petting is `petNpc`). `doAction` catches and toasts errors.
 - Skiing: avatar root follows the slope (`skiSlope` pitch/roll) and leans into turns; `av.skiPose` drives the `ski` pose (tuck, snowplough, air). Remote skiers too (`winterRemote`).
 - `ANIM` order in `game.js` is the network encoding of animation states; only append to it.

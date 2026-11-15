@@ -1,5 +1,21 @@
 # Izmaiņu žurnāls
 
+## 1.14.0 — 2026-11-15
+- 🗺️ Zemes pārkārtotas: **🏡 sēta centrā**, **🌲 Mežvidu mežs austrumos** (viss bijušais Mežvidu mežs ar ciemu, tirgu, sēnēm,
+  ogām, dzīvniekiem, īpašajām vietām, zvaigznēm un dārgumu medībām), **🏁 sacīkšu trase rietumos**. Ziemas zeme un kāpas — kā bija.
+  Visi sāk sētā (vecā dārza augi atdoti kā sēklas).
+- 🏡 **Sēta**: 4 lieli lauki (katram spēlētājam savs, ~260 × 260 m) ar pļavu, dažiem kokiem un akmeņiem, ap sētu meža josla,
+  krustojumā ceļa rādītāji uz visām zemēm. Pie katra lauka — zīme ar īpašnieka vārdu un dārza rotājumi.
+- 🌾 **Lauksaimniecība**: nocērt kokus (3 cirtieni), novāc akmeņus un krūmus (+🪙), uzar 2,5 m lauciņus (līdz 400),
+  sēj, aplaisti (aug 40 % ātrāk) un novāc ražu. Blakus lauciņi ar to pašu kultūru saaug vienā vienmērīgā laukā,
+  dažādām kultūrām starp tiem paliek sprauga. Jaunas kultūras: **auzas**, kvieši, kāposti, saulgriezes; augšanas laiki
+  no 1 minūtes līdz 1 stundai (ķirbis) — augi aug pēc pulksteņa arī tad, kad spēle aizvērta. Viena sēkla = viens lauciņš.
+- 👥 **Ciemos**: istabas panelī (👥) poga „Ciemos” aizved uz drauga sētu (arī no citas zemes), „Uz manu sētu” — mājās.
+  Draugu laukus var aplaistīt. Lielajā kartē redzams, kuram kurš lauks.
+- 🏎️ **Jauna, garāka trase** (~1,6 km) ar **diviem tuneļiem** cauri pakalniem (gaismas griestos, pa pakalnu var uzkāpt virs tuneļa),
+  sacīkstēs 2 apļi.
+- Ārējās zemju malās, kur aiz robežas nekā nav, — koka žogs.
+
 ## 1.13.0 — 2026-11-15
 - 👨‍👩‍👧‍👦 Mašīnā var braukt **4 spēlētāji**: vadītājs un trīs pasažieri (sniega motociklā — divi). Pieej pie drauga
   mašīnas, kad tā stāv vai brauc lēni, un spied **„Braukt līdzi”**. Pasažieris brauc līdzi arī uz citām zemēm;

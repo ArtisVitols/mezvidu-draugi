@@ -17,12 +17,19 @@ export const FUR_COLORS = ['#8b5a2b', '#e8742a', '#d9d2c5', '#9a9a9a', '#f2a7b5'
 export const SHIRT_COLORS = ['#d23b3b', '#2f6fd6', '#2fa84f', '#f2c12e', '#9b3bd2', '#f07b2a', '#ffffff', '#222222'];
 
 // Augi: augšanas laiks sekundēs
+// Lauka kultūras. grow — augšanas laiks sekundēs (pulkstenis iet arī tad, kad spēle aizvērta),
+// sp — attālums starp augiem (m; lauciņš ir 2,5 m, tāpēc sp dala 2,5 bez atlikuma — blakus lauciņi ar to pašu
+// kultūru veido vienu vienmērīgu lauku), yield — raža no viena lauciņa
 export const CROPS = {
-  burkans:   { name: 'Burkāns',   icon: '🥕', seedPrice: 5,  sell: 6,  yield: 2, grow: 60,  color: '#f07b1a' },
-  kartupelis:{ name: 'Kartupelis',icon: '🥔', seedPrice: 8,  sell: 7,  yield: 3, grow: 90,  color: '#c9a25e' },
-  tomats:    { name: 'Tomāts',    icon: '🍅', seedPrice: 12, sell: 10, yield: 3, grow: 120, color: '#e0302a' },
-  zemene:    { name: 'Zemene',    icon: '🍓', seedPrice: 15, sell: 9,  yield: 4, grow: 150, color: '#ff3355' },
-  kirbis:    { name: 'Ķirbis',    icon: '🎃', seedPrice: 25, sell: 65, yield: 1, grow: 240, color: '#f39a1e' },
+  burkans:   { name: 'Burkāns',    icon: '🥕', seedPrice: 5,  sell: 4,  yield: 4, grow: 60,   sp: 0.5,   color: '#f07b1a' },
+  auzas:     { name: 'Auzas',      icon: '🌾', seedPrice: 6,  sell: 3,  yield: 6, grow: 180,  sp: 0.4167, color: '#d9c27a' },
+  kartupelis:{ name: 'Kartupelis', icon: '🥔', seedPrice: 8,  sell: 5,  yield: 5, grow: 300,  sp: 0.625, color: '#c9a25e' },
+  kviesi:    { name: 'Kvieši',     icon: '🌾', seedPrice: 12, sell: 4,  yield: 9, grow: 600,  sp: 0.4167, color: '#e2b84a' },
+  tomats:    { name: 'Tomāts',     icon: '🍅', seedPrice: 14, sell: 8,  yield: 6, grow: 900,  sp: 0.833, color: '#e0302a' },
+  zemene:    { name: 'Zemene',     icon: '🍓', seedPrice: 18, sell: 7,  yield: 8, grow: 1200, sp: 0.5,   color: '#ff3355' },
+  kaposts:   { name: 'Kāposts',    icon: '🥬', seedPrice: 22, sell: 16, yield: 4, grow: 1800, sp: 0.833, color: '#8fc06a' },
+  saulgrieze:{ name: 'Saulgrieze', icon: '🌻', seedPrice: 30, sell: 12, yield: 6, grow: 2700, sp: 0.625, color: '#f2c12e' },
+  kirbis:    { name: 'Ķirbis',     icon: '🎃', seedPrice: 45, sell: 90, yield: 2, grow: 3600, sp: 1.25,  color: '#f39a1e' },
 };
 
 export const MUSHROOMS = {
@@ -52,15 +59,15 @@ export const ICE_CREAM_PRICE = 10;
 // Uzdevumi: stat - kuru statistiku skaita, need - cik vajag, reward - monētas
 export const QUESTS = [
   { id: 'q1', text: 'Salasi 5 ēdamas sēnes', stat: 'mushrooms', need: 5, reward: 20 },
-  { id: 'q2', text: 'Iestādi 3 dārzeņus', stat: 'planted', need: 3, reward: 15 },
-  { id: 'q3', text: 'Novāc 3 dārzeņus', stat: 'harvested', need: 3, reward: 25 },
+  { id: 'q2', text: 'Iesēj 3 lauciņus', stat: 'planted', need: 3, reward: 15 },
+  { id: 'q3', text: 'Novāc 3 lauciņu ražu', stat: 'harvested', need: 3, reward: 25 },
   { id: 'q4', text: 'Paglaudi 3 meža dzīvniekus', stat: 'petted', need: 3, reward: 15 },
   { id: 'q5', text: 'Atrodi 3 zelta zvaigznes', stat: 'stars', need: 3, reward: 30 },
   { id: 'q6', text: 'Nobrauc kartinga sacīkstes', stat: 'races', need: 1, reward: 30 },
   { id: 'q7', text: 'Pārdod kaut ko tirgū', stat: 'sold', need: 1, reward: 10 },
-  { id: 'q8', text: 'Aplaisti drauga dārzu', stat: 'watered', need: 1, reward: 15 },
+  { id: 'q8', text: 'Aplaisti drauga lauku', stat: 'watered', need: 1, reward: 15 },
   { id: 'q9', text: 'Salasi 25 ēdamas sēnes', stat: 'mushrooms', need: 25, reward: 80 },
-  { id: 'q10', text: 'Novāc 15 dārzeņus', stat: 'harvested', need: 15, reward: 100 },
+  { id: 'q10', text: 'Novāc 15 lauciņu ražu', stat: 'harvested', need: 15, reward: 100 },
   { id: 'q11', text: 'Atrodi visas 15 zvaigznes', stat: 'stars', need: 15, reward: 200 },
   { id: 'q12', text: 'Uzvari kartinga sacīkstēs', stat: 'wins', need: 1, reward: 60 },
   { id: 'q13', text: 'Noķer 5 zivis', stat: 'fish', need: 5, reward: 25 },
@@ -78,6 +85,9 @@ export const QUESTS = [
   { id: 'q25', text: 'Paglaudi ziemeļbriedi', stat: 'reindeer', need: 1, reward: 15 },
   { id: 'q26', text: 'Aizbrauc ar mašīnu uz citu zemi', stat: 'carTrips', need: 1, reward: 25 },
   { id: 'q27', text: 'Pabrauc ar sniega motociklu', stat: 'sledRides', need: 1, reward: 15 },
+  { id: 'q28', text: 'Notīri savu lauku: nocērt vai novāc 5 kokus/akmeņus', stat: 'cleared', need: 5, reward: 20 },
+  { id: 'q29', text: 'Uzar 12 lauciņus', stat: 'plowed', need: 12, reward: 25 },
+  { id: 'q30', text: 'Novāc 30 lauciņu ražu', stat: 'harvested', need: 30, reward: 120 },
 ];
 
 // ---------- Makšķerēšana ----------
@@ -155,4 +165,4 @@ export const NPC_TYPES = {
 
 export const EMOTES = ['Sveiki! 👋', 'Nāc šurp!', 'Paldies! 😊', 'Skrienam! 🏃', 'Ha-ha! 😄', '❤️'];
 
-export const RACE_LAPS = 3;
+export const RACE_LAPS = 2;

@@ -1,9 +1,10 @@
-// Zemes (kartes): centrā Mežvidi, katrā debespusē sava kvadrātveida zeme.
+// Zemes (kartes): centrā Mežvidu sēta (4 spēlētāju lauki), austrumos mežs ar ciematu un tirgu,
+// rietumos sacīkšu trase, ziemeļos ziemas zeme, dienvidos kāpas. Katrā debespusē sava kvadrātveida zeme.
 // Katrai zemei ir savas lokālās koordinātas (centrs 0,0); kopējā kartē zeme ir nobīdīta par ZONE_SIZE.
 // Uz kaimiņu zemi var aiziet pa jebkuru robežas vietu.
 import * as THREE from 'three';
-import { canvasTexture } from './util.js?v=1.13.0';
-import { loadTexture } from './gfx.js?v=1.13.0';
+import { canvasTexture } from './util.js?v=1.14.0';
+import { loadTexture } from './gfx.js?v=1.14.0';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 export const ZONE_HALF = 315;              // spēles laukuma puse (kvadrāts 630 × 630 m)
@@ -14,13 +15,15 @@ export const DIRS = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] };
 export const OPP = { n: 's', s: 'n', e: 'w', w: 'e' };
 export const GROUND_Y = 1;                 // līdzeno zemju augstums (arī Mežvidu malas pāriet uz to)
 
-// Zemju apraksti. Saturu (uzdevumus) definēsim vēlāk — pagaidām tikai līdzena zeme.
+export const FARM = 'c', FOREST = 'e', RACE = 'w'; // zemes, kas ir pilnas pasaules (World) ar reljefu
+
+// Zemju apraksti. ground — krāsa, kurā pāriet kaimiņu zemes mala; splat — foto slāņu svari [mežs, smiltis, zeme, akmens]
 export const ZONES = {
-  c: { name: 'Mežvidi', icon: '🌲', map: '#6fa848' },
-  n: { name: 'Ziemas zeme', icon: '❄️', map: '#e9eff5', ground: '#eef2f6', tex: 'meadow' },
-  e: { name: 'Austrumu lauki', icon: '🌻', map: '#c9b45a', ground: '#b49a52', tex: 'dirt' },
-  s: { name: 'Dienvidu kāpas', icon: '🏖️', map: '#e2cf94', ground: '#d8c48c', tex: 'sand' },
-  w: { name: 'Rietumu sils', icon: '🌲', map: '#4f7a44', ground: '#5d7044', tex: 'forest' },
+  c: { name: 'Mežvidu sēta', icon: '🏡', map: '#7fb24e', ground: '#5f8a34', splat: [0, 0, 0, 0], world: true },
+  n: { name: 'Ziemas zeme', icon: '❄️', map: '#e9eff5', ground: '#eef2f6', tex: 'meadow', splat: [0, 0, 0, 0] },
+  e: { name: 'Mežvidu mežs', icon: '🌲', map: '#4f7a44', ground: '#3a4f24', splat: [0.8, 0, 0, 0], world: true },
+  s: { name: 'Dienvidu kāpas', icon: '🏖️', map: '#e2cf94', ground: '#d8c48c', tex: 'sand', splat: [0, 1, 0, 0] },
+  w: { name: 'Sacīkšu trase', icon: '🏁', map: '#6f9a48', ground: '#577a36', splat: [0, 0, 0, 0], world: true },
 };
 
 export const zoneOffset = (id) => { const d = DIRS[id]; return d ? [d[0] * ZONE_SIZE, d[1] * ZONE_SIZE] : [0, 0]; };
@@ -148,20 +151,22 @@ export function smoothRoad(pts, step = 1.5) {
 
 // attālums līdz tuvākajam ceļam (ātrai pārbaudei — rupjš režģis ar līniju punktiem)
 export class RoadIndex {
-  constructor(lines) {
+  // cell — režģa šūna (m), reach — cik šūnu apkārt meklē (attālums precīzs līdz cell × reach)
+  constructor(lines, cell = 16, reach = 2) {
     this.lines = lines;
+    this.cell = cell; this.reach = reach;
     this.cells = new Map();
     for (const l of lines) for (const p of l) {
-      const k = Math.floor(p.x / 16) + ',' + Math.floor(p.z / 16);
+      const k = Math.floor(p.x / cell) + ',' + Math.floor(p.z / cell);
       if (!this.cells.has(k)) this.cells.set(k, []);
       this.cells.get(k).push(p);
     }
   }
-  // attālums (līdz 32 m; tālāk — 99) un tuvākais punkts
+  // attālums (līdz cell × reach; tālāk — 99) un tuvākais punkts
   near(x, z) {
-    const cx = Math.floor(x / 16), cz = Math.floor(z / 16);
+    const C = this.cell, R = this.reach, cx = Math.floor(x / C), cz = Math.floor(z / C);
     let best = 99 * 99, bp = null;
-    for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) {
+    for (let a = -R; a <= R; a++) for (let b = -R; b <= R; b++) {
       const l = this.cells.get((cx + a) + ',' + (cz + b));
       if (l) for (const p of l) { const d = (p.x - x) ** 2 + (p.z - z) ** 2; if (d < best) { best = d; bp = p; } }
     }
@@ -244,7 +249,45 @@ export function plainRoads(id) {
 }
 
 let woodM = null;
-const wood = () => woodM || (woodM = new THREE.MeshStandardMaterial({ color: '#7a5634', roughness: 0.9 }));
+export const wood = () => woodM || (woodM = new THREE.MeshStandardMaterial({ color: '#7a5634', roughness: 0.9 }));
+
+// koka žogs gar slēgtajām malām, kas seko reljefam (stabi — 1 izsaukums, margas — 1 izsaukums)
+export function buildTerrainFence(closed, heightFn, off = 0.5) {
+  const H = ZONE_HALF, posts = [], rails = [];
+  for (const s of closed) {
+    const [dx, dz] = DIRS[s];
+    const px = -dz, pz = dx, P = (l) => [dx * (H + off) + px * l, dz * (H + off) + pz * l];
+    let prev = null;
+    for (let l = -H - off; l <= H + off + 0.01; l += 4) {
+      const [x, z] = P(l), y = heightFn(x, z);
+      posts.push([x, y, z]);
+      if (prev) {
+        const ax = prev[0], ay = prev[1], az = prev[2], len = Math.hypot(x - ax, z - az), rise = y - ay;
+        for (const hy of [0.55, 1.05]) {
+          const g = new THREE.BoxGeometry(Math.hypot(len, rise) + 0.1, 0.12, 0.08);
+          g.rotateZ(Math.atan2(rise, len));
+          g.rotateY(Math.atan2(-(z - az), x - ax));
+          g.translate((x + ax) / 2, (y + ay) / 2 + hy, (z + az) / 2);
+          rails.push(g);
+        }
+      }
+      prev = [x, y, z];
+    }
+  }
+  const grp = new THREE.Group();
+  if (!posts.length) return grp;
+  const pg = new THREE.CylinderGeometry(0.07, 0.09, 1.5, 5).translate(0, 0.55, 0);
+  const im = new THREE.InstancedMesh(pg, wood(), posts.length);
+  const m4 = new THREE.Matrix4();
+  posts.forEach(([x, y, z], i) => { m4.makeTranslation(x, y, z); im.setMatrixAt(i, m4); });
+  im.castShadow = true;
+  grp.add(im);
+  const rm = new THREE.Mesh(mergeGeometries(rails), wood());
+  rm.castShadow = true;
+  grp.add(rm);
+  rails.forEach((g) => g.dispose());
+  return grp;
+}
 
 // ---------- līdzena blakus zeme ----------
 export class PlainZone {

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mat, makeBlobShadow, noiseTexture, lerp, canvasTexture } from './util.js?v=1.13.0';
+import { mat, makeBlobShadow, noiseTexture, lerp, canvasTexture } from './util.js?v=1.14.0';
 
 // kažoka/auduma materiāli ar smalku faktūru
 let furTex = null, clothTex = null;
@@ -1399,6 +1399,42 @@ export function buildCrop(crop, stage, color) {
         const cx = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.015, 6), stemM); cx.position.set(b.position.x, 0.09, b.position.z); g.add(cx);
       }
       break;
+    case 'auzas': case 'kviesi': { // graudaugi: stiebru kušķis; nobriedis — zeltaini stiebri ar skarām / vārpām
+      const oat = crop === 'auzas';
+      const bladeG = (h) => { const b = new THREE.PlaneGeometry(0.03, h, 1, 2); b.translate(0, h / 2, 0); const p = b.attributes.position; for (let i = 0; i < p.count; i++) { const y = p.getY(i); p.setX(i, p.getX(i) * (1 - y / h * 0.7)); p.setZ(i, (y / h) * (y / h) * 0.08); } return b; };
+      const hh = (big ? 0.85 : 0.5) * (oat ? 1 : 1.08);
+      const bc = big ? color : '#5f9a34';
+      for (let i = 0; i < 5; i++) {
+        const b = new THREE.Mesh(bladeG(hh * (0.75 + (i % 3) * 0.13)), leafM(i % 2 && big ? '#a8a050' : bc));
+        b.rotation.y = i / 5 * Math.PI * 2; b.position.set(Math.cos(i * 2.4) * 0.03, 0, Math.sin(i * 2.4) * 0.03); g.add(b);
+      }
+      if (big) for (let i = 0; i < 3; i++) {
+        const a = i * 2.1, x = Math.cos(a) * 0.05, z = Math.sin(a) * 0.05, y = hh * (0.92 + i * 0.05);
+        if (oat) for (let j = 0; j < 4; j++) { const sp2 = new THREE.Mesh(S(0.018, 5, 4), mat(color, { roughness: 0.8 })); sp2.scale.set(0.7, 1.4, 0.7); sp2.position.set(x + Math.cos(a + j) * 0.05, y - j * 0.05, z + Math.sin(a + j) * 0.05); g.add(sp2); }
+        else { const ear = new THREE.Mesh(new THREE.CapsuleGeometry(0.018, 0.09, 2, 5), mat(color, { roughness: 0.8 })); ear.position.set(x, y + 0.04, z); ear.rotation.z = 0.15; g.add(ear); }
+      }
+      break;
+    }
+    case 'kaposts': { // apaļa galviņa ar platām ārējām lapām
+      for (let i = 0; i < 7; i++) {
+        const a = i / 7 * Math.PI * 2;
+        const l = new THREE.Mesh(new THREE.CircleGeometry(0.13 * k, 9), leafM(i % 2 ? '#6fa04a' : '#7fb05a'));
+        l.position.set(Math.cos(a) * 0.1 * k, 0.08 * k, Math.sin(a) * 0.1 * k); l.rotation.set(-0.7, -a + Math.PI / 2, 0, 'YXZ'); g.add(l);
+      }
+      if (big) { const h = new THREE.Mesh(S(0.15, 14, 10), mat(color, { roughness: 0.6 })); h.position.y = 0.14; h.scale.y = 0.85; g.add(h); }
+      break;
+    }
+    case 'saulgrieze': { // augsts stublājs ar lapām un dzeltenu ziedu
+      const hh = big ? 1.6 : 0.8;
+      stem(0, 0, 0, hh, 0, 0.022);
+      for (let j = 0; j < 4; j++) leaf(0, hh * (0.25 + j * 0.17), 0, j * 2.2, -0.6, 1.3 * k, '#4a8a2e', OAK);
+      if (big) {
+        const head = new THREE.Group(); head.position.set(0, hh, 0.04); head.rotation.x = 0.5; g.add(head);
+        const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.04, 14), mat('#5a3a1a', { roughness: 0.9 })); disc.rotation.x = Math.PI / 2; head.add(disc);
+        for (let i = 0; i < 14; i++) { const pt = new THREE.Mesh(new THREE.CircleGeometry(0.05, 5), leafM(color)); const a = i / 14 * Math.PI * 2; pt.position.set(Math.cos(a) * 0.15, Math.sin(a) * 0.15, 0.01); pt.scale.set(0.5, 1, 1); pt.rotation.z = a - Math.PI / 2; head.add(pt); }
+      }
+      break;
+    }
     case 'kirbis': { // lielas apaļas lapas uz stīgām, rievots ķirbis
       for (let i = 0; i < 5; i++) {
         const a = i / 5 * Math.PI * 2 + 0.3, tip = stem(0, 0, Math.cos(a) * 0.3 * k, 0.18 * k, Math.sin(a) * 0.3 * k, 0.012);

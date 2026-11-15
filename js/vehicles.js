@@ -2,12 +2,12 @@
 // un 🛷 sniega motocikls (tikai Ziemas zemē). Abi stāv stāvvietās; izkāpjot mašīna paliek, kur atstāta.
 // Vehicles — Game papildinājums: iekāpšana, braukšana pa jebkuru reljefu, slīpums, lēcieni, draugu transports.
 import * as THREE from 'three';
-import { mat, lerp, clamp, makeBlobShadow } from './util.js?v=1.13.0';
-import { optimizeRig, tyreGeo } from './characters.js?v=1.13.0';
-import { $, toast, sfx } from './ui.js?v=1.13.0';
-import { DIRS, openSides, neighbour } from './zones.js?v=1.13.0';
-import { CAR_SPOT, WATER_Y } from './world.js?v=1.13.0';
-import { WINTER_CAR, SLED_SPOT } from './winter.js?v=1.13.0';
+import { mat, lerp, clamp, makeBlobShadow } from './util.js?v=1.14.0';
+import { optimizeRig, tyreGeo } from './characters.js?v=1.14.0';
+import { $, toast, sfx } from './ui.js?v=1.14.0';
+import { DIRS, openSides, neighbour, FARM, FOREST, RACE } from './zones.js?v=1.14.0';
+import { CAR_SPOT, FARM_CAR, WATER_Y } from './world.js?v=1.14.0';
+import { WINTER_CAR, SLED_SPOT } from './winter.js?v=1.14.0';
 
 // tīkla kods (pos ziņas 6. lauks): 1 = kartings, 2 = mašīna, 3 = sniega motocikls
 export const VEH_CODE = { car: 2, sled: 3 }; // 4 = pasažieris (p[8] — vadītāja id, p[9] — sēdvieta)
@@ -144,8 +144,10 @@ export function buildSled(color = '#d8262a') {
 const buildVeh = (kind, color) => (kind === 'car' ? buildCar(color) : buildSled(color));
 
 // kur katrā zemē stāv mašīna / sniega motocikls
-function spots(zone) {
-  if (zone === 'c') return [{ kind: 'car', ...CAR_SPOT }];
+function spots(zone, game) {
+  if (zone === FOREST) return [{ kind: 'car', ...CAR_SPOT }];
+  if (zone === FARM) return [{ kind: 'car', ...FARM_CAR }];
+  if (zone === RACE) return [{ kind: 'car', ...game.raceW.carSpot }];
   if (zone === 'n') return [{ kind: 'car', ...WINTER_CAR }, { kind: 'sled', ...SLED_SPOT }];
   const s = openSides(zone)[0], [dx, dz] = DIRS[s];
   return [{ kind: 'car', x: -dz * 7, z: dx * 7, heading: Math.atan2(dx, dz) }];
@@ -165,7 +167,7 @@ export const Vehicles = {
   // stāvvietas ar transportu šajā zemē (izsauc pēc zemes ielādes)
   placeParked() {
     this.parked = this.parked || {};
-    const list = spots(this.zone);
+    const list = spots(this.zone, this);
     for (const k of ['car', 'sled']) if (this.parked[k]) this.parked[k].obj.root.visible = false;
     for (const s of list) {
       const p = this.parked[s.kind] || (this.parked[s.kind] = { obj: buildVeh(s.kind, s.kind === 'car' ? '#3a7d44' : '#d8262a') });
@@ -260,7 +262,7 @@ export const Vehicles = {
     const road = T.roadDist ? T.roadDist(me.pos.x, me.pos.z) : 99;
     const onRoad = (road.d !== undefined ? road.d : road) < 4.2;
     const snow = this.zone === 'n';
-    const inWater = this.zone === 'c' && ground < WATER_Y - 0.4;
+    const inWater = !!(T.isWorld && T.water) && ground < WATER_Y - 0.4;
     let max = onRoad ? D.road : snow ? D.snowOff : D.off;
     if (inWater) max = 3;
     if (me.iceCream > 0) max *= 1.08;
@@ -290,7 +292,7 @@ export const Vehicles = {
       }
     }
     v.bumpT = (v.bumpT || 0) - dt;
-    if (this.zone === 'c') this.collideIce(me.pos, D.radius);
+    if (this.zone === FOREST) this.collideIce(me.pos, D.radius);
     // vertikāli: uz zemes mašīna vienkārši seko vidējam augstumam zem riteņiem (bez lēkāšanas);
     // sniega motocikls gaisā tikai tad, ja lielā ātrumā zeme aiz izciļņa krītas straujāk, nekā tas var krist
     const sl2 = slopeAt(H, me.pos.x, me.pos.z, v.heading, D.len, D.wid);

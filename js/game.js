@@ -1,22 +1,23 @@
 import * as THREE from 'three';
-import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotPos, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.13.0';
-import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.13.0';
-import { Controls } from './controls.js?v=1.13.0';
+import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.14.0';
+import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.14.0';
+import { Controls } from './controls.js?v=1.14.0';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS } from './data.js?v=1.13.0';
-import { writeSave } from './save.js?v=1.13.0';
-import { VERSION, BUILD_DATE } from './version.js?v=1.13.0';
-import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.13.0';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.13.0';
-import { Activities, makeTeam } from './activities.js?v=1.13.0';
-import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel } from './quality.js?v=1.13.0';
-import { hdrEnvironment } from './gfx.js?v=1.13.0';
-import { buildRod, buildDecor } from './props.js?v=1.13.0';
-import { InstanceField } from './instancing.js?v=1.13.0';
-import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.13.0';
-import { Vehicles } from './vehicles.js?v=1.13.0';
-import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad } from './zones.js?v=1.13.0';
-import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.13.0';
+import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS } from './data.js?v=1.14.0';
+import { writeSave } from './save.js?v=1.14.0';
+import { VERSION, BUILD_DATE } from './version.js?v=1.14.0';
+import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.14.0';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.14.0';
+import { Activities, makeTeam } from './activities.js?v=1.14.0';
+import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel } from './quality.js?v=1.14.0';
+import { hdrEnvironment } from './gfx.js?v=1.14.0';
+import { buildRod, buildDecor } from './props.js?v=1.14.0';
+import { InstanceField } from './instancing.js?v=1.14.0';
+import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.14.0';
+import { Vehicles } from './vehicles.js?v=1.14.0';
+import { Farm, fmtLeft } from './farm.js?v=1.14.0';
+import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.14.0';
+import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.14.0';
 
 const ANIM = ['idle', 'walk', 'run', 'jump', 'swim', 'sit', 'pet', 'wave', 'fish', 'ski', 'lift', 'throw'];
 const MUSH_RESPAWN = 120000;
@@ -73,7 +74,7 @@ export class Game {
     this.stage = new THREE.Scene();
     this.scene = new THREE.Group();
     this.stage.add(this.scene);
-    this.zone = 'c';
+    this.zone = FOREST; // mežs tiek uzbūvēts pirmais (tā dati vajadzīgi visiem), tad pārejam uz saglabāto zemi
     this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 450);
 
     // reālistiskas debesis + apkārtnes apgaismojums no tām
@@ -110,16 +111,21 @@ export class Game {
 
     this.camera.layers.enable(1);
     hdrEnvironment(this.renderer, this.sunDir, 1.0).then((env) => { this.stage.environment = env; }).catch((e) => console.warn(e));
-    this.buildCenter();
+    this.buildForest();
+    this.buildFarm();
+    this.raceW = new World(WORLD_SEED + 2000, RACE); // trases dati (aplis, tuneļi) — modeļi tiek uzbūvēti, pirmoreiz ierodoties
+    this.raceScene = new THREE.Group();
     this.applyQuality(startQ);
     this.buildMinimap();
 
     // mans tēls
-    const sz = ZONES[this.save.zone] ? this.save.zone : 'c';
-    const okPos = (p) => p && Math.max(Math.abs(p.x), Math.abs(p.z)) < PLAY_RADIUS - 5 && (sz !== 'c' || this.world.getHeight(p.x, p.z) > WATER_Y);
-    const sp = okPos(this.save.pos) ? this.save.pos : SPAWN;
+    let sz = ZONES[this.save.zone] ? this.save.zone : FARM;
+    const lw = this.landWorld(sz);
+    const okPos = (p) => p && Math.max(Math.abs(p.x), Math.abs(p.z)) < PLAY_RADIUS - 5 && (!lw || lw.getHeight(p.x, p.z) > WATER_Y);
+    let sp = okPos(this.save.pos) ? this.save.pos : null;
+    if (!sp) { sz = FARM; sp = SPAWN; }
     this.me = {
-      pos: new THREE.Vector3(sp.x, this.world.getHeight(sp.x, sp.z), sp.z),
+      pos: new THREE.Vector3(sp.x, 0, sp.z),
       vy: 0, heading: 0, onGround: true, state: 'idle', inKart: false,
       kart: null, boost: 0, dizzy: 0, iceCream: 0, waveT: 0, petT: 0, progress: 0,
     };
@@ -132,8 +138,7 @@ export class Game {
     this.initActivities();
 
     this.cam = { yaw: Math.PI * 0.25, pitch: 0.38, dist: 7.5 };
-    if (sz !== 'c') this.switchZone(sz, sp, null); // Mežvidi tiek izlādēti, ielādējas saglabātā zeme
-    else this.placeParked();
+    this.switchZone(sz, sp, null); // ielādējas saglabātā zeme (mežs tiek izlādēts, ja tā nav mežs)
     this.controls = new Controls($('touch'));
     this.bindHud();
     this.setupNet();
@@ -141,14 +146,36 @@ export class Game {
     this.onResize();
   }
 
-  // ---------- Mežvidi: uzbūvēšana, izlādēšana no GPU un atgriešanās ----------
-  // Visi Mežvidu objekti ir grupā this.scene. Aizejot uz citu zemi, grupa tiek izņemta no ainas un visa tās GPU atmiņa
+  // pilnā pasaule (World) zemei id vai null
+  landWorld(id) { return id === FOREST ? this.world : id === FARM ? this.farmW : id === RACE ? this.raceW : null; }
+  builtWorlds() { return [this.world, this.farmW, this.raceW && this.raceW.terrainTiles ? this.raceW : null].filter(Boolean); }
+
+  // ---------- trase (rietumu zeme): uzbūvē pirmoreiz ierodoties, pēc tam tikai izlādē/ielādē GPU ----------
+  loadRace() {
+    const W = this.raceW;
+    if (!W.terrainTiles) { W.build(this.raceScene, this.renderer); if (this.Q) this.applyWorldQuality(W); }
+    this.stage.add(this.raceScene);
+    this.raceOn = true;
+    this.terr = W;
+    this.timers.vis = 0;
+    return Promise.resolve();
+  }
+
+  unloadRace() {
+    if (!this.raceOn) return;
+    this.raceOn = false;
+    this.stage.remove(this.raceScene);
+    freeGpu(this.raceScene, [this.raceW.heightTex, this.raceW.groundTex]);
+  }
+
+  // ---------- Mežvidu mežs: uzbūvēšana, izlādēšana no GPU un atgriešanās ----------
+  // Visi meža objekti ir grupā this.scene. Aizejot uz citu zemi, grupa tiek izņemta no ainas un visa tās GPU atmiņa
   // (ģeometriju buferi, faktūras, arī lielā foto reljefa faktūra) atbrīvota. JS dati paliek, tāpēc atgriežoties
   // nekas nav jābūvē no jauna — three.js tikai augšupielādē datus GPU (ātri), nevis vairākas sekundes ģenerē pasauli.
-  buildCenter() {
+  buildForest() {
     this.scene = new THREE.Group();
     this.stage.add(this.scene);
-    const W = this.world = new World(WORLD_SEED);
+    const W = this.world = new World(WORLD_SEED, FOREST);
     W.build(this.scene, this.renderer);
     this.terr = W; // aktīvās zemes reljefs (kustībai, kamerai, mājdzīvniekiem)
     if (this.Q) this.applyWorldQuality(W);
@@ -156,13 +183,12 @@ export class Game {
     this.buildStars();
     this.buildNpcs();
     this.buildVendors();
-    this.buildGardens();
     this.bots = [];
     this.centerOn = true;
     return Promise.resolve();
   }
 
-  unloadCenter() {
+  unloadForest() {
     if (!this.centerOn) return;
     this.centerOn = false;
     if (this.fishing) this.stopFishing();
@@ -171,22 +197,17 @@ export class Game {
     freeGpu(this.scene, [W.heightTex, W.groundTex]);
   }
 
-  // atpakaļ uz Mežvidiem: grupa atpakaļ ainā; dārzi/rotājumi, kas mainījās prombūtnē, tiek uzzīmēti
-  reloadCenter() {
+  // atpakaļ uz mežu: grupa atpakaļ ainā
+  reloadForest() {
     this.stage.add(this.scene);
     this.centerOn = true;
     this.terr = this.world;
-    for (const [, prof] of this.profiles) {
-      this.setGardenSign(prof.slot, prof.name);
-      this.renderGarden(prof.slot, prof.garden);
-      this.renderDecor(prof.slot, prof.decor);
-    }
     this.timers.vis = 0; this.timers.cull = 0; this.timers.berry = 0;
     return Promise.resolve();
   }
 
   renderFrame() {
-    if (this.refl && this.refl.enabled && this.zone === 'c') this.refl.update(this.renderer, this.stage, this.camera, this.world.water, WATER_Y);
+    if (this.refl && this.refl.enabled && this.zone === FOREST) this.refl.update(this.renderer, this.stage, this.camera, this.world.water, WATER_Y);
     if (this.post && this.post.enabled) this.post.render(this.stage, this.camera);
     else this.renderer.render(this.stage, this.camera);
   }
@@ -275,114 +296,53 @@ export class Game {
     this.ice.pos = new THREE.Vector3();
   }
 
-  buildGardens() {
-    this.gardenCrops = [];
-    this.gardenKeys = [];
-    this.gardenSigns = [];
-    const soilG = new THREE.BoxGeometry(2.1, 0.16, 2.1);
-    const soilTex = canvasTexture(128, 128, (g, w, h) => {
-      g.fillStyle = '#7a6656'; g.fillRect(0, 0, w, h);
-      for (let i = 0; i < 2500; i++) { const l = 60 + Math.random() * 120; g.fillStyle = `rgba(${l},${l * 0.82 | 0},${l * 0.65 | 0},0.7)`; g.fillRect(Math.random() * w, Math.random() * h, 1 + Math.random() * 3, 1 + Math.random() * 2); }
-      for (let y = 0; y < h; y += 21) { g.fillStyle = 'rgba(25,15,8,0.35)'; g.fillRect(0, y, w, 5); g.fillStyle = 'rgba(255,230,200,0.08)'; g.fillRect(0, y + 8, w, 6); }
-    });
-    const soilM = new THREE.MeshStandardMaterial({ color: '#8a7058', map: soilTex, roughness: 1 });
-    const beds = new THREE.Group(); // visas 24 dobes — viens zīmēšanas izsaukums
-    GARDEN_SLOTS.forEach((s, slot) => {
-      this.gardenCrops[slot] = [];
-      this.gardenKeys[slot] = [];
-      for (let i = 0; i < 6; i++) {
-        const p = plotPos(slot, i);
-        const soil = new THREE.Mesh(soilG, soilM);
-        soil.receiveShadow = true;
-        soil.position.set(p.x, VILLAGE_Y + 0.05, p.z);
-        beds.add(soil);
-        this.gardenCrops[slot][i] = null;
-        this.gardenKeys[slot][i] = '';
-      }
-    });
-    this.scene.add(flattenStatic(beds));
-    GARDEN_SLOTS.forEach((s, slot) => this.setGardenSign(slot, null));
-  }
-
-  setGardenSign(slot, name) {
-    if (!this.centerOn) return; // uzzīmēs, atgriežoties Mežvidos
-    const s = GARDEN_SLOTS[slot];
-    this.gardenSignNames = this.gardenSignNames || [];
-    if (this.gardenSigns[slot] && this.gardenSignNames[slot] === name) return;
-    this.gardenSignNames[slot] = name;
-    if (this.gardenSigns[slot]) this.scene.remove(this.gardenSigns[slot]);
-    const sp = makeTextSprite(name ? `🌻 ${name} dārzs` : '🌾 Brīvs dārzs', { fontSize: 40, bg: name ? 'rgba(120,80,30,0.85)' : 'rgba(0,0,0,0.35)' });
-    sp.position.set(s.x + 3.6, VILLAGE_Y + 2.6, s.z);
-    this.scene.add(sp);
-    this.gardenSigns[slot] = sp;
-  }
-
-  renderGarden(slot, view) {
-    if (!this.centerOn) return;
-    for (let i = 0; i < 6; i++) {
-      const v = view && view[i];
-      const key = v ? v.c + v.s + (v.w ? 'w' : '') : '';
-      if (key === this.gardenKeys[slot][i]) continue;
-      this.gardenKeys[slot][i] = key;
-      if (this.gardenCrops[slot][i]) { this.scene.remove(this.gardenCrops[slot][i]); this.gardenCrops[slot][i] = null; }
-      if (v) {
-        const p = plotPos(slot, i);
-        const g = buildCrop(v.c, v.s, CROPS[v.c].color);
-        g.position.set(p.x, VILLAGE_Y + 0.13, p.z);
-        if (v.w) {
-          const wet = new THREE.Mesh(new THREE.CircleGeometry(0.8, 12), new THREE.MeshBasicMaterial({ color: '#3a2412', transparent: true, opacity: 0.5 }));
-          wet.rotation.x = -Math.PI / 2; wet.position.y = 0.01; g.add(wet);
-        }
-        this.scene.add(g);
-        this.gardenCrops[slot][i] = g;
-      }
-    }
-  }
-
-  // Mežvidu kartes pamatattēls; minikarte rāda apkārtni ap spēlētāju, pieskaroties — visu karti.
+  // Kartes pamatattēli zemēm ar reljefu (sēta, mežs, trase); minikarte rāda apkārtni ap spēlētāju, pieskaroties — visu karti.
   // Kopējās kartes koordinātas: lokālā pozīcija + zemes nobīde (zoneOffset), tā redzamas visas zemes kopā.
   buildMinimap() {
-    const MS = 420, R = PLAY_RADIUS + 10;
-    this.mapR = R; this.mapS = MS;
-    const c = document.createElement('canvas');
-    c.width = c.height = MS;
-    const g = c.getContext('2d');
-    const img = g.createImageData(MS, MS);
-    const W = this.world;
-    for (let py = 0; py < MS; py++) for (let px = 0; px < MS; px++) {
-      const x = -R + (px + 0.5) / MS * 2 * R, z = -R + (py + 0.5) / MS * 2 * R;
-      const h = W.getHeight(x, z);
-      let col;
-      if (h < WATER_Y) col = h < -1.5 ? [44, 110, 170] : [59, 143, 205];
-      else if (h < 0.9) col = [222, 205, 150];
-      else if (W.trackDist(x, z) < TRACK_WIDTH / 2) col = [90, 90, 96];
-      else if (W.roadDist(x, z).d < 2.5) col = [160, 130, 90];
-      else if (h > 18) col = [150, 148, 132];
-      else if (W.forest(x, z) > 0.12) col = [52, 100, 42];
-      else col = [111, 170, 72];
-      // vieglas ēnas pēc slīpuma
-      const sh = Math.max(-25, Math.min(25, (W.getHeight(x - 2, z - 2) - h) * 9));
-      col = col.map((v) => Math.max(0, Math.min(255, v + sh)));
-      if (Math.max(Math.abs(x), Math.abs(z)) > PLAY_RADIUS) col = [77, 90, 64]; // aiz robežas (to pārklāj kaimiņu zemes)
-      const k = (py * MS + px) * 4;
-      img.data[k] = col[0]; img.data[k + 1] = col[1]; img.data[k + 2] = col[2]; img.data[k + 3] = 255;
-    }
-    g.putImageData(img, 0, 0);
-    this.mapBase = c;
+    this.mapR = PLAY_RADIUS + 10;
+    this.mapBases = { [FOREST]: this.mapBase(this.world), [FARM]: this.mapBase(this.farmW), [RACE]: this.mapBase(this.raceW) };
     this.mapCtx = $('minimap').getContext('2d');
     $('minimap').addEventListener('click', () => this.openBigMap());
   }
 
+  mapBase(W) {
+    const MS = 360, R = ZONE_HALF;
+    const c = document.createElement('canvas');
+    c.width = c.height = MS;
+    const g = c.getContext('2d');
+    const img = g.createImageData(MS, MS);
+    const farm = W.mode === 'farm';
+    for (let py = 0; py < MS; py++) for (let px = 0; px < MS; px++) {
+      const x = -R + (px + 0.5) / MS * 2 * R, z = -R + (py + 0.5) / MS * 2 * R;
+      const h = W.getHeight(x, z);
+      let col;
+      const tun = W.trackIdx && W.inTunnel(x, z);
+      if (h < WATER_Y && !farm) col = h < -1.5 ? [44, 110, 170] : [59, 143, 205];
+      else if (h < 0.9 && !farm) col = [222, 205, 150];
+      else if (W.trackIdx && W.trackDist(x, z) < TRACK_WIDTH / 2) col = tun ? [60, 60, 66] : [90, 90, 96];
+      else if (tun) col = [92, 120, 70];
+      else if (W.roadDist(x, z).d < 2.5) col = [160, 130, 90];
+      else if (h > 18) col = [150, 148, 132];
+      else if (W.forest(x, z) > 0.12) col = [52, 100, 42];
+      else col = farm ? [128, 182, 82] : [111, 170, 72];
+      // vieglas ēnas pēc slīpuma
+      const sh = Math.max(-25, Math.min(25, (W.getHeight(x - 2, z - 2) - h) * 9));
+      col = col.map((v) => Math.max(0, Math.min(255, v + sh)));
+      const k = (py * MS + px) * 4;
+      img.data[k] = col[0]; img.data[k + 1] = col[1]; img.data[k + 2] = col[2]; img.data[k + 3] = 255;
+    }
+    g.putImageData(img, 0, 0);
+    return c;
+  }
+
   // visas zemes: Mežvidi no pamatattēla, blakus zemes — vienkrāsaini kvadrāti ar nosaukumu
   drawLands(g, toPx, labels) {
-    const R = this.mapR, H = ZONE_HALF;
-    const [a0, b0] = toPx(-R, -R), [a1, b1] = toPx(R, R);
-    g.drawImage(this.mapBase, a0, b0, a1 - a0, b1 - b0);
+    const H = ZONE_HALF;
     for (const id of ZONE_IDS) {
-      if (id === 'c') continue;
       const [ox, oz] = zoneOffset(id), Z = ZONES[id];
       const [x0, y0] = toPx(ox - H, oz - H), [x1, y1] = toPx(ox + H, oz + H);
-      if (id === 'n') g.drawImage(winterMap(), x0, y0, x1 - x0, y1 - y0); // ziemas zemei — īsta karte
+      if (this.mapBases[id]) g.drawImage(this.mapBases[id], x0, y0, x1 - x0, y1 - y0);
+      else if (id === 'n') g.drawImage(winterMap(), x0, y0, x1 - x0, y1 - y0); // ziemas zemei — īsta karte
       else {
         g.fillStyle = Z.map; g.fillRect(x0, y0, x1 - x0, y1 - y0);
         // grants ceļš
@@ -408,8 +368,10 @@ export class Game {
   // spēlētāja pozīcija kopējā kartē
   globalPos(zone, x, z) { const [ox, oz] = zoneOffset(zone || 'c'); return [x + ox, z + oz]; }
 
-  mapMarkers(g, toPx, big) {
+  mapMarkers(g, toPx0, big) {
     g.font = (big ? 16 : 11) + 'px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    const [fx, fz] = zoneOffset(FOREST), [rx, rz] = zoneOffset(RACE), [hx, hz] = zoneOffset(FARM);
+    const toPx = (x, z) => toPx0(x + fx, z + fz); // meža objekti
     for (const p of this.world.places) { const [px, py] = toPx(p.x, p.z); g.fillText(PLACES[p.id].icon, px, py); }
     const mg = this.mg;
     if (this.mgIn && this.mgIn()) {
@@ -424,17 +386,27 @@ export class Game {
       g.beginPath(); g.arc(px, py, big ? 3.5 : 2, 0, 6.3); g.fill();
     });
     g.font = (big ? 16 : 11) + 'px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-    const [vx, vy] = toPx(0, 0); g.fillText('🏡', vx, vy);
-    const [kx, ky] = toPx(this.world.kartSpot.x, this.world.kartSpot.z); g.fillText('🏎️', kx, ky);
+    const [vx, vy] = toPx(0, 0); g.fillText('🛒', vx, vy);
+    const [kx, ky] = toPx0(this.raceW.kartSpot.x + rx, this.raceW.kartSpot.z + rz); g.fillText('🏎️', kx, ky);
+    const [ux, uy] = toPx0(hx, hz); g.fillText('🏡', ux, uy);
+    if (big) {
+      // sētas lauku īpašnieki
+      g.font = 'bold 11px sans-serif'; g.fillStyle = '#fff';
+      for (const [, pr] of this.profiles) {
+        const [sx, sz] = plotSign(pr.slot), [px, py] = toPx0(hx + sx * 137, hz + sz * 137);
+        g.fillText(`🏡 ${pr.name}`, px, py);
+      }
+      g.font = '16px sans-serif';
+    }
     for (const [, r] of this.remotes) {
       if (!r.seen || (this.mgHidden && this.mgHidden(r.id))) continue;
-      const [px, py] = toPx(...this.globalPos(r.zone, r.pos.x, r.pos.z));
+      const [px, py] = toPx0(...this.globalPos(r.zone, r.pos.x, r.pos.z));
       g.fillStyle = PLAYER_DOT[(r.prof.slot || 0) % 4];
       g.beginPath(); g.arc(px, py, big ? 5 : 3.5, 0, 6.3); g.fill();
       g.strokeStyle = '#fff'; g.lineWidth = 1; g.stroke();
       if (big) { g.fillStyle = '#fff'; g.font = 'bold 11px sans-serif'; g.fillText(r.prof.name, px, py - 11); }
     }
-    const [mx, my] = toPx(...this.globalPos(this.zone, this.me.pos.x, this.me.pos.z));
+    const [mx, my] = toPx0(...this.globalPos(this.zone, this.me.pos.x, this.me.pos.z));
     const h = this.me.inKart ? this.me.kart.heading : this.me.heading;
     g.save();
     g.translate(mx, my);
@@ -484,7 +456,7 @@ export class Game {
         btn.textContent = this.bigMapAll ? `🔍 Tuvāk: ${Z.icon} ${Z.name}` : '🧭 Visas zemes';
         legend.textContent = this.bigMapAll
           ? `Tu esi: ${Z.icon} ${Z.name} · pār robežu var pāriet jebkurā vietā`
-          : (this.save.revealed ? '⭐ zvaigznes' : '⭐ — uzkāp 🗼 tornī') + ' · 🏡 ciemats · 🏎️ trase · ⛺🗼🐸🏰🎣 īpašās vietas';
+          : (this.save.revealed ? '⭐ zvaigznes' : '⭐ — uzkāp 🗼 tornī') + ' · 🏡 sēta · 🛒 tirgus · 🏎️ trase · ⛺🗼🐸🏰🎣 īpašās vietas';
       };
       btn.addEventListener('click', () => { this.bigMapAll = !this.bigMapAll; draw(); });
       b.append(btn, legend);
@@ -533,12 +505,25 @@ export class Game {
     const along = p.x * dx + p.z * dz;
     // ierodamies jaunās zemes pretējā malā tajā pašā vietā gar robežu
     const pos = { x: p.x - dx * along - dx * (ZONE_HALF - 6), z: p.z - dz * along - dz * (ZONE_HALF - 6) };
+    this.teleport(dest, pos, Math.atan2(dx, dz), true);
+  }
+
+  // ielādes ekrāns → cita zeme, konkrēta vieta (arī ciemošanās pie drauga sētā)
+  teleport(dest, pos, heading, busy = false) {
+    const Z = ZONES[dest];
+    if (!busy) {
+      this.zoneBusy = true;
+      $('zone-sign').classList.add('hidden');
+      $('load-name').textContent = `${Z.icon} ${Z.name}`;
+      $('zone-load').classList.add('on');
+    }
+    const scr = $('zone-load');
     const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
     const t0 = performance.now();
     (async () => {
       await new Promise((r) => setTimeout(r, 380)); // ekrāns paspēj aptumšoties
       let ready;
-      try { ready = this.switchZone(dest, pos, Math.atan2(dx, dz)); } catch (e) { console.error(e); }
+      try { ready = this.switchZone(dest, pos, heading); } catch (e) { console.error(e); }
       await Promise.race([ready, new Promise((r) => setTimeout(r, 8000))]);
       // pirmais kadrs jaunajā zemē (ēnotāju kompilēšana) vēl zem ielādes ekrāna
       this.updateCamera(0.016); this.renderFrame();
@@ -559,16 +544,20 @@ export class Game {
     if (this.fishing) this.stopFishing();
     if (prev !== id) {
       if (prev === 'n') this.leaveWinter();
-      if (prev === 'c') this.unloadCenter();
-      else if (this.terr && this.terr !== this.world) this.terr.dispose();
+      if (prev === FOREST) this.unloadForest();
+      else if (prev === FARM) this.unloadFarm();
+      else if (prev === RACE) this.unloadRace();
+      else if (this.terr && this.terr.dispose) this.terr.dispose();
       this.zone = id;
-      if (id === 'c') ready = this.reloadCenter();
+      if (id === FOREST) ready = this.reloadForest();
+      else if (id === FARM) ready = this.loadFarm();
+      else if (id === RACE) ready = this.loadRace();
       else {
         this.terr = id === 'n' ? new WinterZone(id, this.Q.photo) : new PlainZone(id, this.Q.photo);
         ready = this.terr.build(this.stage);
       }
       if (id === 'n') this.enterWinter();
-    }
+    } else if (id === FARM && !this.farmOn) ready = this.loadFarm();
     this.me.pos.set(pos.x, 0, pos.z);
     this.terr.collide(this.me.pos, 0.6); // neierodamies kokā vai mājā
     this.me.pos.y = this.terr.groundAt(this.me.pos.x, this.me.pos.z);
@@ -586,7 +575,11 @@ export class Game {
     if (this.zone === 'n') { const w = this.winterActions(); if (w) return w; }
     if (this.pet && !(this.petCd > t) && Math.hypot(this.pet.x - p.x, this.pet.z - p.z) < 2.1) return { label: `🤗 Paglaudīt: ${PETS[this.pet.id].name}`, fn: () => this.petMyPet() };
     let best = null, bd = 1e9;
-    this.vehicleActions((d, max, label, fn) => { if (d < max && d < bd) { bd = d; best = { label, fn }; } }, (x, z) => Math.hypot(x - p.x, z - p.z));
+    const consider = (d, max, label, fn) => { if (d < max && d < bd) { bd = d; best = { label, fn }; } };
+    const d2 = (x, z) => Math.hypot(x - p.x, z - p.z);
+    if (this.zone === FARM) this.farmActions(consider, d2);
+    if (this.zone === RACE) { const ks = this.raceW.kartSpot; consider(d2(ks.x, ks.z), 3.5, '🏎️ Sēsties kartā', () => this.enterKart()); }
+    this.vehicleActions(consider, d2);
     return best;
   }
 
@@ -667,7 +660,7 @@ export class Game {
   // ======================= Tīkls =======================
   myProf() {
     const s = this.save;
-    return { name: s.name, animal: s.animal, fur: s.fur, shirt: s.shirt, hat: s.hat, kartColor: s.kartColor, garden: this.gardenView(), pet: s.pet || null, decor: s.decor || [] };
+    return { name: s.name, animal: s.animal, fur: s.fur, shirt: s.shirt, hat: s.hat, kartColor: s.kartColor, farm: this.farmView(), pet: s.pet || null, decor: s.decor || [] };
   }
 
   setupNet() {
@@ -696,7 +689,7 @@ export class Game {
     this.saveHandler = () => this.persist();
     window.addEventListener('pagehide', this.saveHandler);
     document.addEventListener('visibilitychange', () => { if (document.hidden) this.persist(); });
-    toast(`Sveiks, ${this.save.name}! Ej uz mežu lasīt sēnes 🍄 vai uz dārzu stādīt 🌱`, 'good', 5000);
+    toast(`Sveiks, ${this.save.name}! Šī ir tava sēta 🏡 — uzar zemi un sēj. Mežs ar sēnēm un tirgu ir austrumos 🌲`, 'good', 6000);
   }
 
   persist() {
@@ -800,8 +793,8 @@ export class Game {
   }
 
   botTime(botIdx, gridSlot) {
-    const back = (6 + Math.floor(gridSlot / 2) * 5) * this.world.trackLen / TRACK_N;
-    return (RACE_LAPS * this.world.trackLen + back) / BOTS[botIdx].speed * 1000;
+    const back = (6 + Math.floor(gridSlot / 2) * 5) * this.raceW.trackLen / TRACK_N;
+    return (RACE_LAPS * this.raceW.trackLen + back) / BOTS[botIdx].speed * 1000;
   }
 
   hostTick() {
@@ -915,21 +908,7 @@ export class Game {
         break;
       }
       case 'emote': this.showEmote(m.id, m.text); break;
-      case 'water': {
-        if (m.owner === this.myId) {
-          const g = this.save.garden[m.plot];
-          if (g && !g.watered) {
-            g.watered = true;
-            const who = this.remotes.get(m.by);
-            if (m.by !== this.myId) toast(`💧 ${who ? who.prof.name : 'Draugs'} aplaistīja tavu dārzu! Augi augs ātrāk.`, 'good');
-            this.sendProfile();
-          }
-        }
-        if (m.by === this.myId && m.owner !== this.myId) this.stat('watered');
-        const owner = m.owner === this.myId ? this.mySlot : this.remotes.get(m.owner)?.prof.slot;
-        if (owner != null) { const p = plotPos(owner, m.plot); this.spawnFloat('💧', new THREE.Vector3(p.x, VILLAGE_Y, p.z)); }
-        break;
-      }
+      case 'water': this.onFarmWater(m); break;
       case 'race': this.onRace(m.race); break;
       case 'toast': toast(m.text); break;
       default: this.onActivityMessage(m);
@@ -939,9 +918,10 @@ export class Game {
   applyProfile(id, prof) {
     this.profiles.set(id, prof);
     if (id === this.myId) {
+      if (this.mySlot !== prof.slot) this.renderFarm(this.mySlot, null);
       this.mySlot = prof.slot;
       this.setGardenSign(prof.slot, prof.name);
-      this.renderGarden(prof.slot, prof.garden);
+      this.renderFarm(prof.slot, prof.farm || null);
       this.renderDecor(prof.slot, prof.decor);
       return;
     }
@@ -952,7 +932,7 @@ export class Game {
       this.remotes.set(id, r);
       this.updateRoomButton();
     } else if (r.prof.slot !== prof.slot) {
-      this.renderGarden(r.prof.slot, null);
+      this.renderFarm(r.prof.slot, null);
       this.renderDecor(r.prof.slot, null);
       this.setGardenSign(r.prof.slot, null);
     }
@@ -970,7 +950,7 @@ export class Game {
     if (r.kart && r.prof.kartColor !== prof.kartColor) r.kart.setColor(this.kartColorHex(prof.kartColor));
     r.prof = prof;
     this.setGardenSign(prof.slot, prof.name);
-    this.renderGarden(prof.slot, prof.garden);
+    this.renderFarm(prof.slot, prof.farm || null);
     this.renderDecor(prof.slot, prof.decor);
   }
 
@@ -978,10 +958,10 @@ export class Game {
     const r = this.remotes.get(id);
     if (!r) return;
     if (r.avatar.root.parent) r.avatar.root.parent.remove(r.avatar.root);
-    if (r.kart) this.scene.remove(r.kart.root);
+    if (r.kart) r.kart.root.removeFromParent();
     this.removeRemoteVehicle(r);
     if (r.pet) this.stage.remove(r.pet.model.root);
-    this.renderGarden(r.prof.slot, null);
+    this.renderFarm(r.prof.slot, null);
     this.renderDecor(r.prof.slot, null);
     this.setGardenSign(r.prof.slot, null);
     this.remotes.delete(id);
@@ -991,7 +971,6 @@ export class Game {
 
   sendProfile() {
     const prof = this.myProf();
-    this.lastGardenKey = JSON.stringify(prof.garden);
     this.applyProfile(this.myId, { ...prof, slot: this.mySlot });
     this.net.toHost({ t: 'prof', prof });
   }
@@ -1035,20 +1014,22 @@ export class Game {
     this.updateCamera(dt);
     this.updateSun(dt);
     this.updateRemotes(dt);
-    if (this.zone === 'c') {
+    const T = this.terr;
+    this.timers.vis = (this.timers.vis || 0) - dt;
+    if (this.timers.vis <= 0) { this.timers.vis = 0.3; T.updateVisibility(this.camera.position.x, this.camera.position.z); }
+    if (T.isWorld) {
+      T.updateClouds(dt, this.camera.position);
+      if (T.grassCenter) T.grassCenter.set(this.me.pos.x, this.me.pos.z);
+    }
+    if (this.zone === FOREST) {
       this.updateWorldObjects(dt, t);
       this.updateActivities(dt, t);
-      this.world.updateClouds(dt, this.camera.position);
-      this.timers.vis = (this.timers.vis || 0) - dt;
-      if (this.timers.vis <= 0) { this.timers.vis = 0.3; this.world.updateVisibility(this.camera.position.x, this.camera.position.z); }
-      if (this.world.grassCenter) this.world.grassCenter.set(this.me.pos.x, this.me.pos.z);
     } else {
       this.updatePets(dt);
       this.updateMg(dt, t);
-      if (this.terr.update) this.terr.update(dt, this);
+      if (!T.isWorld && T.update) T.update(dt, this);
       if (this.zone === 'n') this.updateWinter(dt);
-      this.timers.vis = (this.timers.vis || 0) - dt;
-      if (this.timers.vis <= 0) { this.timers.vis = 0.3; this.terr.updateVisibility(this.camera.position.x, this.camera.position.z); }
+      if (this.zone === FARM) this.updateFarm(dt);
     }
     this.updateRace(dt, t);
     this.updateEffects(dt);
@@ -1061,8 +1042,7 @@ export class Game {
     this.timers.garden -= dt;
     if (this.timers.garden <= 0) {
       this.timers.garden = 1;
-      const key = JSON.stringify(this.gardenView());
-      if (key !== this.lastGardenKey && this.myId >= 0) this.sendProfile();
+      if (this.farmDirty && this.myId >= 0) { this.farmDirty = false; this.sendProfile(); }
     }
 
     this.timers.send -= dt;
@@ -1108,7 +1088,7 @@ export class Game {
       me.heading = angleLerp(me.heading, Math.atan2(ux, uz), 1 - Math.exp(-dt * 14));
     }
     W.collide(me.pos, 0.4);
-    if (this.zone === 'c') this.collideIce(me.pos, 0.4);
+    if (this.zone === FOREST) this.collideIce(me.pos, 0.4);
     const ground = W.groundAt(me.pos.x, me.pos.z, me.pos.y);
     const deep = ground < WATER_Y - 0.9;
     if (deep && me.pos.y <= WATER_Y + 0.2) {
@@ -1152,11 +1132,11 @@ export class Game {
     if (me.veh) this.exitVehicle();
     if (me.ride) this.leaveRide();
     const kart = buildKart(this.kartColorHex(this.save.kartColor));
-    const s = spot || this.world.kartSpot;
-    me.pos.set(s.x, this.world.getHeight(s.x, s.z), s.z);
+    const s = spot || this.raceW.kartSpot;
+    me.pos.set(s.x, this.raceW.getHeight(s.x, s.z), s.z);
     me.kart = { obj: kart, speed: 0, heading: s.heading, hint: -1, boost: 0, padCd: 0 };
     me.inKart = true;
-    this.scene.add(kart.root);
+    this.stage.add(kart.root);
     this.stage.remove(this.avatar.root);
     kart.seat.add(this.avatar.root);
     this.avatar.root.position.set(0, 0, 0);
@@ -1174,12 +1154,13 @@ export class Game {
     if (!me.inKart) return;
     if (this.myRace) { this.net.toHost({ t: 'raceLeave' }); this.myRace = null; }
     const h = me.kart.heading;
-    this.scene.remove(me.kart.obj.root);
+    me.kart.obj.root.removeFromParent();
     me.kart.obj.seat.remove(this.avatar.root);
     this.stage.add(this.avatar.root);
     this.avatar.shadow.visible = true;
     me.pos.x += Math.cos(h) * 2; me.pos.z -= Math.sin(h) * 2;
-    me.pos.y = this.world.getHeight(me.pos.x, me.pos.z) + 0.5;
+    this.terr.collide(me.pos, 0.4);
+    me.pos.y = this.terr.getHeight(me.pos.x, me.pos.z) + 0.5;
     me.inKart = false; me.kart = null; me.state = 'idle'; me.progress = 0;
     $('btn-exit-kart').classList.add('hidden');
     $('btn-race').classList.add('hidden');
@@ -1188,7 +1169,7 @@ export class Game {
   }
 
   updateKart(dt, mv) {
-    const me = this.me, k = me.kart, W = this.world;
+    const me = this.me, k = me.kart, W = this.raceW;
     const info = W.nearestTrackIdx(me.pos.x, me.pos.z, k.hint);
     k.hint = info.idx;
     const onTrack = info.dist < TRACK_WIDTH / 2 + 1.2;
@@ -1217,7 +1198,6 @@ export class Game {
     me.pos.x += Math.sin(k.heading) * k.speed * dt;
     me.pos.z += Math.cos(k.heading) * k.speed * dt;
     if (W.collide(me.pos, 1.0)) k.speed *= 0.92;
-    this.collideIce(me.pos, 1.0);
     for (const p of W.boostPads) {
       if (k.padCd <= 0 && Math.hypot(p.x - me.pos.x, p.z - me.pos.z) < 2.4) {
         k.boost = 1.6; k.padCd = 1; sfx('boost');
@@ -1264,6 +1244,8 @@ export class Game {
     let cy = ty + Math.sin(this.cam.pitch) * dist;
     const gh = Math.max(this.terr.getHeight(cx, cz), WATER_Y) + 0.6;
     if (cy < gh) cy = gh;
+    // tunelī kamera paliek zem griestiem
+    if (this.terr.ceilingAt && ty < this.terr.ceilingAt(tx, tz)) cy = Math.min(cy, this.terr.ceilingAt(tx, tz), Math.max(gh, this.terr.ceilingAt(cx, cz)));
     const k = 1 - Math.exp(-dt * 12);
     if (riding && this.camInit) {
       // braucot kamera nevelkas pakaļ ar mainīgu nobīdi (tas izskatās pēc raustīšanās) — tikai attālums mainās mīksti
@@ -1306,13 +1288,13 @@ export class Game {
       r.ry = angleLerp(r.ry, r.tRy, k);
       if (r.inKart && !r.kart && here) {
         r.kart = buildKart(this.kartColorHex(r.prof.kartColor));
-        this.scene.add(r.kart.root);
+        this.stage.add(r.kart.root);
         if (r.avatar.root.parent) r.avatar.root.parent.remove(r.avatar.root);
         r.kart.seat.add(r.avatar.root);
         r.avatar.root.position.set(0, 0, 0); r.avatar.root.rotation.set(0, 0, 0);
         r.avatar.shadow.visible = false;
       } else if (!r.inKart && r.kart) {
-        this.scene.remove(r.kart.root);
+        r.kart.root.removeFromParent();
         r.kart.seat.remove(r.avatar.root);
         r.kart = null;
         this.stage.add(r.avatar.root);
@@ -1472,19 +1454,9 @@ export class Game {
     return Object.keys(CROPS).find((c) => inv[c + '_seed'] > 0) || null;
   }
 
-  cropStage(g) {
-    const dur = CROPS[g.crop].grow * 1000 * (g.watered ? 0.6 : 1);
-    const p = (Date.now() - g.plantedAt) / dur;
-    return { stage: p < 0.3 ? 0 : p < 1 ? 1 : 2, p: Math.min(1, p) };
-  }
-
-  gardenView() {
-    return this.save.garden.map((g) => g ? { c: g.crop, s: this.cropStage(g).stage, w: !!g.watered } : null);
-  }
-
   findAction() {
     if (this.me.inKart || this.me.veh || this.me.ride) return null;
-    if (this.zone !== 'c') return this.findZoneAction();
+    if (this.zone !== FOREST) return this.findZoneAction();
     const p = this.me.pos, t = this.now();
     let best = null, bd = 1e9;
     const consider = (d, max, label, fn) => { if (d < max && d < bd) { bd = d; best = { label, fn }; } };
@@ -1497,37 +1469,8 @@ export class Game {
       if (this.picked[m.id] > t) continue;
       consider(d2(m.x, m.z), 1.8, `🍄 Lasīt: ${MUSHROOMS[m.type].name}`, () => this.pickMushroom(m));
     }
-    if (Math.abs(p.x + 24) < 8 && Math.abs(p.z) < 28) {
-      for (let slot = 0; slot < 4; slot++) {
-        let owner = null, ownerId = null;
-        for (const [id, pr] of this.profiles) if (pr.slot === slot) { owner = pr; ownerId = id; }
-        for (let i = 0; i < 6; i++) {
-          const pp = plotPos(slot, i);
-          const d = d2(pp.x, pp.z);
-          if (d > 1.5) continue;
-          if (ownerId === this.myId) {
-            const g = this.save.garden[i];
-            if (!g) {
-              const seed = this.currentSeed();
-              if (seed) consider(d, 1.5, `🌱 Stādīt: ${CROPS[seed].name}`, () => this.plant(i, seed));
-              else consider(d, 1.5, '🌱 Vajag sēklas (Ūdrs Ojārs)', () => toast('Sēklas var nopirkt pie Ūdra Ojāra tirgū 🌱'));
-            } else {
-              const st = this.cropStage(g);
-              if (st.stage >= 2) consider(d, 1.5, `🧺 Novākt: ${CROPS[g.crop].name}`, () => this.harvest(i));
-              else if (!g.watered) consider(d, 1.5, '💧 Aplaistīt', () => this.waterOwn(i));
-              else consider(d, 1.5, `⏳ ${CROPS[g.crop].name} aug… ${Math.round(st.p * 100)}%`, () => toast('Pagaidi, augs vēl aug 🌱'));
-            }
-          } else if (owner) {
-            const v = owner.garden && owner.garden[i];
-            if (v && v.s < 2 && !v.w) consider(d, 1.5, `💧 Aplaistīt ${owner.name} dārzu`, () => { this.net.toHost({ t: 'water', owner: ownerId, plot: i }); sfx('plant'); });
-          } else consider(d, 1.5, '🌾 Šis dārzs ir brīvs', () => toast('Šo dārzu iegūs nākamais draugs, kas pievienosies'));
-        }
-      }
-    }
     for (const v of this.vendors) consider(d2(v.def.x, v.def.z), 3.4, `💬 ${v.def.name}`, () => this.openShop(v.def.id));
     consider(d2(this.ice.pos.x, this.ice.pos.z), 3.6, `🍦 Saldējums (${ICE_CREAM_PRICE}🪙)`, () => this.buyIceCream());
-    const ks = this.world.kartSpot;
-    consider(d2(ks.x, ks.z), 3.5, '🏎️ Sēsties kartā', () => this.enterKart());
     for (const n of this.npcs) {
       if (!n.model.root.visible) continue;
       const d = d2(n.x, n.z);
@@ -1544,40 +1487,6 @@ export class Game {
     this.mushField.setHidden(m.id, true);
     this.me.petT = 0.5;
     this.net.toHost({ t: 'pick', id: m.id });
-  }
-
-  plant(i, crop) {
-    this.save.inv[crop + '_seed']--;
-    this.save.garden[i] = { crop, plantedAt: Date.now(), watered: false };
-    this.stat('planted');
-    sfx('plant');
-    this.me.petT = 0.6;
-    toast(`🌱 Iestādīji: ${CROPS[crop].name}. Aplaisti, lai aug ātrāk!`);
-    this.sendProfile();
-  }
-
-  waterOwn(i) {
-    const g = this.save.garden[i];
-    if (!g) return;
-    g.watered = true;
-    sfx('plant');
-    this.me.petT = 0.6;
-    const p = plotPos(this.mySlot, i);
-    this.spawnFloat('💧', new THREE.Vector3(p.x, VILLAGE_Y, p.z));
-    this.sendProfile();
-  }
-
-  harvest(i) {
-    const g = this.save.garden[i];
-    const c = CROPS[g.crop];
-    this.addItem(g.crop, c.yield);
-    this.save.garden[i] = null;
-    this.stat('harvested');
-    sfx('pick');
-    this.me.petT = 0.6;
-    toast(`🧺 Novāci: ${c.icon} ${c.name} ×${c.yield}! Pārdod Āpsim Arnoldam.`, 'good');
-    this.spawnFloat(c.icon, this.me.pos);
-    this.sendProfile();
   }
 
   // meža dzīvnieka paglaudīšana (ne `pet` — tā sauc paša mājdzīvnieka objektu this.pet)
@@ -1640,10 +1549,10 @@ export class Game {
   }
 
   updateRace(dt, t) {
-    const r = this.race, mr = this.myRace, W = this.world;
+    const r = this.race, mr = this.myRace, W = this.raceW;
     const hud = $('race-hud'), cd = $('countdown'), rb = $('btn-race');
     // sacīkšu poga
-    if (this.me.inKart && !mr) {
+    if (this.me.inKart && !mr && this.zone === RACE) {
       const s0 = W.trackPts[0];
       const near = Math.hypot(this.me.pos.x - s0.x, this.me.pos.z - s0.z) < 70;
       if (near && (r.phase === 'none' || r.phase === 'done')) { rb.textContent = '🏁 Sākt sacīkstes'; rb.classList.remove('hidden'); }
@@ -1669,6 +1578,7 @@ export class Game {
       const slot = Math.max(0, r.racers.indexOf(this.myId));
       const g = W.gridSlot(slot);
       if (panelOpen()) closePanel();
+      if (this.zone !== RACE) { this.net.toHost({ t: 'raceLeave' }); this.myRace = null; return; }
       if (!this.me.inKart) this.enterKart(g);
       this.me.pos.set(g.x, W.getHeight(g.x, g.z), g.z);
       this.me.kart.heading = g.heading;
@@ -1741,9 +1651,9 @@ export class Game {
   }
 
   botDistance(b, gridSlot, t) {
-    const back = (6 + Math.floor(gridSlot / 2) * 5) * this.world.trackLen / TRACK_N;
+    const back = (6 + Math.floor(gridSlot / 2) * 5) * this.raceW.trackLen / TRACK_N;
     const el2 = Math.max(0, (t - this.race.startAt) / 1000);
-    const total = RACE_LAPS * this.world.trackLen + back;
+    const total = RACE_LAPS * this.raceW.trackLen + back;
     return Math.min(total, el2 * BOTS[b].speed) - back;
   }
 
@@ -1751,11 +1661,11 @@ export class Game {
     const d = this.botDistance(b, gridSlot, t);
     const fin = this.botTime(b, gridSlot);
     if (t - this.race.startAt >= fin) return RACE_LAPS + 1 - fin / 1e7;
-    return d / this.world.trackLen;
+    return d / this.raceW.trackLen;
   }
 
   updateBots(dt, t) {
-    if (!this.centerOn) return;
+    if (!this.raceOn) return;
     const r = this.race;
     if (!this.bots) this.bots = [];
     const active = (r.phase === 'run') ? (r.bots || 0) : 0;
@@ -1769,12 +1679,12 @@ export class Game {
         av.shadow.visible = false;
         const ns = makeTextSprite(BOTS[b].name, { bg: 'rgba(90,90,90,0.7)' });
         ns.position.y = 2.25; av.root.add(ns);
-        this.scene.add(kart.root);
+        this.raceScene.add(kart.root);
         bot = this.bots[b] = { kart, av };
       }
       bot.kart.root.visible = true;
       const slot = r.racers.length + b;
-      const W = this.world;
+      const W = this.raceW;
       let dist = this.botDistance(b, slot, t);
       const L = W.trackLen;
       let f = ((dist % L) + L) % L / L * TRACK_N;
@@ -1803,7 +1713,7 @@ export class Game {
 
   shopSeeds() {
     const build = (b) => {
-      b.append(el('p', {}, 'Sveiks! Man ir labākās sēklas visā Mežvidu ciemā — un makšķeres. Ūdri zina, kur ķeras! 🌱🎣'));
+      b.append(el('p', {}, 'Sveiks! Man ir labākās sēklas visā Mežvidu ciemā — un makšķeres. Viena sēkla apsēj vienu lauciņu tavā sētā. Dārgākās aug ilgāk, bet nes vairāk! 🌱🎣'));
       this.coinLine(b);
       this.rodRow(b, build);
       for (const [k, c] of Object.entries(CROPS)) {
@@ -1813,7 +1723,7 @@ export class Game {
           this.addCoins(-c.seedPrice * n, true); this.addItem(k + '_seed', n); sfx('coin');
           refreshPanel(build);
         };
-        b.append(itemRow(c.icon, `${c.name} — sēkla`, `${c.seedPrice}🪙 · aug ${c.grow / 60} min · raža ×${c.yield} · tev: ${have}`, [
+        b.append(itemRow(c.icon, `${c.name} — sēkla`, `${c.seedPrice}🪙 · aug ${fmtLeft(c.grow)} · raža ×${c.yield} no lauciņa (${c.yield * c.sell}🪙) · tev: ${have}`, [
           { label: 'Pirkt', onclick: buy(1), disabled: this.save.coins < c.seedPrice },
           { label: '×5', onclick: buy(5), disabled: this.save.coins < c.seedPrice * 5 },
         ]));
@@ -1989,14 +1899,17 @@ export class Game {
       const animalName = (a) => (ANIMALS.find((x) => x.id === a) || {}).name || a;
       const zn = (z) => ` · ${ZONES[z || 'c'].icon} ${ZONES[z || 'c'].name}`;
       b.append(itemRow('⭐', `${this.save.name} (tu)`, animalName(this.save.animal) + (this.net.isHost ? ' · saimnieks' : '') + zn(this.zone)));
-      for (const r of this.remotes.values()) b.append(itemRow('🙂', r.prof.name, animalName(r.prof.animal) + (r.id === 0 ? ' · saimnieks' : '') + zn(r.zone)));
+      for (const r of this.remotes.values()) b.append(itemRow('🙂', r.prof.name, animalName(r.prof.animal) + (r.id === 0 ? ' · saimnieks' : '') + zn(r.zone), [
+        { label: '🏡 Ciemos', onclick: () => { closePanel(); this.goToPlot(r.prof.slot); } },
+      ]));
+      b.append(el('button', { className: 'pbtn', style: 'margin-top:8px', onclick: () => { closePanel(); this.goToPlot(this.mySlot); } }, '🏡 Uz manu sētu'));
     });
   }
 
   openMenu() {
     showPanel('☰ Izvēlne', (b) => {
       b.append(el('div', { className: 'sect' }, 'Kā spēlēt'));
-      b.append(el('p', { html: '🕹️ <b>Kreisā puse</b> — velc pirkstu, lai staigātu.<br>👆 <b>Labā puse</b> — velc, lai grozītu kameru (2 pirksti — tuvināt).<br>⤒ — lēkt. Dzeltenā poga parādās, kad vari kaut ko darīt.<br>🍄 Mežā lasi sēnes (bet ne sarkanās mušmires!).<br>🌱 Ciemata dārzā stādi sēklas, aplaisti un novāc ražu.<br>🧺 Pārdod ražu tirgū un pērc cepures.<br>🏎️ Kartinga trase ir uz austrumiem — sēdies kartā un sacenties!<br>⭐ Kalnu virsotnēs paslēptas 15 zelta zvaigznes — no 🗼 skatu torņa tās redz kartē.<br>🎣 Nopērc makšķeri pie Ūdra Ojāra un makšķerē ezeros; kad pludiņš raustās — spied „VILKT!”.<br>🫐 Mežā lasi mellenes un avenes, purvā — dzērvenes.<br>⛺ Pie ugunskura var izcept sēnes (dārgāk pārdot).<br>🗺️ Atrodi 3 kartes gabalus (ugunskurs, tornis, purvs) un atver dārguma lādi 🏰 Pilsdrupās!<br>🐾 Suns Sprīdis pārdod mājdzīvniekus, Lapsa Liene — dārza rotājumus.<br>🎲 Ar draugiem spēlē ķeramo un paslēpes.<br>🤝 Katru nedēļu jauns kopīgais mērķis visiem draugiem.<br>🧭 Katras malas vidū taka ar vārtiem ved uz citu zemi — kartē redzamas visas zemes un draugi.' }));
+      b.append(el('p', { html: '🕹️ <b>Kreisā puse</b> — velc pirkstu, lai staigātu.<br>👆 <b>Labā puse</b> — velc, lai grozītu kameru (2 pirksti — tuvināt).<br>⤒ — lēkt. Dzeltenā poga parādās, kad vari kaut ko darīt.<br>🏡 Centrā ir sēta: katram draugam savs lauks. Nocērt kokus 🪓, novāc akmeņus ⛏️, uzar lauciņus, sēj, aplaisti 💧 un novāc ražu 🧺. Blakus lauciņi ar to pašu kultūru saaug vienā laukā. Augi aug arī tad, kad spēle aizvērta!<br>👥 Draugu sētās var aiziet ciemos (poga 👥 augšā) un aplaistīt viņu laukus.<br>🌲 Austrumos ir Mežvidu mežs: ciems ar tirgu, sēnes, ogas, dzīvnieki.<br>🍄 Mežā lasi sēnes (bet ne sarkanās mušmires!).<br>🧺 Pārdod ražu tirgū un pērc sēklas un cepures.<br>🏎️ Rietumos ir sacīkšu trase ar tuneļiem — sēdies kartā un sacenties!<br>⭐ Kalnu virsotnēs paslēptas 15 zelta zvaigznes — no 🗼 skatu torņa tās redz kartē.<br>🎣 Nopērc makšķeri pie Ūdra Ojāra un makšķerē ezeros; kad pludiņš raustās — spied „VILKT!”.<br>🫐 Mežā lasi mellenes un avenes, purvā — dzērvenes.<br>⛺ Pie ugunskura var izcept sēnes (dārgāk pārdot).<br>🗺️ Atrodi 3 kartes gabalus (ugunskurs, tornis, purvs) un atver dārguma lādi 🏰 Pilsdrupās!<br>🐾 Suns Sprīdis pārdod mājdzīvniekus, Lapsa Liene — dārza rotājumus.<br>🎲 Ar draugiem spēlē ķeramo un paslēpes.<br>🤝 Katru nedēļu jauns kopīgais mērķis visiem draugiem.<br>🧭 Katras malas vidū taka ar vārtiem ved uz citu zemi — kartē redzamas visas zemes un draugi.' }));
       b.append(el('div', { className: 'sect' }, 'Iestatījumi'));
       b.append(el('button', { className: 'pbtn', onclick: () => {
         try { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); } catch (e) { /* */ }
@@ -2026,5 +1939,5 @@ export class Game {
   }
 }
 
-Object.assign(Game.prototype, Activities, Quality, Winter, Vehicles);
+Object.assign(Game.prototype, Activities, Quality, Winter, Vehicles, Farm);
 Game.prototype.weeklyIcon = function () { return ({ mushrooms: '🍄', fish: '🐟', berries: '🫐', harvested: '🥕', petted: '🦌', races: '🏎️' })[this.team.stat] || ''; };

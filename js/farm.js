@@ -1,0 +1,451 @@
+// 🏡 Sēta (centra zeme): katram spēlētājam savs lauks (ceturtdaļa sētas starp ceļiem un meža joslu).
+// Savā laukā var nocirst kokus / novākt akmeņus, uzart 2,5 m lauciņus, iesēt, aplaistīt un novākt ražu.
+// Blakus lauciņi ar to pašu kultūru izskatās kā viens vienmērīgs lauks (augi vienā režģī),
+// dažādām kultūrām starp lauciņiem paliek neliela sprauga. Augšana iet pēc pulksteņa (arī tad, kad spēle aizvērta).
+// Farm — Game papildinājums (mixin).
+import * as THREE from 'three';
+import { World, GARDEN_SLOTS, PLOT_IN, PLOT_OUT, TILE, plotOf, plotSign, VILLAGE_Y } from './world.js?v=1.14.0';
+import { buildCrop, flattenStatic } from './characters.js?v=1.14.0';
+import { WORLD_SEED, CROPS, PETS } from './data.js?v=1.14.0';
+import { InstanceField } from './instancing.js?v=1.14.0';
+import { makeTextSprite, canvasTexture } from './util.js?v=1.14.0';
+import { $, toast, sfx, fmtTime } from './ui.js?v=1.14.0';
+import { ZONES, FARM, freeGpu } from './zones.js?v=1.14.0';
+
+const CROP_IDS = Object.keys(CROPS);
+const MAX_TILES = 400;
+const GRAINS = new Set(['auzas', 'kviesi']);
+const HITS = { tree: 3, rock: 2, bush: 1 };
+const OBJ_NAME = { ozols: 'ozolu', berzs: 'bērzu', egle: 'egli', priede: 'priedi', rock: 'akmeni', bush: 'krūmu' };
+const tkey = (ix, iz) => ix + ',' + iz;
+// deterministisks "nejaušais" skaitlis augu nobīdei (visiem vienāds)
+const hash = (a, b) => { const h = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return h - Math.floor(h); };
+
+export const Farm = {
+  // ---------- uzbūve / ielāde ----------
+  buildFarm() {
+    const W = this.farmW = new World(WORLD_SEED + 1000, FARM);
+    this.farmScene = new THREE.Group();
+    W.build(this.farmScene, this.renderer);
+    if (this.Q) this.applyWorldQuality(W);
+    // nocērtamie koki, akmeņi un krūmi laukos
+    const tpl = (kind) => {
+      const g = new THREE.Group();
+      const add = (geo, m, cast = true) => { const o = new THREE.Mesh(geo, m); o.castShadow = cast; o.receiveShadow = true; g.add(o); };
+      const t = W.treeTypes.find((x) => x[0] === kind);
+      if (t) { add(t[1], t[2]); add(t[3], t[4]); g.children.forEach((o) => { o.position.y = -0.15; }); }
+      else if (kind === 'bush') add(W.bushParts[0], W.bushParts[1], false);
+      else { add(W.rockParts[0], W.rockParts[1]); g.children[0].scale.set(1, 1, 0.9); }
+      return g;
+    };
+    this.plotField = new InstanceField(W.plotObjs.map((o) => ({ id: o.id, kind: o.kind, x: o.x, y: o.type === 'rock' ? o.y - o.s * 0.12 : o.y, z: o.z, ry: o.ry, s: o.s })), tpl, { chunk: 64, view: 230 });
+    this.plotField.build(this.farmScene);
+    this.objById = new Map(W.plotObjs.map((o) => [o.id, o]));
+    this.objHits = {};
+    // uzartā zeme: brūna, ar vagām (pasaules koordinātēs — blakus lauciņi saplūst)
+    const soilTex = canvasTexture(128, 128, (g, w, h) => {
+      g.fillStyle = '#6e5440'; g.fillRect(0, 0, w, h);
+      for (let i = 0; i < 2600; i++) { const l = 60 + Math.random() * 110; g.fillStyle = `rgba(${l},${l * 0.8 | 0},${l * 0.6 | 0},0.6)`; g.fillRect(Math.random() * w, Math.random() * h, 1 + Math.random() * 3, 1 + Math.random() * 2); }
+      for (let y = 0; y < h; y += 16) { g.fillStyle = 'rgba(30,18,8,0.4)'; g.fillRect(0, y, w, 4); g.fillStyle = 'rgba(255,225,190,0.08)'; g.fillRect(0, y + 7, w, 5); }
+    });
+    soilTex.wrapS = soilTex.wrapT = THREE.RepeatWrapping;
+    this.soilMat = new THREE.MeshStandardMaterial({ map: soilTex, vertexColors: true, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 });
+    // izvēlētā lauciņa rāmis
+    const hl = new THREE.LineLoop(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(8 * 3), 3)), new THREE.LineBasicMaterial({ color: '#ffe14a' }));
+    hl.visible = false; hl.frustumCulled = false;
+    this.farmScene.add(hl);
+    this.tileHL = hl;
+    this.farmViews = [null, null, null, null];
+    this.farmRen = [0, 1, 2, 3].map(() => ({ key: null, soil: null, plants: new Map(), growing: false, t: 0 }));
+    this.cropTpl = {};
+    this.gardenSigns = [];
+    this.gardenSignNames = [];
+    this.farmOn = false;
+  },
+
+  loadFarm() {
+    this.stage.add(this.farmScene);
+    this.farmOn = true;
+    this.terr = this.farmW;
+    for (let s = 0; s < 4; s++) { this.farmRen[s].key = null; this.setGardenSign(s, null); }
+    for (const [, prof] of this.profiles) {
+      this.setGardenSign(prof.slot, prof.name);
+      this.renderDecor(prof.slot, prof.decor);
+    }
+    this.syncFarmViews();
+    this.timers.vis = 0;
+    return Promise.resolve();
+  },
+
+  unloadFarm() {
+    if (!this.farmOn) return;
+    this.farmOn = false;
+    this.stage.remove(this.farmScene);
+    freeGpu(this.farmScene, [this.farmW.heightTex, this.farmW.groundTex]);
+  },
+
+  // ---------- mans lauks: saglabājums un skats draugiem ----------
+  // save.farm = { t: { "ix,iz": { c, at, w } }, cl: [nocirsto objektu id] }; at — sēšanas laiks (s, kopējais pulkstenis)
+  farmView() {
+    const f = this.save.farm, t = [];
+    for (const k in f.t) {
+      const [ix, iz] = k.split(',').map(Number), v = f.t[k];
+      t.push(v.c ? [ix, iz, CROP_IDS.indexOf(v.c), v.at, v.w ? 1 : 0] : [ix, iz]);
+    }
+    return { t, cl: f.cl.slice() };
+  },
+
+  farmChanged() { this.farmDirty = true; this.renderFarm(this.mySlot, this.farmView()); },
+
+  // visu profilu lauki → zīmējumi (izsauc pēc ielādes un profilu maiņas)
+  syncFarmViews() {
+    const seen = new Set();
+    for (const [, prof] of this.profiles) { seen.add(prof.slot); this.renderFarm(prof.slot, prof.farm || null); }
+    for (let s = 0; s < 4; s++) if (!seen.has(s)) this.renderFarm(s, null);
+  },
+
+  renderFarm(slot, view) {
+    if (slot == null || slot < 0 || slot > 3 || !this.farmViews) return;
+    this.farmViews[slot] = view;
+    this.farmRen[slot].key = null; // pārzīmēs updateFarm
+    this.farmClearedDirty = true;
+  },
+
+  // ---------- kadrs ----------
+  updateFarm(dt) {
+    if (!this.farmOn) return;
+    const t = this.now();
+    if (this.farmClearedDirty) {
+      this.farmClearedDirty = false;
+      const cl = new Set();
+      this.farmViews.forEach((v, s) => { if (v && v.cl) for (const id of v.cl) if (Math.floor(id / 100) === s) cl.add(id); });
+      this.farmW.cleared = cl;
+      for (const o of this.farmW.plotObjs) this.plotField.setHidden(o.id, cl.has(o.id));
+    }
+    this.timers.farmVis = (this.timers.farmVis || 0) - dt;
+    if (this.timers.farmVis <= 0) { this.timers.farmVis = 0.4; this.plotField.update(this.me.pos.x, this.me.pos.z); }
+    let holes = false;
+    for (let s = 0; s < 4; s++) {
+      const R = this.farmRen[s], v = this.farmViews[s];
+      const key = v ? JSON.stringify(v.t) : '';
+      if (R.key !== key) { R.key = key; this.buildSoil(s, v); this.buildPlants(s, v, t); holes = true; continue; }
+      // augi aug — pārzīmējam ik pa brīdim (mērogs un stadija)
+      R.t -= dt;
+      if (R.growing && R.t <= 0) this.buildPlants(s, v, t);
+    }
+    if (holes) {
+      const all = [];
+      this.farmViews.forEach((v) => { if (v) for (const e of v.t) all.push(e); });
+      this.farmW.setGrassHoles(all);
+    }
+    this.updateTileHL();
+  },
+
+  // lauciņš zem spēlētāja un vai tas pieder kādam laukam
+  tileAt(x, z) {
+    const ix = Math.floor(x / TILE), iz = Math.floor(z / TILE);
+    const cx = (ix + 0.5) * TILE, cz = (iz + 0.5) * TILE;
+    const slot = plotOf(cx, cz);
+    if (slot < 0) return null;
+    // viss lauciņš lauka iekšpusē, ne pie mājas vietas
+    const h = TILE / 2;
+    for (const [dx, dz] of [[-h, -h], [h, -h], [-h, h], [h, h]]) if (plotOf(cx + dx, cz + dz) !== slot) return null;
+    const home = GARDEN_SLOTS[slot];
+    if (Math.hypot(cx - home.x, cz - home.z) < 8) return null;
+    return { ix, iz, cx, cz, slot, key: tkey(ix, iz) };
+  },
+
+  updateTileHL() {
+    const me = this.me, hl = this.tileHL;
+    const tl = !me.veh && !me.ride && this.zone === FARM ? this.tileAt(me.pos.x, me.pos.z) : null;
+    if (!tl || (tl.slot !== this.mySlot && !this.farmTile(tl.slot, tl.key))) { hl.visible = false; return; }
+    if (hl.userData.key !== tl.key) {
+      hl.userData.key = tl.key;
+      const x0 = tl.ix * TILE, z0 = tl.iz * TILE, p = hl.geometry.attributes.position;
+      const pts = [[0, 0], [0.5, 0], [1, 0], [1, 0.5], [1, 1], [0.5, 1], [0, 1], [0, 0.5]];
+      pts.forEach(([a, b], i) => { const x = x0 + a * TILE, z = z0 + b * TILE; p.setXYZ(i, x, this.farmW.getHeight(x, z) + 0.08, z); });
+      p.needsUpdate = true;
+      hl.geometry.computeBoundingSphere();
+    }
+    hl.material.color.set(tl.slot === this.mySlot ? '#ffe14a' : '#7fd0ff');
+    hl.visible = true;
+  },
+
+  // lauciņa dati no skata (jebkuram laukam): null vai { c, at, w }
+  farmTile(slot, key) {
+    if (slot === this.mySlot) return this.save.farm.t[key] || null;
+    const v = this.farmViews[slot];
+    if (!v) return null;
+    for (const e of v.t) if (tkey(e[0], e[1]) === key) return e.length > 2 ? { c: CROP_IDS[e[2]], at: e[3], w: !!e[4] } : {};
+    return null;
+  },
+
+  cropProgress(v, t = this.now()) {
+    const def = CROPS[v.c];
+    const dur = def.grow * (v.w ? 0.6 : 1);
+    return Math.min(1, Math.max(0, (t / 1000 - v.at) / dur));
+  },
+  cropLeft(v, t = this.now()) { const def = CROPS[v.c]; return Math.max(0, v.at + def.grow * (v.w ? 0.6 : 1) - t / 1000); },
+
+  // ---------- zīmēšana ----------
+  buildSoil(slot, v) {
+    const R = this.farmRen[slot];
+    if (R.soil) { this.farmScene.remove(R.soil); R.soil.geometry.dispose(); R.soil = null; }
+    if (!v || !v.t.length) return;
+    const H = (x, z) => this.farmW.getHeight(x, z) + 0.035;
+    const pos = [], uv = [], col = [], idx = [];
+    for (const e of v.t) {
+      const x0 = e[0] * TILE, z0 = e[1] * TILE, wet = e[4] ? 0.68 : 1, base = pos.length / 3;
+      for (let j = 0; j <= 2; j++) for (let i = 0; i <= 2; i++) {
+        const x = x0 + i * TILE / 2, z = z0 + j * TILE / 2;
+        pos.push(x, H(x, z), z); uv.push(x / TILE, z / TILE); col.push(wet, wet, wet);
+      }
+      for (let j = 0; j < 2; j++) for (let i = 0; i < 2; i++) { const a = base + j * 3 + i; idx.push(a, a + 3, a + 1, a + 1, a + 3, a + 4); }
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    g.setIndex(idx);
+    g.computeVertexNormals();
+    const m = new THREE.Mesh(g, this.soilMat);
+    m.receiveShadow = true;
+    this.farmScene.add(m);
+    R.soil = m;
+  },
+
+  cropParts(crop, stage) {
+    const k = crop + stage;
+    if (this.cropTpl[k]) return this.cropTpl[k];
+    const tpl = buildCrop(crop, stage, CROPS[crop].color);
+    tpl.updateMatrixWorld(true);
+    const out = [];
+    tpl.traverse((o) => { if (o.isMesh) out.push({ geo: o.geometry, mat: o.material, local: o.matrixWorld.clone() }); });
+    this.cropTpl[k] = out;
+    return out;
+  },
+
+  // augi: katrai kultūrai un stadijai instancēti meši (katram laukam savi — redzamības pārbaudei)
+  buildPlants(slot, v, t) {
+    const R = this.farmRen[slot];
+    R.growing = false; R.t = 4;
+    const lists = new Map();
+    if (v) {
+      const map = new Map();
+      for (const e of v.t) if (e.length > 2) map.set(tkey(e[0], e[1]), CROP_IDS[e[2]]);
+      const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), S = new THREE.Vector3(), P = new THREE.Vector3(), UP = new THREE.Vector3(0, 1, 0);
+      for (const e of v.t) {
+        if (e.length < 3) continue;
+        const crop = CROP_IDS[e[2]], def = CROPS[crop];
+        if (!def) continue;
+        const p = this.cropProgress({ c: crop, at: e[3], w: !!e[4] }, t);
+        if (p < 1) R.growing = true;
+        const stage = p < 0.3 ? 0 : p < 1 ? 1 : 2;
+        const sc = stage === 0 ? 0.7 + p : stage === 1 ? 0.6 + 0.4 * p : 1;
+        const n = Math.max(1, Math.round(TILE / def.sp)), d = TILE / n;
+        // malas, kur blakus ir cita kultūra vai tukšs — augi atkāpjas (sprauga)
+        const same = (dx, dz) => map.get(tkey(e[0] + dx, e[1] + dz)) === crop;
+        const gap = { l: !same(-1, 0), r: !same(1, 0), u: !same(0, -1), b: !same(0, 1) };
+        const key = crop + stage;
+        if (!lists.has(key)) lists.set(key, { crop, stage, m: [] });
+        const L = lists.get(key).m;
+        for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+          if (n >= 3 && ((i === 0 && gap.l) || (i === n - 1 && gap.r) || (j === 0 && gap.u) || (j === n - 1 && gap.b))) continue;
+          let ox = (i + 0.5) * d, oz = (j + 0.5) * d;
+          if (n < 3) { if (gap.l && i === 0) ox += 0.2; if (gap.r && i === n - 1) ox -= 0.2; if (gap.u && j === 0) oz += 0.2; if (gap.b && j === n - 1) oz -= 0.2; }
+          const x = e[0] * TILE + ox + (hash(e[0] * 8 + i, e[1] * 8 + j) - 0.5) * d * 0.25;
+          const z = e[1] * TILE + oz + (hash(e[1] * 8 + j, e[0] * 8 + i + 3) - 0.5) * d * 0.25;
+          const s = sc * (0.88 + hash(x, z) * 0.24);
+          M.compose(P.set(x, this.farmW.getHeight(x, z) + 0.03, z), Q.setFromAxisAngle(UP, hash(z, x) * 6.28), S.set(s, s, s));
+          L.push(M.clone());
+        }
+      }
+    }
+    // vecos mešus izmetam (ģeometrijas ir kopīgas veidnēm — tās paliek)
+    for (const ms of R.plants.values()) for (const m of ms) { this.farmScene.remove(m); m.dispose(); }
+    R.plants.clear();
+    const tmp = new THREE.Matrix4();
+    for (const [key, L] of lists) {
+      if (!L.m.length) continue;
+      const ms = [];
+      for (const part of this.cropParts(L.crop, L.stage)) {
+        const im = new THREE.InstancedMesh(part.geo, part.mat, L.m.length);
+        L.m.forEach((mm, i) => im.setMatrixAt(i, tmp.multiplyMatrices(mm, part.local)));
+        im.castShadow = !GRAINS.has(L.crop);
+        im.receiveShadow = true;
+        im.computeBoundingSphere();
+        this.farmScene.add(im);
+        ms.push(im);
+      }
+      R.plants.set(key, ms);
+    }
+  },
+
+  // ---------- mājas zīme un rotājumi ----------
+  setGardenSign(slot, name) {
+    if (!this.farmOn || slot == null) return;
+    if (this.gardenSigns[slot] && this.gardenSignNames[slot] === name) return;
+    this.gardenSignNames[slot] = name;
+    if (this.gardenSigns[slot]) this.farmScene.remove(this.gardenSigns[slot]);
+    const s = GARDEN_SLOTS[slot];
+    const sp = makeTextSprite(name ? `🏡 ${name} sēta` : '🌾 Brīvs lauks', { fontSize: 44, bg: name ? 'rgba(120,80,30,0.85)' : 'rgba(0,0,0,0.35)' });
+    sp.position.set(s.x, VILLAGE_Y + 3.4, s.z);
+    this.farmScene.add(sp);
+    this.gardenSigns[slot] = sp;
+  },
+
+  // ---------- darbības (dzeltenā poga) ----------
+  farmActions(consider, d2) {
+    const me = this.me, slot = this.mySlot;
+    if (me.ski || me.lift) return;
+    // koki/akmeņi savā laukā
+    for (const o of this.farmW.plotObjs) {
+      if (o.slot !== slot || this.farmW.cleared.has(o.id)) continue;
+      if (Math.abs(o.x - me.pos.x) > 5 || Math.abs(o.z - me.pos.z) > 5) continue;
+      const left = HITS[o.type] - (this.objHits[o.id] || 0);
+      const verb = o.type === 'tree' ? '🪓 Cirst' : o.type === 'rock' ? '⛏️ Novākt' : '✂️ Izcirst';
+      consider(d2(o.x, o.z) - o.r * 0.5, 2.4 + o.r, `${verb} ${OBJ_NAME[o.kind]}${HITS[o.type] > 1 ? ` (${left})` : ''}`, () => this.clearObj(o));
+    }
+    const tl = this.tileAt(me.pos.x, me.pos.z);
+    if (!tl) return;
+    if (tl.slot === slot) {
+      const v = this.save.farm.t[tl.key];
+      const blocked = this.farmW.plotObjs.find((o) => o.slot === slot && !this.farmW.cleared.has(o.id) && Math.abs(o.x - tl.cx) < TILE / 2 + 0.8 && Math.abs(o.z - tl.cz) < TILE / 2 + 0.8);
+      if (!v) {
+        if (blocked) consider(9, 10, '🪓 Vispirms notīri šo vietu', () => toast('Šeit aug koks vai ir akmens — vispirms nocērt vai novāc to!'));
+        else consider(1.0, 2, '⛏️ Uzart lauciņu', () => this.plowTile(tl));
+      } else if (!v.c) {
+        const seed = this.currentSeed();
+        if (seed) consider(1.0, 2, `🌱 Sēt: ${CROPS[seed].icon} ${CROPS[seed].name} (${this.save.inv[seed + '_seed']})`, () => this.sowTile(tl, seed));
+        else consider(1.0, 2, '🌱 Nav sēklu — nopērc tirgū mežā 🛒', () => toast('Sēklas pārdod Ūdrs Ojārs Mežvidu mežā (austrumos) 🌱'));
+      } else {
+        const p = this.cropProgress(v), def = CROPS[v.c];
+        if (p >= 1) consider(1.0, 2, `🧺 Novākt: ${def.icon} ${def.name}`, () => this.harvestTile(tl));
+        else if (!v.w) consider(1.0, 2, `💧 Aplaistīt (${def.name})`, () => this.waterTile(tl));
+        else consider(1.0, 2, `⏳ ${def.icon} ${def.name} aug… ${Math.round(p * 100)}% · vēl ${fmtLeft(this.cropLeft(v))}`, () => toast(`${def.icon} ${def.name} būs gatavs pēc ${fmtLeft(this.cropLeft(v))} — augs arī tad, kad spēle aizvērta`));
+      }
+    } else {
+      // drauga lauks — var aplaistīt
+      const v = this.farmTile(tl.slot, tl.key);
+      let ownerId = null, owner = null;
+      for (const [id, pr] of this.profiles) if (pr.slot === tl.slot) { ownerId = id; owner = pr; }
+      if (v && v.c && owner && !v.w && this.cropProgress(v) < 1) consider(1.0, 2, `💧 Aplaistīt ${owner.name} lauku`, () => { this.net.toHost({ t: 'water', owner: ownerId, plot: tl.key }); sfx('plant'); this.me.petT = 0.6; });
+    }
+  },
+
+  clearObj(o) {
+    const n = (this.objHits[o.id] || 0) + 1;
+    this.objHits[o.id] = n;
+    this.me.petT = 0.6;
+    this.me.heading = Math.atan2(o.x - this.me.pos.x, o.z - this.me.pos.z);
+    sfx('pick');
+    if (n < HITS[o.type]) { this.spawnFloat(o.type === 'tree' ? '🪓' : '⛏️', new THREE.Vector3(o.x, o.y + 1, o.z)); return; }
+    const f = this.save.farm;
+    if (!f.cl.includes(o.id)) f.cl.push(o.id);
+    const coins = o.type === 'tree' ? 3 : o.type === 'rock' ? 2 : 1;
+    this.addCoins(coins, true);
+    this.spawnFloat(o.type === 'tree' ? '🪵' : o.type === 'rock' ? '🪨' : '🌿', new THREE.Vector3(o.x, o.y + 1, o.z));
+    toast(`${o.type === 'tree' ? '🪵 Koks nocirsts' : o.type === 'rock' ? '🪨 Akmens novākts' : '🌿 Krūms izcirsts'}! +${coins}🪙`);
+    this.stat('cleared');
+    this.farmChanged();
+  },
+
+  plowTile(tl) {
+    const f = this.save.farm;
+    if (Object.keys(f.t).length >= MAX_TILES) { toast(`Uzarti jau ${MAX_TILES} lauciņi — vairāk nevar apstrādāt 🙂`); return; }
+    f.t[tl.key] = {};
+    this.me.petT = 0.6;
+    sfx('plant');
+    this.spawnFloat('⛏️', new THREE.Vector3(tl.cx, this.me.pos.y, tl.cz));
+    this.stat('plowed');
+    this.farmChanged();
+  },
+
+  sowTile(tl, crop) {
+    const v = this.save.farm.t[tl.key];
+    if (!v || v.c || !(this.save.inv[crop + '_seed'] > 0)) return;
+    this.save.inv[crop + '_seed']--;
+    v.c = crop; v.at = Math.round(this.now() / 1000); v.w = false;
+    this.me.petT = 0.6;
+    sfx('plant');
+    this.stat('planted');
+    const def = CROPS[crop];
+    toast(`🌱 Iesēji: ${def.icon} ${def.name} (aug ${fmtLeft(def.grow)}). Aplaisti — augs ātrāk!`);
+    this.farmChanged();
+  },
+
+  waterTile(tl) {
+    const v = this.save.farm.t[tl.key];
+    if (!v || !v.c) return;
+    // aplaistot ātrums mainās tikai no šī brīža (paveiktais procents saglabājas)
+    const p = this.cropProgress(v);
+    v.w = true;
+    v.at = Math.round(this.now() / 1000 - p * CROPS[v.c].grow * 0.6);
+    this.me.petT = 0.6;
+    sfx('plant');
+    this.spawnFloat('💧', new THREE.Vector3(tl.cx, this.me.pos.y, tl.cz));
+    this.farmChanged();
+  },
+
+  harvestTile(tl) {
+    const v = this.save.farm.t[tl.key];
+    if (!v || !v.c || this.cropProgress(v) < 1) return;
+    const def = CROPS[v.c];
+    this.addItem(v.c, def.yield);
+    this.save.farm.t[tl.key] = {}; // zeme paliek uzarta — var sēt vēlreiz
+    this.stat('harvested');
+    this.me.petT = 0.6;
+    sfx('pick');
+    this.spawnFloat(def.icon, this.me.pos);
+    toast(`🧺 Novāci: ${def.icon} ${def.name} ×${def.yield}! Pārdod Āpsim Arnoldam tirgū mežā.`, 'good');
+    this.farmChanged();
+  },
+
+  // draugs aplaistīja manu lauciņu (water ziņa)
+  onFarmWater(m) {
+    if (m.owner === this.myId) {
+      const v = this.save.farm.t[m.plot];
+      if (v && v.c && !v.w) {
+        const p = this.cropProgress(v);
+        v.w = true; v.at = Math.round(this.now() / 1000 - p * CROPS[v.c].grow * 0.6);
+        const who = this.remotes.get(m.by);
+        if (m.by !== this.myId) toast(`💧 ${who ? who.prof.name : 'Draugs'} aplaistīja tavu lauku! Augi augs ātrāk.`, 'good');
+        this.farmChanged();
+      }
+    }
+    if (m.by === this.myId && m.owner !== this.myId) this.stat('watered');
+    if (this.zone === FARM && typeof m.plot === 'string') {
+      const [ix, iz] = m.plot.split(',').map(Number);
+      const x = (ix + 0.5) * TILE, z = (iz + 0.5) * TILE;
+      this.spawnFloat('💧', new THREE.Vector3(x, this.farmW.getHeight(x, z), z));
+    }
+  },
+
+  // ---------- ciemos ----------
+  // aiziet uz savu vai drauga sētu (no jebkuras zemes)
+  goToPlot(slot) {
+    const me = this.me;
+    if (me.inKart || me.veh || me.ride) { toast('Vispirms izkāp 🚶'); return; }
+    if (this.mgIn && this.mgIn()) { toast('🎲 Spēles laikā nevar aiziet!'); return; }
+    if (this.zoneBusy) return;
+    const h = GARDEN_SLOTS[slot], [sx, sz] = plotSign(slot);
+    const pos = { x: h.x - sx * 4, z: h.z - sz * 9 };
+    const heading = Math.atan2(sx, sz);
+    if (this.zone === FARM) {
+      me.pos.set(pos.x, this.farmW.getHeight(pos.x, pos.z), pos.z);
+      me.heading = heading; this.cam.yaw = heading + Math.PI; this.camInit = false;
+      sfx('beep');
+      return;
+    }
+    this.teleport(FARM, pos, heading);
+  },
+};
+
+function fmtLeft(s) {
+  s = Math.ceil(s);
+  if (s < 60) return `${s} s`;
+  if (s < 3600) return `${Math.ceil(s / 60)} min`;
+  const h = Math.floor(s / 3600), m = Math.ceil((s % 3600) / 60);
+  return m ? `${h} h ${m} min` : `${h} h`;
+}
+export { fmtLeft };

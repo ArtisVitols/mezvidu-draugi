@@ -1,8 +1,8 @@
 // Grafikas līmeņi un automātiska pielāgošana pēc kadru ātruma (fps).
 // Visi iestatījumi mainās uzreiz spēles laikā (bez pārlādes), tāpēc „Auto” var kāpt uz augšu un leju.
 import * as THREE from 'three';
-import { PlanarReflection, PostFX, upgradeWater, terrainMaterial, loadTexture } from './gfx.js?v=1.13.0';
-import { toast } from './ui.js?v=1.13.0';
+import { PlanarReflection, PostFX, upgradeWater, terrainMaterial, loadTexture } from './gfx.js?v=1.14.0';
+import { toast } from './ui.js?v=1.14.0';
 
 export const Q_ORDER = ['lowest', 'low', 'mid', 'high'];
 export const Q_MODES = ['auto', 'high', 'mid', 'low', 'lowest'];
@@ -94,7 +94,7 @@ export const Quality = {
     this.camera.far = Q.far;
     this.sky.scale.setScalar(Q.far * 0.84);
     if (Q.detail > 0) this.camera.layers.enable(1); else this.camera.layers.disable(1);
-    if (this.world) this.applyWorldQuality(this.world);
+    if (this.world) for (const W of this.builtWorlds()) this.applyWorldQuality(W);
     this.onResize();
   },
 
@@ -107,15 +107,15 @@ export const Quality = {
       W.grassMesh.count = Math.round(W.grassMesh.userData.full * Q.grass);
       W.grassMesh.visible = Q.grass > 0;
     }
-    const reflOn = !!(Q.refl && this.refl);
+    const reflOn = !!(Q.refl && this.refl) && W === this.world; // atspulgs tikai meža ezeros
     if (W.water && W.waterRefl !== reflOn) { upgradeWater(W, reflOn ? this.refl : null); W.waterRefl = reflOn; }
     if (Q.photo) {
       const ph = this.ensurePhoto();
-      ph.terrain.then((m) => { if (m && this.world === W && this.Q.photo) W.usePhotoTerrain(m); });
+      ph.terrain.then((m) => { if (m && this.Q.photo) W.usePhotoTerrain(m); });
       if (!W.photoDetails) {
         W.photoDetails = true;
-        ph.asphalt.then((a) => { if (a && this.world === W) W.usePhotoAsphalt(a[0], a[1]); });
-        ph.rock.then((a) => { if (a && this.world === W) W.usePhotoRock(a[0], a[1]); });
+        ph.asphalt.then((a) => { if (a && W.trackRoad) W.usePhotoAsphalt(a[0], a[1]); });
+        ph.rock.then((a) => { if (a) W.usePhotoRock(a[0], a[1]); });
       }
     } else W.useBaseTerrain();
     if (this.timers) this.timers.vis = 0;
@@ -124,7 +124,7 @@ export const Quality = {
   recompileAll() {
     const f = (o) => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => { m.needsUpdate = true; }); };
     this.stage.traverse(f);
-    if (this.scene && this.scene.parent !== this.stage) this.scene.traverse(f);
+    for (const g of [this.scene, this.farmScene, this.raceScene]) if (g && g.parent !== this.stage) g.traverse(f);
   },
 
   // izvēlne: Auto → Augsta → Vidēja → Zema → Viszemākā

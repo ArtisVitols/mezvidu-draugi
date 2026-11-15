@@ -1,14 +1,15 @@
 // Jaunās nodarbes, pievienotas Game klasei: makšķerēšana, ogas, mājdzīvnieki, dārza rotājumi,
 // īpašās vietas ar dārgumu, ķeramais un paslēpes, nedēļas kopīgais mērķis.
 import * as THREE from 'three';
-import { WATER_Y, GARDEN_SLOTS, VILLAGE_Y } from './world.js?v=1.13.0';
-import { buildNPC } from './characters.js?v=1.13.0';
-import { InstanceField } from './instancing.js?v=1.13.0';
-import { berryTemplate, buildDecor, DECOR_SPOTS, buildRod, buildBobber } from './props.js?v=1.13.0';
-import { buildScroll } from './places.js?v=1.13.0';
-import { FISH, ROD_PRICE, BERRIES, COOKED, PETS, DECOR, PLACES, MAP_PIECES, weekNumber, weeklyGoal, WEEKLY_REWARD } from './data.js?v=1.13.0';
-import { makeTextSprite, angleLerp } from './util.js?v=1.13.0';
-import { $, toast, showPanel, refreshPanel, closePanel, el, itemRow, sfx, fmtTime } from './ui.js?v=1.13.0';
+import { WATER_Y, GARDEN_SLOTS, VILLAGE_Y } from './world.js?v=1.14.0';
+import { buildNPC } from './characters.js?v=1.14.0';
+import { InstanceField } from './instancing.js?v=1.14.0';
+import { berryTemplate, buildDecor, DECOR_SPOTS, buildRod, buildBobber } from './props.js?v=1.14.0';
+import { buildScroll } from './places.js?v=1.14.0';
+import { ZONE_IDS, FOREST } from './zones.js?v=1.14.0';
+import { FISH, ROD_PRICE, BERRIES, COOKED, PETS, DECOR, PLACES, MAP_PIECES, weekNumber, weeklyGoal, WEEKLY_REWARD } from './data.js?v=1.14.0';
+import { makeTextSprite, angleLerp } from './util.js?v=1.14.0';
+import { $, toast, showPanel, refreshPanel, closePanel, el, itemRow, sfx, fmtTime } from './ui.js?v=1.14.0';
 
 const BERRY_RESPAWN = 150000;
 const MG_NAMES = { tag: '🏃 Ķeramais', hide: '🙈 Paslēpes' };
@@ -400,20 +401,20 @@ export const Activities = {
 
   // ======================= dārza rotājumi =======================
   renderDecor(slot, list) {
-    if (!this.centerOn) return;
+    if (!this.farmOn || slot == null) return; // rotājumi ir pie mājas vietas sētā
     const key = (list || []).slice().sort().join(',');
     if (this.decorKeys[slot] === key) return;
     this.decorKeys[slot] = key;
-    for (const o of this.decorObjs[slot]) this.scene.remove(o);
+    for (const o of this.decorObjs[slot]) this.farmScene.remove(o);
     this.decorObjs[slot] = [];
     const gs = GARDEN_SLOTS[slot];
     for (const id of list || []) {
       const sp = DECOR_SPOTS[id];
       if (!sp) continue;
       const o = buildDecor(id);
-      o.position.set(gs.x + sp[0], VILLAGE_Y, gs.z + sp[1]);
+      o.position.set(gs.x + sp[0], this.farmW.getHeight(gs.x + sp[0], gs.z + sp[1]), gs.z + sp[1]);
       o.rotation.y = sp[2];
-      this.scene.add(o);
+      this.farmScene.add(o);
       this.decorObjs[slot].push(o);
     }
   },
@@ -531,8 +532,9 @@ export const Activities = {
     if (hs.mg.phase !== 'none' && hs.mg.phase !== 'done') { net.sendTo(from, { t: 'toast', text: 'Spēle jau notiek! ⏳' }); return; }
     // spēles notiek Mežvidos; piedalās tikai tie, kas tur ir (pozīcijas 8. lauks — zemes kods)
     const zoneOf = (id) => (hs.positions.get(id) || [])[7] || 0;
-    if (zoneOf(from) !== 0) { net.sendTo(from, { t: 'toast', text: 'Ķeramo un paslēpes var spēlēt tikai Mežvidos 🌲' }); return; }
-    const players = [...hs.profiles.keys()].filter((id) => zoneOf(id) === 0);
+    const FZ = ZONE_IDS.indexOf(FOREST);
+    if (zoneOf(from) !== FZ) { net.sendTo(from, { t: 'toast', text: 'Ķeramo un paslēpes var spēlēt tikai Mežvidu mežā 🌲' }); return; }
+    const players = [...hs.profiles.keys()].filter((id) => zoneOf(id) === FZ);
     if (players.length < 2) { net.sendTo(from, { t: 'toast', text: 'Šai spēlei vajag vismaz 2 spēlētājus — uzaicini draugus! 👥' }); return; }
     const p = hs.positions.get(from) || [0, 0, 0];
     const it = players[Math.floor(Math.random() * players.length)];

@@ -19,7 +19,12 @@ Datorā: WASD / bultiņas, atstarpe, E, peles vilkšana.
 ## Ko var darīt
 - 🍄 Lasīt baravikas un gailenes mežā (sarkanās mušmires ir indīgas!)
 - 🤝 Nedēļas kopīgais mērķis — katru pirmdienu jauns (sēnes, zivis, ogas, raža, dzīvnieki, sacīkstes); skaitās visu draugu darbi, progress saglabājas
-- 🌱 Katram savs dārzs ciematā: stādi, aplaisti (arī draugu dārzus!) un novāc ražu
+- 🏡 **Sēta** (centrā): katram no 4 draugiem savs liels lauks (ceturtdaļa sētas) — pļava ar dažiem kokiem un akmeņiem, apkārt mežs.
+  - 🪓 Nocērt kokus, ⛏️ novāc akmeņus, ⛏️ uzar 2,5 m lauciņus (cik gribi, līdz 400), 🌱 sēj, 💧 aplaisti, 🧺 novāc ražu un pārdod tirgū
+  - 🌾 9 kultūras: burkāni, auzas, kartupeļi, kvieši, tomāti, zemenes, kāposti, saulgriezes, ķirbji — dārgākās aug ilgāk (līdz 1 stundai), bet nes vairāk
+  - Blakus lauciņi ar to pašu kultūru saaug vienā vienmērīgā laukā; dažādām kultūrām starp lauciņiem paliek sprauga
+  - ⏰ Augi aug pēc pulksteņa — arī tad, kad spēle aizvērta
+  - 👥 Draugu sētās var aiziet ciemos (👥 poga → „Ciemos”) un aplaistīt viņu laukus
 - 🧺 Tirgus: Ūdrs Ojārs (sēklas, makšķere), Āpsis Arnolds (uzpērk ražu, zivis, ogas), Pūce Paula (cepures, kartinga krāsas), Suns Sprīdis (mājdzīvnieki), Lapsa Liene (dārza rotājumi), Bebrs Bruno ar saldējuma ratiņiem
 - 🎣 Makšķerēšana ezeros: kad pludiņš raustās — „VILKT!”. Raudas, asari, līdakas un reta zelta zivtiņa (no laipas ķeras labāk)
 - 🫐 Ogas: mellenes mežā, avenes meža malās, dzērvenes purvā
@@ -28,10 +33,10 @@ Datorā: WASD / bultiņas, atstarpe, E, peles vilkšana.
 - 🗺️ Īpašās vietas: 🗼 skatu tornis (no tā kartē redz visas zvaigznes), ⛺ ugunskura vieta (tur var izcept sēnes), 🐸 purvs, 🏰 pilsdrupas, 🎣 makšķernieku laipa
 - 💰 Dārgumu medības: savāc 3 kartes gabalus un atver lādi pilsdrupās (+150🪙 un bruņinieka ķivere)
 - 🎲 Ķeramais un paslēpes ar draugiem
-- 🏎️ Kartinga trase ar turbo bultām — 3 apļu sacīkstes ar draugiem un robotiem
+- 🏎️ **Sacīkšu trase** (rietumos): ~1,6 km aplis ar diviem tuneļiem cauri pakalniem un turbo bultām — 2 apļu sacīkstes ar draugiem un robotiem
 - 🦌 Meža dzīvnieki: stirnas, zaķi, eži, mežacūkas, vāveres, stārķi — tos var paglaudīt
-- 🧭 5 zemes: Mežvidi centrā (630 × 630 m) un katrā debespusē sava zeme — ❄️ Ziemas zeme, 🌻 Austrumu lauki, 🏖️ Dienvidu kāpas, 🌲 Rietumu sils. Zemes savieno grants ceļi — pa tiem var braukt ar 🚙 mašīnu (arī uz citu zemi, līdz 4 draugiem vienā mašīnā). Ziemas zemē ir 🛷 sniega motocikls un liels slēpošanas kalns.
-  Pār robežu var pāriet jebkurā vietā (robežu iezīmē sarkanbalti stabiņi); austrumu, dienvidu un rietumu zemes pagaidām ir līdzenas
+- 🧭 5 zemes (katra 630 × 630 m): 🏡 sēta centrā, 🌲 Mežvidu mežs austrumos (ciems ar tirgu, sēnes, ogas, dzīvnieki, īpašās vietas), 🏁 sacīkšu trase rietumos, ❄️ Ziemas zeme ziemeļos, 🏖️ Dienvidu kāpas dienvidos. No sētas uz katru zemi ved grants ceļš — pa tiem var braukt ar 🚙 mašīnu (arī uz citu zemi, līdz 4 draugiem vienā mašīnā). Ziemas zemē ir 🛷 sniega motocikls un liels slēpošanas kalns.
+  Pār robežu var pāriet jebkurā vietā, kur aiz tās ir cita zeme (robežu iezīmē sarkanbalti stabiņi, ārējās malās — žogs); kāpas pagaidām ir līdzenas
 - ❄️ **Ziemas zeme** (uz ziemeļiem): sniegs, sniegputenis, sniegotas eglītes, Ziemassvētku egle, sniegavīri un ziemeļbrieži.
   Tēlam automātiski ir ziemas cepure, dūraiņi un plīvojoša šalle.
   - ⛷️ Slēpošanas kalns: brauc ar krēslu pacēlāju augšā un slēpo lejā (kursorsvira — stūrēt, uz leju — bremzēt, ⤒ — lēkt). Slēpot var visi kopā.
@@ -42,7 +47,7 @@ Datorā: WASD / bultiņas, atstarpe, E, peles vilkšana.
 - 📜 Uzdevumi ar balvām
 
 ## Saglabāšana
-Katra spēlētāja progress (monētas, soma, dārzs, zvaigznes, uzdevumi, cepures, mājdzīvnieki, rotājumi, atklātās vietas, kartes gabali, nedēļas mērķis, labākais aplis, zeme un vieta tajā) tiek saglabāts
+Katra spēlētāja progress (monētas, soma, sētas lauks, zvaigznes, uzdevumi, cepures, mājdzīvnieki, rotājumi, atklātās vietas, kartes gabali, nedēļas mērķis, labākais aplis, zeme un vieta tajā) tiek saglabāts
 **tā telefona pārlūkā** zem spēlētāja vārda — ik pēc 5 sekundēm un aizverot spēli. Nākamreiz ieraksti to pašu vārdu.
 
 ## Tehniski

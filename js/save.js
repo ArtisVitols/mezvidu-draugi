@@ -13,14 +13,15 @@ export function defaultSave(name) {
     kartColor: 'sarkana',
     ownedKarts: ['sarkana'],
     coins: 20,
-    inv: { burkans_seed: 3 },
-    garden: Array.from({ length: 6 }, () => null), // {crop, plantedAt, watered}
+    inv: { burkans_seed: 3, auzas_seed: 4 },
+    farm: { t: {}, cl: [] }, // sētas lauks: uzartie lauciņi {"ix,iz": {c, at, w}} un nocirsto koku/akmeņu id
+    layout: 2,        // 2 — sēta centrā, mežs austrumos, trase rietumos (1.14.0)
     stats: {},
     quests: {},       // id -> true, kad saņemta balva
     stars: [],        // atrasto zvaigžņu indeksi
     bestLap: null,
     pos: null,
-    zone: 'c',        // kurā zemē spēlētājs atrodas (c — Mežvidi, n/e/s/w — blakus zemes)
+    zone: 'c',        // kurā zemē spēlētājs atrodas (c — sēta, e — mežs, w — trase, n — ziema, s — kāpas)
     zones: {},        // blakus zemju stāvoklis (uzdevumi tiks pievienoti vēlāk)
     playTime: 0,
     rod: false,
@@ -47,7 +48,14 @@ export function loadSave(name) {
       const merged = Object.assign(def, data);
       merged.inv = Object.assign({}, data.inv || {});
       merged.stats = Object.assign({}, data.stats || {});
-      if (!Array.isArray(merged.garden) || merged.garden.length !== 6) merged.garden = def.garden;
+      // 1.14.0: zemes pārkārtotas — sāk sētā; vecā dārza augi atdoti atpakaļ kā sēklas
+      if (data.layout !== 2) {
+        merged.layout = 2; merged.zone = 'c'; merged.pos = null;
+        for (const g of Array.isArray(data.garden) ? data.garden : []) if (g && g.crop) merged.inv[g.crop + '_seed'] = (merged.inv[g.crop + '_seed'] || 0) + 1;
+        delete merged.garden;
+      }
+      if (!merged.farm || typeof merged.farm.t !== 'object') merged.farm = { t: {}, cl: [] };
+      if (!Array.isArray(merged.farm.cl)) merged.farm.cl = [];
       return { save: merged, isNew: false };
     }
   } catch (e) { console.warn('Neizdevās ielādēt', e); }
