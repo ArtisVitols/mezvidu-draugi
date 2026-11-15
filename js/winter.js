@@ -4,27 +4,37 @@
 // sniega pikas (arī ar draugiem), ziemas drēbes.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { ZONE_HALF, GROUND_Y, DIRS, clampSquare, openSides, buildBorderPosts, disposeTree } from './zones.js?v=1.10.0';
-import { makeTextSprite, canvasTexture, mat, smoothstep, lerp, angleLerp, clamp } from './util.js?v=1.10.0';
-import { buildNPC, flattenStatic } from './characters.js?v=1.10.0';
-import { loadTexture } from './gfx.js?v=1.10.0';
-import { InstanceField } from './instancing.js?v=1.10.0';
-import { makeNoise2D, mulberry32 } from './noise.js?v=1.10.0';
-import { $, toast, sfx } from './ui.js?v=1.10.0';
+import { ZONE_HALF, GROUND_Y, DIRS, clampSquare, openSides, buildBorderPosts, disposeTree, smoothRoad, RoadIndex, buildRoadMesh, roadMaterial } from './zones.js?v=1.11.0';
+import { makeTextSprite, canvasTexture, mat, smoothstep, lerp, angleLerp, clamp } from './util.js?v=1.11.0';
+import { buildNPC, flattenStatic } from './characters.js?v=1.11.0';
+import { loadTexture } from './gfx.js?v=1.11.0';
+import { InstanceField } from './instancing.js?v=1.11.0';
+import { makeNoise2D, mulberry32 } from './noise.js?v=1.11.0';
+import { $, toast, sfx } from './ui.js?v=1.11.0';
 
 const SEED = 9137;
 const TAU = Math.PI * 2;
 // izkārtojums (zemes lokālās koordinātas; Mežvidi ir dienvidos, +z)
-export const HILL = { x: 0, z: -200, r: 240, h: 72 };
-const SIDE_HILLS = [[285, -250, 150, 34], [-290, -230, 160, 40], [-335, 125, 110, 16], [335, 60, 120, 18]];
-export const LIFT = { x: 45, zB: 55, zT: -178, off: 1.6, v: 11 };
-export const PISTE = { x0: -75, x1: 22, z0: -205, z1: 75 };
-export const ARENA = { x: -190, z: 250, hw: 36, hd: 22 };
-export const PLAZA = { x: 70, z: 300 };
-const CABIN = { x: 92, z: 72 };
-const RACK = { x: 32, z: 64 };
-const HERDS = [{ x: 215, z: 165, r: 34, n: 4 }, { x: -255, z: 25, r: 24, n: 2 }, { x: 150, z: -40, r: 22, n: 2 }];
-const N = 188, SZ = 940, HS = SZ / 2, CELL = SZ / N;
+export const HILL = { x: 0, z: -100, r: 125, h: 42 };
+const SIDE_HILLS = [[143, -125, 80, 22], [-145, -115, 85, 26], [-168, 62, 55, 10], [168, 30, 60, 10]];
+export const LIFT = { x: 28, zB: 30, zT: -92, off: 1.6, v: 9 };
+export const PISTE = { x0: -45, x1: 14, z0: -105, z1: 42 };
+export const ARENA = { x: -110, z: 128, hw: 36, hd: 22 };
+export const PLAZA = { x: 60, z: 150 };
+const CABIN = { x: 68, z: 48 };
+const RACK = { x: 18, z: 40 };
+const HERDS = [{ x: 125, z: 90, r: 26, n: 3 }, { x: -150, z: 20, r: 20, n: 2 }, { x: 90, z: -30, r: 18, n: 2 }];
+// grants ceļi: no Mežvidu robežas līdz laukumam un no laukuma līdz pacēlājam
+const ROADS = [
+  [[0, 255], [0, 210], [0, 190], [18, 180], [40, 176], [54, 171]],
+  [[47, 134], [44, 115], [40, 90], [40, 68], [40, 54]],
+];
+let roadLines = null, roadIdx = null;
+export function winterRoads() {
+  if (!roadLines) { roadLines = ROADS.map((p) => smoothRoad(p)); roadIdx = new RoadIndex(roadLines); }
+  return roadLines;
+}
+const N = 208, SZ = 520, HS = SZ / 2, CELL = SZ / N;
 
 // ---------- reljefs (tīra funkcija — to izmanto arī karte, neielādējot zemi) ----------
 let noise = null;
@@ -59,9 +69,10 @@ export function winterTrees() {
   if (treeList) return treeList;
   const rnd = mulberry32(SEED + 3), fn = makeNoise2D(SEED + 5);
   treeList = [];
-  for (let gx = -ZONE_HALF + 4; gx < ZONE_HALF; gx += 11) {
-    for (let gz = -ZONE_HALF + 4; gz < ZONE_HALF; gz += 11) {
-      const x = gx + (rnd() - 0.5) * 9, z = gz + (rnd() - 0.5) * 9;
+  winterRoads();
+  for (let gx = -ZONE_HALF + 4; gx < ZONE_HALF; gx += 8) {
+    for (let gz = -ZONE_HALF + 4; gz < ZONE_HALF; gz += 8) {
+      const x = gx + (rnd() - 0.5) * 6.5, z = gz + (rnd() - 0.5) * 6.5;
       const r1 = rnd(), r2 = rnd(), r3 = rnd();
       const f = fn(x * 0.009, z * 0.009) + 0.35 * fn(x * 0.04, z * 0.04);
       const onHill = Math.hypot(x - HILL.x, z - HILL.z) < HILL.r - 10;
@@ -73,7 +84,7 @@ export function winterTrees() {
       if (Math.abs(x - LIFT.x) < 11 && z > LIFT.zT - 14 && z < LIFT.zB + 14) continue;
       if (inRect(x, z, ARENA, 14) || Math.hypot(x - PLAZA.x, z - PLAZA.z) < 34) continue;
       if (Math.hypot(x - HILL.x, z - HILL.z) < 24 || Math.hypot(x - CABIN.x, z - CABIN.z) < 14) continue;
-      if (z > ZONE_HALF - 22 || Math.abs(x) > ZONE_HALF - 3 || z < -ZONE_HALF + 3) continue;
+      if (z > ZONE_HALF - 12 || Math.abs(x) > ZONE_HALF - 3 || z < -ZONE_HALF + 3 || roadIdx.near(x, z).d < 7) continue;
       if (HERDS.some((h) => Math.hypot(x - h.x, z - h.z) < h.r * 0.7)) continue;
       treeList.push({ id: treeList.length, kind: r2 < 0.5 ? 'a' : 'b', x, z, y: winterHeight(x, z) - 0.15, ry: r3 * TAU, s: 0.8 + r2 * 0.75 });
     }
@@ -101,6 +112,8 @@ export function winterMap() {
   const toPx = (x, z) => [(x + ZONE_HALF) / (2 * ZONE_HALF) * S, (z + ZONE_HALF) / (2 * ZONE_HALF) * S];
   g.fillStyle = '#2f5a3a';
   for (const t of winterTrees()) { const [px, py] = toPx(t.x, t.z); g.fillRect(px - 0.8, py - 0.8, 1.6, 1.6); }
+  g.strokeStyle = '#a08458'; g.lineWidth = 2;
+  for (const l of winterRoads()) { g.beginPath(); l.forEach((p, i) => { const [px, py] = toPx(p.x, p.z); if (i) g.lineTo(px, py); else g.moveTo(px, py); }); g.stroke(); }
   g.strokeStyle = '#333'; g.lineWidth = 1.2;
   const [a0, b0] = toPx(LIFT.x, LIFT.zB), [a1, b1] = toPx(LIFT.x, LIFT.zT);
   g.beginPath(); g.moveTo(a0, b0); g.lineTo(a1, b1); g.stroke();
@@ -109,7 +122,7 @@ export function winterMap() {
   mapCanvas = c;
   return c;
 }
-export const WINTER_ICONS = [['⛷️', -25, -190], ['🚡', LIFT.x, LIFT.zB], ['❄️', ARENA.x, ARENA.z], ['🎄', PLAZA.x, PLAZA.z]];
+export const WINTER_ICONS = [['⛷️', -15, -95], ['🚡', LIFT.x, LIFT.zB], ['❄️', ARENA.x, ARENA.z], ['🎄', PLAZA.x, PLAZA.z]];
 
 // ---------- materiāli un modeļi ----------
 let snowMat = null;
@@ -368,7 +381,9 @@ export class WinterZone {
     const ground = new THREE.Mesh(geo, snow);
     ground.receiveShadow = true;
     G.add(ground);
-    const far = new THREE.PlaneGeometry(2600, 2600); far.rotateX(-Math.PI / 2); far.translate(0, GROUND_Y - 0.05, 0);
+    // līdzenums ap reljefu (gredzens — zem reljefa tā nav, citādi tas izspiežas cauri ieplakām)
+    const B = 1300, rects = [[-B, -B, B, -HS], [-B, HS, B, B], [-B, -HS, -HS, HS], [HS, -HS, B, HS]];
+    const far = mergeGeometries(rects.map(([x0, z0, x1, z1]) => new THREE.PlaneGeometry(x1 - x0, z1 - z0).rotateX(-Math.PI / 2).translate((x0 + x1) / 2, GROUND_Y - 0.05, (z0 + z1) / 2)));
     const fuv = far.attributes.uv, fp = far.attributes.position;
     for (let i = 0; i < fp.count; i++) fuv.setXY(i, fp.getX(i), fp.getZ(i));
     const farM = new THREE.Mesh(far, snow); farM.receiveShadow = true; G.add(farM);
@@ -377,9 +392,9 @@ export class WinterZone {
     const trees = winterTrees();
     for (const t of trees) this.addCollider(t.x, t.z, 0.55 * t.s);
     // tuvumā pilnas eglītes, tālumā vienkāršas (abi lauki ar vienādiem apgabaliem)
-    this.trees = new InstanceField(trees, (k) => snowyTreeTemplate(k), { chunk: 100, view: 130 });
+    this.trees = new InstanceField(trees, (k) => snowyTreeTemplate(k), { chunk: 64, view: 130 });
     this.trees.build(G);
-    this.treesLo = new InstanceField(trees, (k) => snowyTreeTemplate(k + 'lo'), { chunk: 100, view: 420, minView: 130 });
+    this.treesLo = new InstanceField(trees, (k) => snowyTreeTemplate(k + 'lo'), { chunk: 64, view: 420, minView: 130 });
     this.treesLo.build(G);
 
     const deco = new THREE.Group();
@@ -389,6 +404,7 @@ export class WinterZone {
     this.buildCabin(deco);
     this.buildPisteMarkers(deco);
     G.add(flattenStatic(deco));
+    G.add(buildRoadMesh(winterRoads(), (x, z) => this.getHeight(x, z), 0.07));
     // kustīgie: krēsli, Ziemassvētku lampiņas, ziemeļbrieži, sniegputenis, mērķi
     this.chairs = new THREE.InstancedMesh(chairGeometry(), chairMaterial(), 20);
     this.chairs.castShadow = true;
@@ -504,7 +520,7 @@ export class WinterZone {
     const sign = makeTextSprite('🎄 Priecīgus Ziemassvētkus!', { fontSize: 48, bg: 'rgba(160,30,30,0.85)' });
     sign.position.set(PLAZA.x, y0 + 17, PLAZA.z); sign.scale.multiplyScalar(1.4); g.add(sign);
     // sniegavīri
-    for (const [x, z, s, hat, ry] of [[PLAZA.x - 14, PLAZA.z + 8, 1.0, 'top', 0.4], [PLAZA.x + 13, PLAZA.z + 10, 0.85, 'bucket', -0.5], [PLAZA.x - 40, PLAZA.z + 60, 1.1, 'bucket', 0.2], [PLAZA.x + 2, PLAZA.z + 95, 0.9, 'top', 0]]) {
+    for (const [x, z, s, hat, ry] of [[PLAZA.x - 14, PLAZA.z + 8, 1.0, 'top', 0.4], [PLAZA.x + 13, PLAZA.z + 10, 0.85, 'bucket', -0.5], [PLAZA.x + 35, PLAZA.z + 30, 1.1, 'bucket', 0.2], [PLAZA.x - 45, PLAZA.z - 25, 0.9, 'top', 0]]) {
       const m = snowman(s, hat); m.position.set(x, winterHeight(x, z) - 0.1, z); m.rotation.y = ry; g.add(m);
       this.addCollider(x, z, 0.8 * s);
     }
@@ -668,7 +684,7 @@ export class WinterZone {
 
   dispose() {
     if (this.group.parent) this.group.parent.remove(this.group);
-    disposeTree(this.group, [treeMat(), chairMaterial()]); // sniega materiāls un faktūra tiek izmesti (nākamreiz ielādēs no jauna)
+    disposeTree(this.group, [treeMat(), chairMaterial(), roadMaterial()]); // sniega materiāls un faktūra tiek izmesti (nākamreiz ielādēs no jauna)
   }
 }
 
@@ -754,7 +770,7 @@ export const Winter = {
     av.shadow.position.y = ground - me.pos.y + 0.03;
     av.animate(dt, 'ski', sk.v);
     // nobrauciena beigas: no augšas līdz kalna pakājei
-    if (sk.fromTop && me.pos.z > 35 && ground < GROUND_Y + 4) {
+    if (sk.fromTop && me.pos.z > LIFT.zB - 15 && ground < GROUND_Y + 4) {
       sk.fromTop = false;
       const s = (this.now() - sk.t0) / 1000;
       sfx('win');

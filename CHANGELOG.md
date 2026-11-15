@@ -1,5 +1,12 @@
 # Izmaiņu žurnāls
 
+## 1.11.0 — 2026-11-15
+- 📐 Visas zemes ir divreiz mazākas: katrs kvadrāts tagad 420 × 420 m (agrāk 840 × 840 m). Mežvidu īpašās vietas,
+  ziemas kalns ar pacēlāju, laukums un piku kaujas laukums pārvietoti, lai viss ietilptu; līdz kaimiņu zemei ātrāk aiziet.
+- 🛤️ Grants ceļi: no Mežvidu ciemata uz katru debespusi ved ceļš līdz robežas vidum, un tas turpinās kaimiņu zemē
+  (Ziemas zemē — līdz Ziemassvētku laukumam un tālāk līdz pacēlājam; pārējās zemēs — līdz centram, kur ir aplis apgriešanai).
+  Ceļi ir pietiekami plati un brīvi no kokiem, lai vēlāk pa tiem varētu braukt ar mašīnu. Ceļi redzami arī kartē.
+
 ## 1.10.0 — 2026-11-15
 - ❄️ Ziemeļu zeme kļuvusi par **Ziemas zemi**: sniega klajums ar dzirkstošu sniegu, sniegotas eglītes,
   izrotāta Ziemassvētku egle ar dāvanām un ragavām, sniegavīri, slēpotāju namiņš un ziemeļbriežu bari (tos var paglaudīt).

@@ -1,16 +1,16 @@
 import * as THREE from 'three';
-import { makeNoise2D, mulberry32 } from './noise.js?v=1.10.0';
-import { MUSHROOMS } from './data.js?v=1.10.0';
+import { makeNoise2D, mulberry32 } from './noise.js?v=1.11.0';
+import { MUSHROOMS } from './data.js?v=1.11.0';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mat, smoothstep, lerp, makeTextSprite, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.10.0';
-import { optimizeRig, flattenStatic } from './characters.js?v=1.10.0';
-import { ZONE_HALF, ZONES, DIRS, GROUND_Y, sqDist, clampSquare, buildBorderPosts } from './zones.js?v=1.10.0';
-import { findPlaces, placeHeight, inPlace, buildPlaces, updatePlaces, placeBerries } from './places.js?v=1.10.0';
+import { mat, smoothstep, lerp, makeTextSprite, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.11.0';
+import { optimizeRig, flattenStatic } from './characters.js?v=1.11.0';
+import { ZONE_HALF, ZONES, DIRS, GROUND_Y, sqDist, clampSquare, buildBorderPosts, smoothRoad, RoadIndex, buildRoadMesh, ROAD_HW } from './zones.js?v=1.11.0';
+import { findPlaces, placeHeight, inPlace, buildPlaces, updatePlaces, placeBerries } from './places.js?v=1.11.0';
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
-export const SIZE = 960;
-export const SEG = 384;
+export const SIZE = 560; // reljefs nedaudz pāri robežai (tur tas pāriet kaimiņu zemes līdzenumā)
+export const SEG = 224;
 export const CELL = SIZE / SEG;
 export const HALF = SIZE / 2;
 export const WATER_Y = 0;
@@ -29,6 +29,14 @@ const TRACK_CENTER = { x: 112, z: -12 };
 const TRACK_PTS = [
   [-50, 0], [-42, -28], [-14, -40], [16, -32], [34, -42], [52, -20],
   [46, 10], [22, 14], [12, 34], [-18, 40], [-44, 24],
+];
+
+// grants ceļi no ciemata līdz katrai robežai (robežas vidū — tur turpinās kaimiņu zemes ceļš)
+const ROADS = [
+  [[-14, -38], [-22, -90], [-6, -150], [0, -180], [0, -212], [0, -255]],          // ziemeļi
+  [[36, 22], [70, 52], [125, 60], [170, 45], [186, 14], [196, 2], [212, 0], [255, 0]], // austrumi (apkārt trasei)
+  [[22, 40], [20, 100], [4, 160], [0, 180], [0, 212], [0, 255]],                  // dienvidi
+  [[-42, 4], [-100, -10], [-150, 6], [-180, 0], [-212, 0], [-255, 0]],           // rietumi
 ];
 
 export const GARDEN_SLOTS = [
@@ -59,6 +67,7 @@ export class World {
     this.group = new THREE.Group();
     this.grid = new Map();
     this.buildTrackCurve();
+    this.buildRoads();
     this.places = [];
     this.platforms = [];
     findPlaces(this, EDGE);
@@ -116,7 +125,27 @@ export class World {
     return { idx: bi, dist: Math.sqrt(best) };
   }
 
+  // ceļu līnijas un to augstuma profils (izlīdzināts dabiskais reljefs, virs ūdens)
+  buildRoads() {
+    this.roadLines = ROADS.map((p) => smoothRoad(p));
+    for (const l of this.roadLines) {
+      let h = l.map((p) => this.baseHeight(p.x, p.z));
+      for (let pass = 0; pass < 3; pass++) {
+        h = h.map((_, i) => { let sum = 0, n = 0; for (let k = -12; k <= 12; k++) { const v = h[i + k]; if (v !== undefined) { sum += v; n++; } } return sum / n; });
+      }
+      l.forEach((p, i) => { p.h = Math.max(1.4, h[i]); });
+    }
+    this.roadIdx = new RoadIndex(this.roadLines);
+  }
+
+  // attālums līdz tuvākajam ceļam (ciemata ceļš uz trasi vai grants ceļi; grants ceļi ir platāki)
   roadDist(x, z) {
+    const s = this.spurDist(x, z), r = this.roadIdx.near(x, z);
+    if (r.d - (ROAD_HW - 3) < s.d) return { d: r.d - (ROAD_HW - 3), t: s.t };
+    return s;
+  }
+
+  spurDist(x, z) {
     const ax = 34, az = 0, bx = this.roadEnd.x, bz = this.roadEnd.z;
     const vx = bx - ax, vz = bz - az;
     const t = Math.max(0, Math.min(1, ((x - ax) * vx + (z - az) * vz) / (vx * vx + vz * vz)));
@@ -140,14 +169,21 @@ export class World {
     return h + 1.6;
   }
 
-  computeHeight(x, z) {
+  // reljefs bez grants ceļiem, vietām un robežas
+  baseHeight(x, z) {
     let h = this.naturalHeight(x, z);
     const d = Math.hypot(x, z);
     h = lerp(h, VILLAGE_Y, 1 - smoothstep(34, 62, d));
-    const rd = this.roadDist(x, z);
+    const rd = this.spurDist(x, z);
     h = lerp(h, lerp(VILLAGE_Y, TRACK_Y, rd.t), 1 - smoothstep(3, 9, rd.d));
     const td = this.trackDist(x, z);
-    h = lerp(h, TRACK_Y - 0.05, 1 - smoothstep(TRACK_WIDTH / 2 + 3, TRACK_WIDTH / 2 + 16, td));
+    return lerp(h, TRACK_Y - 0.05, 1 - smoothstep(TRACK_WIDTH / 2 + 3, TRACK_WIDTH / 2 + 16, td));
+  }
+
+  computeHeight(x, z) {
+    let h = this.baseHeight(x, z);
+    const r = this.roadIdx.near(x, z);
+    if (r.d < 12) h = lerp(h, r.p.h, 1 - smoothstep(ROAD_HW + 0.8, 12, r.d));
     if (this.places.length) h = placeHeight(this, x, z, h);
     const e = sqDist(x, z);
     if (e > BLEND0) h = lerp(h, GROUND_Y, smoothstep(BLEND0, BLEND1, e));
@@ -248,6 +284,7 @@ export class World {
     this.placeNpcHomes();
     placeBerries(this, PLAY_RADIUS);
     this.buildSkirt();
+    this.group.add(buildRoadMesh(this.roadLines, (x, z) => this.getHeight(x, z)));
     this.group.add(buildBorderPosts(Object.keys(DIRS), (x, z) => this.getHeight(x, z)));
   }
 
@@ -850,7 +887,7 @@ export class World {
         if (e > PLAY_RADIUS + 2 || r < 42) { rnd(); rnd(); continue; } // aiz robežas — kaimiņu zemes līdzenums
         const h = this.getHeight(x, z);
         if (h < 1.2 || h > 45) { rnd(); rnd(); continue; }
-        if (this.roadDist(x, z).d < 5 || inPlace(this, x, z)) { rnd(); rnd(); continue; }
+        if (this.roadDist(x, z).d < 6 || inPlace(this, x, z)) { rnd(); rnd(); continue; }
         const f = this.forest(x, z);
         const p = f > 0.12 ? 0.62 : f > 0.0 ? 0.08 : 0.02;
         if (rnd() > p) {
@@ -1182,7 +1219,7 @@ export class World {
     const dummy = new THREE.Object3D();
     const col = new THREE.Color();
     const rocks = [];
-    for (let i = 0; i < 24000 && rocks.length < 1400; i++) {
+    for (let i = 0; i < 24000 && rocks.length < 500; i++) {
       const x = (rnd() - 0.5) * 2 * (PLAY_RADIUS - 5), z = (rnd() - 0.5) * 2 * (PLAY_RADIUS - 5);
       const r = Math.hypot(x, z);
       if (sqDist(x, z) > PLAY_RADIUS - 8 || r < 38) continue;
@@ -1304,7 +1341,7 @@ export class World {
     }
     const flowers = [];
     const fc = ['#f4f1e8', '#f0d84a', '#8a62c0', '#c8302a', '#5a7ad8', '#f4f1e8'];
-    for (let i = 0; i < 220000 && flowers.length < 7500; i++) {
+    for (let i = 0; i < 220000 && flowers.length < 2600; i++) {
       const x = (rnd() - 0.5) * 2 * (PLAY_RADIUS - 5), z = (rnd() - 0.5) * 2 * (PLAY_RADIUS - 5);
       const h = this.getHeight(x, z);
       if (h < 1 || h > 16) continue;
@@ -1336,7 +1373,7 @@ export class World {
 
     // niedres, vilkvālītes un ūdensrozes ezeru malās
     const reeds = [], pads = [];
-    for (let i = 0; i < 330000 && reeds.length < 11000; i++) {
+    for (let i = 0; i < 330000 && reeds.length < 4500; i++) {
       const x = (rnd() - 0.5) * 2 * (PLAY_RADIUS - 5), z = (rnd() - 0.5) * 2 * (PLAY_RADIUS - 5);
       const h = this.getHeight(x, z);
       if (h > -0.6 && h < 0.35 && this.trackDist(x, z) > TRACK_WIDTH && rnd() < 0.7) reeds.push({ x, y: Math.min(h, 0) - 0.05, z, s: 0.8 + rnd() * 0.6, ry: rnd() * 6.28, cat: rnd() < 0.25 });
@@ -1409,7 +1446,7 @@ export class World {
       sp.scale.set(s, s * 0.5, 1);
       const c = new THREE.Group();
       c.add(sp);
-      c.position.set((rnd() - 0.5) * 640, 85 + rnd() * 35, (rnd() - 0.5) * 640);
+      c.position.set((rnd() - 0.5) * 420, 85 + rnd() * 35, (rnd() - 0.5) * 640);
       this.clouds.add(c);
     }
     this.group.add(this.clouds);
@@ -1431,14 +1468,14 @@ export class World {
   placeMushrooms() {
     const rnd = mulberry32(this.seed + 31);
     this.mushrooms = [];
-    for (let i = 0; i < 80000 && this.mushrooms.length < 420; i++) {
+    for (let i = 0; i < 80000 && this.mushrooms.length < 170; i++) {
       const x = (rnd() - 0.5) * 2 * (PLAY_RADIUS - 10), z = (rnd() - 0.5) * 2 * (PLAY_RADIUS - 10);
       const tr = rnd();
       if (sqDist(x, z) > PLAY_RADIUS - 14 || Math.hypot(x, z) < 50) continue;
       const h = this.getHeight(x, z);
       if (h < 1.3 || h > 32) continue;
       if (this.forest(x, z) < 0.2) continue;
-      if (this.trackDist(x, z) < TRACK_WIDTH || inPlace(this, x, z)) continue;
+      if (this.trackDist(x, z) < TRACK_WIDTH || this.roadDist(x, z).d < 4 || inPlace(this, x, z)) continue;
       const type = tr < 0.45 ? 'baravika' : tr < 0.85 ? 'gailene' : 'musmire';
       const p = { x, z };
       this.collide(p, 0.3);
@@ -1469,12 +1506,12 @@ export class World {
   placeNpcHomes() {
     const rnd = mulberry32(this.seed + 55);
     const want = [
-      ['stirna', 22, 12, (f, h) => f > -0.05 && f < 0.3 && h > 1.5],
-      ['zakis', 20, 8, (f, h) => f < 0.05 && h > 1.5],
-      ['ezis', 14, 4, (f, h) => f > 0.18 && h > 1.5],
-      ['mezacuka', 12, 9, (f, h) => f > 0.18 && h > 1.5],
-      ['vavere', 14, 3, (f, h) => f > 0.15 && h > 1.5],
-      ['starkis', 14, 4, (f, h) => h > 0.2 && h < 1.6],
+      ['stirna', 11, 12, (f, h) => f > -0.05 && f < 0.3 && h > 1.5],
+      ['zakis', 10, 8, (f, h) => f < 0.05 && h > 1.5],
+      ['ezis', 7, 4, (f, h) => f > 0.18 && h > 1.5],
+      ['mezacuka', 6, 9, (f, h) => f > 0.18 && h > 1.5],
+      ['vavere', 7, 3, (f, h) => f > 0.15 && h > 1.5],
+      ['starkis', 7, 4, (f, h) => h > 0.2 && h < 1.6],
     ];
     this.npcHomes = [];
     for (const [type, count, R, ok] of want) {

@@ -30,7 +30,7 @@ Datorā: WASD / bultiņas, atstarpe, E, peles vilkšana.
 - 🎲 Ķeramais un paslēpes ar draugiem
 - 🏎️ Kartinga trase ar turbo bultām — 3 apļu sacīkstes ar draugiem un robotiem
 - 🦌 Meža dzīvnieki: stirnas, zaķi, eži, mežacūkas, vāveres, stārķi — tos var paglaudīt
-- 🧭 5 zemes: Mežvidi centrā (840 × 840 m) un katrā debespusē sava zeme — ❄️ Ziemas zeme, 🌻 Austrumu lauki, 🏖️ Dienvidu kāpas, 🌲 Rietumu sils.
+- 🧭 5 zemes: Mežvidi centrā (420 × 420 m) un katrā debespusē sava zeme — ❄️ Ziemas zeme, 🌻 Austrumu lauki, 🏖️ Dienvidu kāpas, 🌲 Rietumu sils. Zemes savieno grants ceļi.
   Pār robežu var pāriet jebkurā vietā (robežu iezīmē sarkanbalti stabiņi); austrumu, dienvidu un rietumu zemes pagaidām ir līdzenas
 - ❄️ **Ziemas zeme** (uz ziemeļiem): sniegs, sniegputenis, sniegotas eglītes, Ziemassvētku egle, sniegavīri un ziemeļbrieži.
   Tēlam automātiski ir ziemas cepure, dūraiņi un plīvojoša šalle.
