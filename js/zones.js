@@ -2,8 +2,8 @@
 // Katrai zemei ir savas lokālās koordinātas (centrs 0,0); kopējā kartē zeme ir nobīdīta par ZONE_SIZE.
 // Uz kaimiņu zemi var aiziet pa jebkuru robežas vietu.
 import * as THREE from 'three';
-import { canvasTexture } from './util.js?v=1.9.0';
-import { loadTexture } from './gfx.js?v=1.9.0';
+import { canvasTexture } from './util.js?v=1.10.0';
+import { loadTexture } from './gfx.js?v=1.10.0';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 export const ZONE_HALF = 420;              // spēles laukuma puse (kvadrāts 840 × 840 m)
@@ -17,7 +17,7 @@ export const GROUND_Y = 1;                 // līdzeno zemju augstums (arī Mež
 // Zemju apraksti. Saturu (uzdevumus) definēsim vēlāk — pagaidām tikai līdzena zeme.
 export const ZONES = {
   c: { name: 'Mežvidi', icon: '🌲', map: '#6fa848' },
-  n: { name: 'Ziemeļu klajums', icon: '❄️', map: '#9fb8a0', ground: '#8ea38a', tex: 'meadow' },
+  n: { name: 'Ziemas zeme', icon: '❄️', map: '#e9eff5', ground: '#eef2f6', tex: 'meadow' },
   e: { name: 'Austrumu lauki', icon: '🌻', map: '#c9b45a', ground: '#b49a52', tex: 'dirt' },
   s: { name: 'Dienvidu kāpas', icon: '🏖️', map: '#e2cf94', ground: '#d8c48c', tex: 'sand' },
   w: { name: 'Rietumu sils', icon: '🌲', map: '#4f7a44', ground: '#5d7044', tex: 'forest' },

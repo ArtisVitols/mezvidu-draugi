@@ -109,7 +109,9 @@ float tTot;`)
 }`)
       .replace('#include <color_fragment>', `
 #ifdef USE_COLOR
+  float snowW = smoothstep(0.6, 0.78, min(vColor.r, min(vColor.g, vColor.b))); // gandrīz balta krāsa = sniegs
   diffuseColor.rgb *= mix(vec3(1.0), vColor * 3.6, 0.32);
+  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.93, 0.95, 0.98), snowW);
 #endif`)
       .replace('#include <normal_fragment_maps>', `
 {
@@ -129,7 +131,7 @@ float tTot;`)
   normal = normalize((viewMatrix * vec4(wn, 0.0)).xyz);
 }`);
   };
-  m.customProgramCacheKey = () => 'terrain-photo-v1';
+  m.customProgramCacheKey = () => 'terrain-photo-v2';
   return m;
 }
 

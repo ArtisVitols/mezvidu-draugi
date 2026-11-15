@@ -1,22 +1,23 @@
 import * as THREE from 'three';
-import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotPos, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.9.0';
-import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.9.0';
-import { Controls } from './controls.js?v=1.9.0';
+import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotPos, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.10.0';
+import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.10.0';
+import { Controls } from './controls.js?v=1.10.0';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS } from './data.js?v=1.9.0';
-import { writeSave } from './save.js?v=1.9.0';
-import { VERSION, BUILD_DATE } from './version.js?v=1.9.0';
-import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.9.0';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.9.0';
-import { Activities, makeTeam } from './activities.js?v=1.9.0';
-import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel } from './quality.js?v=1.9.0';
-import { hdrEnvironment } from './gfx.js?v=1.9.0';
-import { buildRod, buildDecor } from './props.js?v=1.9.0';
-import { InstanceField } from './instancing.js?v=1.9.0';
-import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu } from './zones.js?v=1.9.0';
-import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.9.0';
+import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS } from './data.js?v=1.10.0';
+import { writeSave } from './save.js?v=1.10.0';
+import { VERSION, BUILD_DATE } from './version.js?v=1.10.0';
+import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.10.0';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.10.0';
+import { Activities, makeTeam } from './activities.js?v=1.10.0';
+import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel } from './quality.js?v=1.10.0';
+import { hdrEnvironment } from './gfx.js?v=1.10.0';
+import { buildRod, buildDecor } from './props.js?v=1.10.0';
+import { InstanceField } from './instancing.js?v=1.10.0';
+import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.10.0';
+import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu } from './zones.js?v=1.10.0';
+import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.10.0';
 
-const ANIM = ['idle', 'walk', 'run', 'jump', 'swim', 'sit', 'pet', 'wave', 'fish'];
+const ANIM = ['idle', 'walk', 'run', 'jump', 'swim', 'sit', 'pet', 'wave', 'fish', 'ski', 'lift', 'throw'];
 const MUSH_RESPAWN = 120000;
 const EPOCH = 1.7e12;
 const BOTS = [
@@ -377,7 +378,12 @@ export class Game {
       if (id === 'c') continue;
       const [ox, oz] = zoneOffset(id), Z = ZONES[id];
       const [x0, y0] = toPx(ox - H, oz - H), [x1, y1] = toPx(ox + H, oz + H);
-      g.fillStyle = Z.map; g.fillRect(x0, y0, x1 - x0, y1 - y0);
+      if (id === 'n') g.drawImage(winterMap(), x0, y0, x1 - x0, y1 - y0); // ziemas zemei — īsta karte
+      else { g.fillStyle = Z.map; g.fillRect(x0, y0, x1 - x0, y1 - y0); }
+      if (id === 'n' && (labels || this.zone === 'n')) {
+        g.font = (labels ? 14 : 11) + 'px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        for (const [ic, x, z] of WINTER_ICONS) { const [px, py] = toPx(ox + x, oz + z); g.fillText(ic, px, py); }
+      }
       g.strokeStyle = 'rgba(90,60,30,0.8)'; g.lineWidth = 1; g.strokeRect(x0, y0, x1 - x0, y1 - y0);
       if (labels) {
         const [cx, cy] = toPx(ox, oz);
@@ -538,10 +544,16 @@ export class Game {
     let ready = Promise.resolve();
     if (this.fishing) this.stopFishing();
     if (prev !== id) {
+      if (prev === 'n') this.leaveWinter();
       if (prev === 'c') this.unloadCenter();
       else if (this.terr && this.terr !== this.world) this.terr.dispose();
       this.zone = id;
-      if (id === 'c') ready = this.reloadCenter(); else { this.terr = new PlainZone(id, this.Q.photo); ready = this.terr.build(this.stage); }
+      if (id === 'c') ready = this.reloadCenter();
+      else {
+        this.terr = id === 'n' ? new WinterZone(id, this.Q.photo) : new PlainZone(id, this.Q.photo);
+        ready = this.terr.build(this.stage);
+      }
+      if (id === 'n') this.enterWinter();
     }
     this.me.pos.set(pos.x, 0, pos.z);
     this.terr.collide(this.me.pos, 0.6); // neierodamies kokā vai mājā
@@ -556,6 +568,7 @@ export class Game {
 
   findZoneAction() {
     const p = this.me.pos, t = this.now();
+    if (this.zone === 'n') { const w = this.winterActions(); if (w) return w; }
     if (this.pet && !(this.petCd > t) && Math.hypot(this.pet.x - p.x, this.pet.z - p.z) < 2.1) return { label: `🤗 Paglaudīt: ${PETS[this.pet.id].name}`, fn: () => this.petMyPet() };
     return null;
   }
@@ -984,6 +997,8 @@ export class Game {
     const steps = Math.min(3, Math.ceil(dt / 0.034));
     for (let i = 0; i < steps; i++) {
       if (this.me.inKart) this.updateKart(dt / steps, mv);
+      else if (this.me.lift) { if (i === 0) this.updateLift(dt); }
+      else if (this.me.ski) this.updateSki(dt / steps, mv, jump && i === 0);
       else this.updateWalk(dt / steps, mv, jump && i === 0);
     }
 
@@ -1000,6 +1015,10 @@ export class Game {
     } else {
       this.updatePets(dt);
       this.updateMg(dt, t);
+      if (this.terr.update) this.terr.update(dt, this);
+      if (this.zone === 'n') this.updateWinter(dt);
+      this.timers.vis = (this.timers.vis || 0) - dt;
+      if (this.timers.vis <= 0) { this.timers.vis = 0.3; this.terr.updateVisibility(this.camera.position.x, this.camera.position.z); }
     }
     this.updateRace(dt, t);
     this.updateEffects(dt);
@@ -1076,6 +1095,7 @@ export class Game {
       if (!me.onGround) me.state = 'jump';
       else if (me.petT > 0) me.state = 'pet';
       else if (this.fishing) me.state = 'fish';
+      else if (me.throwT > 0) me.state = 'throw';
       else if (me.waveT > 0 && speed < 0.5) me.state = 'wave';
       else me.state = speed > 6.2 ? 'run' : speed > 0.3 ? 'walk' : 'idle';
     }
@@ -1189,9 +1209,9 @@ export class Game {
 
   updateCamera(dt) {
     const me = this.me;
-    if (me.inKart) {
-      if (this.controls.camId === null) {
-        const target = me.kart.heading + Math.PI;
+    if (me.inKart || me.ski) {
+      if (this.controls.camId === null && (me.inKart || me.ski.v > 1.5)) {
+        const target = (me.inKart ? me.kart.heading : me.ski.heading) + Math.PI;
         this.cam.yaw = angleLerp(this.cam.yaw, target, 1 - Math.exp(-dt * 3.5));
         this.cam.pitch = lerp(this.cam.pitch, 0.3, 1 - Math.exp(-dt * 2));
       }
@@ -1259,7 +1279,8 @@ export class Game {
         r.avatar.root.rotation.y = r.ry;
         const g = this.terr.getHeight(r.pos.x, r.pos.z);
         r.avatar.shadow.position.y = Math.max(g, WATER_Y) - r.pos.y + 0.03;
-        r.avatar.animate(dt, r.anim, 5);
+        r.avatar.animate(dt, r.anim, Math.min(12, prev.distanceTo(r.pos) / Math.max(dt, 0.001)));
+        this.winterRemote(r, here);
         if (r.anim === 'fish' && !r.rod) { r.rod = buildRod(); r.rod.position.set(0, 1.0, 0.32); r.avatar.root.add(r.rod); }
         if (r.rod) r.rod.visible = r.anim === 'fish';
         r.avatar.root.visible = here && (!this.mgHidden(r.id) || r.pos.distanceTo(this.me.pos) < 30);
@@ -1950,5 +1971,5 @@ export class Game {
   }
 }
 
-Object.assign(Game.prototype, Activities, Quality);
+Object.assign(Game.prototype, Activities, Quality, Winter);
 Game.prototype.weeklyIcon = function () { return ({ mushrooms: '🍄', fish: '🐟', berries: '🫐', harvested: '🥕', petted: '🦌', races: '🏎️' })[this.team.stat] || ''; };

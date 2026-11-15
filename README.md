@@ -30,8 +30,12 @@ Datorā: WASD / bultiņas, atstarpe, E, peles vilkšana.
 - 🎲 Ķeramais un paslēpes ar draugiem
 - 🏎️ Kartinga trase ar turbo bultām — 3 apļu sacīkstes ar draugiem un robotiem
 - 🦌 Meža dzīvnieki: stirnas, zaķi, eži, mežacūkas, vāveres, stārķi — tos var paglaudīt
-- 🧭 5 zemes: Mežvidi centrā (840 × 840 m) un katrā debespusē sava zeme — ❄️ Ziemeļu klajums, 🌻 Austrumu lauki, 🏖️ Dienvidu kāpas, 🌲 Rietumu sils.
-  Pār robežu var pāriet jebkurā vietā (robežu iezīmē sarkanbalti stabiņi); blakus zemes pagaidām ir līdzenas, saturs nāks vēlāk
+- 🧭 5 zemes: Mežvidi centrā (840 × 840 m) un katrā debespusē sava zeme — ❄️ Ziemas zeme, 🌻 Austrumu lauki, 🏖️ Dienvidu kāpas, 🌲 Rietumu sils.
+  Pār robežu var pāriet jebkurā vietā (robežu iezīmē sarkanbalti stabiņi); austrumu, dienvidu un rietumu zemes pagaidām ir līdzenas
+- ❄️ **Ziemas zeme** (uz ziemeļiem): sniegs, sniegputenis, sniegotas eglītes, Ziemassvētku egle, sniegavīri un ziemeļbrieži.
+  Tēlam automātiski ir ziemas cepure, dūraiņi un plīvojoša šalle.
+  - ⛷️ Slēpošanas kalns: brauc ar krēslu pacēlāju augšā un slēpo lejā (kursorsvira — stūrēt, uz leju — bremzēt, ⤒ — lēkt). Slēpot var visi kopā.
+  - ❄️ Sniega piku kauja: laukumā ar sniega vaļņiem met pikas draugiem vai sniegavīru mērķiem (dzeltenā poga „Mest piku”).
 - 🗺️ Pieskaries minikartei, lai redzētu karti — visas zemes kopā un kur atrodas katrs draugs
 - 🌲 Dabiska pasaule: egļu, priežu, bērzu un ozolu meži, kas šūpojas vējā, pļavas ar ziediem, ezeri ar niedrēm un ūdensrozēm, guļbūvju ciemats
 - ⭐ 15 zelta zvaigznes paslēptas kalnu virsotnēs

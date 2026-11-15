@@ -8,7 +8,9 @@ const tmpM = new THREE.Matrix4(), tmpQ = new THREE.Quaternion(), tmpS = new THRE
 export class InstanceField {
   // items: [{ id, kind, x, y, z, ry, s }]; template(kind) → THREE.Group (modeļa veidne)
   // hideName — tikai šī nosaukuma apakšgrupa tiek slēpta (citādi viss objekts)
-  constructor(items, template, { chunk = 64, view = 90, hideName = null } = {}) {
+  // minView — tuvāk par šo apgabals netiek zīmēts (tālās, vienkāršās versijas laukam)
+  constructor(items, template, { chunk = 64, view = 90, hideName = null, minView = 0 } = {}) {
+    this.minView = minView;
     this.items = items;
     this.template = template;
     this.chunk = chunk;
@@ -81,7 +83,8 @@ export class InstanceField {
   // apgabali tālāk par view netiek zīmēti
   update(x, z) {
     for (const ch of this.chunks.values()) {
-      const vis = Math.abs(ch.cx - x) < this.view && Math.abs(ch.cz - z) < this.view;
+      const d = Math.max(Math.abs(ch.cx - x), Math.abs(ch.cz - z));
+      const vis = d < this.view && d >= this.minView;
       for (const m of ch.meshes) m.visible = vis;
     }
   }

@@ -97,6 +97,17 @@ canvas#game { position: fixed; inset: 0; width: 100%; height: 100%; display: blo
 }
 #zone-load .load-hint { font-size: 14px; opacity: .7; }
 @keyframes loadspin { to { transform: rotate(360deg); } }
+#snow-hud {
+  position: absolute; left: 50%; top: calc(92px + var(--safe-t)); transform: translateX(-50%);
+  background: rgba(40,90,170,.78); color: #fff; padding: 6px 16px; border-radius: 12px; font-weight: 800; font-size: 15px; white-space: nowrap;
+}
+#snow-hud.hidden { display: none; }
+#snow-flash {
+  position: fixed; inset: 0; pointer-events: none; z-index: 40; opacity: 0;
+  background: radial-gradient(circle at 50% 45%, rgba(255,255,255,0) 30%, rgba(240,248,255,0.85) 80%);
+}
+#snow-flash.on { animation: snowflash .7s ease-out; }
+@keyframes snowflash { 0% { opacity: 1; } 100% { opacity: 0; } }
 #hide-cover {
   position: absolute; inset: 0; background: rgba(10,20,10,.94); color: #fff; display: flex; align-items: center; justify-content: center;
   font-size: 80px; font-weight: 900; z-index: -1;

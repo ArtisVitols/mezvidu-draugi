@@ -73,6 +73,9 @@ export const QUESTS = [
   { id: 'q20', text: 'Atrodi apslēpto dārgumu', stat: 'treasure', need: 1, reward: 100 },
   { id: 'q21', text: 'Uzvari ķeramajā vai paslēpēs', stat: 'mgwins', need: 1, reward: 40 },
   { id: 'q22', text: 'Noķer zelta zivtiņu', stat: 'goldfish', need: 1, reward: 50 },
+  { id: 'q23', text: 'Nobrauc ar slēpēm no Ziemas kalna 3 reizes', stat: 'skiRuns', need: 3, reward: 30 },
+  { id: 'q24', text: 'Trāpi ar sniega piku 15 reizes', stat: 'snowHits', need: 15, reward: 25 },
+  { id: 'q25', text: 'Paglaudi ziemeļbriedi', stat: 'reindeer', need: 1, reward: 15 },
 ];
 
 // ---------- Makšķerēšana ----------
@@ -140,6 +143,7 @@ export function weeklyGoal(week) { return WEEKLY[((week % WEEKLY.length) + WEEKL
 
 export const NPC_TYPES = {
   stirna:   { name: 'Stirna' },
+  briedis:  { name: 'Ziemeļbriedis' },
   zakis:    { name: 'Zaķis' },
   ezis:     { name: 'Ezis' },
   starkis:  { name: 'Stārķis' },

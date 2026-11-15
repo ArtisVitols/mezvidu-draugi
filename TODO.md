@@ -11,7 +11,9 @@
 - [ ] Ja telefoni tiek galā: kaskādes ēnas lielākā attālumā.
 
 ## Blakus zemes (1.7.0 — pagaidām līdzenas)
-- [ ] Saturs un uzdevumi katrā zemē (❄️ Ziemeļu klajums, 🌻 Austrumu lauki, 🏖️ Dienvidu kāpas, 🌲 Rietumu sils) — tiks definēts vēlāk.
+- [x] ❄️ Ziemas zeme (1.10.0): slēpošanas kalns ar pacēlāju, sniega piku kauja, sniegputenis, ziemeļbrieži.
+- [ ] Saturs un uzdevumi pārējās zemēs (🌻 Austrumu lauki, 🏖️ Dienvidu kāpas, 🌲 Rietumu sils) — tiks definēts vēlāk.
+- [ ] Ziemas zemē: slēpošanas sacensības ar laiku visiem, ragaviņas, slidotava.
       Zemes stāvoklim ir rezervēts `save.zones`; kopīgām lietām (kā sēnes) vajadzēs saimnieka stāvokli pa zemēm.
 
 ## Dzīvnieku tēli

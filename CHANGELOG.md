@@ -1,5 +1,15 @@
 # Izmaiņu žurnāls
 
+## 1.10.0 — 2026-11-15
+- ❄️ Ziemeļu zeme kļuvusi par **Ziemas zemi**: sniega klajums ar dzirkstošu sniegu, sniegotas eglītes,
+  izrotāta Ziemassvētku egle ar dāvanām un ragavām, sniegavīri, slēpotāju namiņš un ziemeļbriežu bari (tos var paglaudīt).
+- 🧣 Ziemas zemē tēlam automātiski ir adīta cepure ar bumbuli, dūraiņi un šalle, kuras gali plīvo, ejot un slēpojot.
+- ⛷️ Liels slēpošanas kalns ar krēslu pacēlāju: brauc augšā, slēpes kājās, un lejā pa trasi (stūrē, bremzē, lec).
+  Slēpot var visi draugi kopā. Slēpes var uzlikt arī pie statīva kalna pakājē.
+- ❄️ Sniega piku kaujas laukums ar sniega vaļņiem un cietokšņiem: met pikas draugiem vai sniegavīru mērķiem.
+- 🌨️ Laiku pa laikam snieg (visiem vienlaicīgi); sniegputenī redzamība samazinās.
+- Jauni uzdevumi: nobrauc no kalna, trāpi ar sniega piku, paglaudi ziemeļbriedi. Karte rāda Ziemas zemes kalnu, trasi un pacēlāju.
+
 ## 1.9.0 — 2026-11-15
 - 🎨 Četri grafikas līmeņi: Augsta, Vidēja, Zema un jauns **Viszemākā** (bez ēnām, zāles un sīkām detaļām, zemāka
   izšķirtspēja, īsāks redzamības attālums) vājākajiem telefoniem.

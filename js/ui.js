@@ -88,6 +88,8 @@ export function sfx(name) {
     case 'go': tone(1040, 0.5, 'square', 0.1); break;
     case 'boost': tone(300, 0.4, 'sawtooth', 0.06, 0, 600); break;
     case 'pet': tone(880, 0.1, 'sine', 0.1); tone(1100, 0.15, 'sine', 0.1, 0.1); break;
+    case 'throw': tone(520, 0.14, 'sine', 0.08, 0, -260); break;
+    case 'splat': tone(170, 0.12, 'triangle', 0.12, 0, -90); tone(260, 0.06, 'square', 0.04); break;
     case 'win': [523, 659, 784, 659, 784, 1047].forEach((f, i) => tone(f, 0.2, 'triangle', 0.12, i * 0.12)); break;
   }
 }

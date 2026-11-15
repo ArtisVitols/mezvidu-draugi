@@ -38,6 +38,7 @@ Static site: plain HTML + ES modules, no build step. Photo textures in `assets/`
 | `js/props.js` | Berry bushes (cloned templates), garden decorations + `DECOR_SPOTS`, fishing rod, bobber |
 | `js/activities.js` | `Activities` mixin on `Game.prototype`: fishing, berries, pets, decor, discovery, treasure, tag/hide-and-seek (host-run), weekly team goal |
 | `js/zones.js` | Lands: `ZONES` (c = Mežvidi + n/e/s/w), `ZONE_HALF` 420, open borders (`neighbour`, `openSides`, `clampSquare`, `buildBorderPosts`), `disposeTree`, `PlainZone` (flat side land, built on enter and disposed on leave) |
+| `js/winter.js` | ❄️ North land: `WinterZone` (snow heightfield with ski hill, sparkle snow material + `snow_n` normal map, snowy spruces as `InstanceField`, chairlift with instanced moving chairs, plaza/Christmas tree, snowball arena, reindeer, GPU snowfall) and the `Winter` mixin (skiing physics, lift ride, snowballs incl. host relay, winter clothes on avatars) |
 | `js/quality.js` | Graphics levels (`QUALITY`), live `applyQuality`, automatic fps-based level switching (`autoQuality`) |
 | `js/instancing.js` | `InstanceField`: many identical objects (mushrooms, berry bushes) as chunked InstancedMeshes with per-item hide |
 | `js/gfx.js` | Realistic graphics: photo terrain material (5-layer `sampler2DArray` splat), HDRI environment, water shader upgrade, `PlanarReflection`, `PostFX` (AO, bloom, ACES + grading) |
@@ -62,6 +63,14 @@ Static site: plain HTML + ES modules, no build step. Photo textures in `assets/`
   Side lands are `PlainZone` (built on enter, disposed on leave). Each land has local coordinates; global map coords =
   local + `zoneOffset(id)` (840 m steps). `pos` messages carry the zone index at `p[7]` (`ZONE_IDS`); remotes get `r.zone` and are
   drawn in 3D only in the same land. Save: `save.zone`, `save.zones` (reserved). Side-land actions go in `findZoneAction`.
+  A side land object may have `update(dt, game)` (called every frame) and `updateVisibility(x, z)`.
+- **Winter land (`n`, js/winter.js):** layout constants `HILL`, `LIFT`, `PISTE`, `ARENA`, `PLAZA`; `winterHeight()` is a pure
+  function (also used by the map via `winterMap()` without loading the land). `me.ski` / `me.lift` replace walking in `update()`;
+  ANIM states `ski`, `lift`, `throw` (appended). Avatars: `av.setWinter(on)` (bobble hat via `buildHat('ziemas')`, mittens,
+  scarf with spring-animated ends in `animScarf`), `av.setSkis(on)`; remotes get them in `winterRemote()` from their zone/anim.
+  Snowballs: thrower sends `ball`, host relays; each client simulates all balls and reports hits on itself (`ballHit`),
+  the host relays so the thrower can score. Snowfall strength `snowAmount(now)` uses the shared clock. The Mežvidi photo
+  terrain shader turns near-white vertex colours into snow, so the north edge blends into snow.
 - **Draw calls:** `flattenStatic(group)` merges a static group by material *look* (`bucketKey`): textured materials with the same
   maps/params share one material with colour baked into vertex colours; untextured ones all share a `plainRM` material that reads
   roughness/metalness from a per-vertex `rm` attribute. Mark animated subtrees `userData.keep = true`. Used for the village, each
