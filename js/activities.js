@@ -1,13 +1,13 @@
 // Jaunās nodarbes, pievienotas Game klasei: makšķerēšana, ogas, mājdzīvnieki, dārza rotājumi,
 // īpašās vietas ar dārgumu, ķeramais un paslēpes, nedēļas kopīgais mērķis.
 import * as THREE from 'three';
-import { WATER_Y, GARDEN_SLOTS, VILLAGE_Y } from './world.js?v=1.6.0';
-import { buildNPC } from './characters.js?v=1.6.0';
-import { buildBerryBush, buildDecor, DECOR_SPOTS, buildRod, buildBobber } from './props.js?v=1.6.0';
-import { buildScroll } from './places.js?v=1.6.0';
-import { FISH, ROD_PRICE, BERRIES, COOKED, PETS, DECOR, PLACES, MAP_PIECES, weekNumber, weeklyGoal, WEEKLY_REWARD } from './data.js?v=1.6.0';
-import { makeTextSprite, angleLerp } from './util.js?v=1.6.0';
-import { $, toast, showPanel, refreshPanel, closePanel, el, itemRow, sfx, fmtTime } from './ui.js?v=1.6.0';
+import { WATER_Y, GARDEN_SLOTS, VILLAGE_Y } from './world.js?v=1.7.0';
+import { buildNPC } from './characters.js?v=1.7.0';
+import { buildBerryBush, buildDecor, DECOR_SPOTS, buildRod, buildBobber } from './props.js?v=1.7.0';
+import { buildScroll } from './places.js?v=1.7.0';
+import { FISH, ROD_PRICE, BERRIES, COOKED, PETS, DECOR, PLACES, MAP_PIECES, weekNumber, weeklyGoal, WEEKLY_REWARD } from './data.js?v=1.7.0';
+import { makeTextSprite, angleLerp } from './util.js?v=1.7.0';
+import { $, toast, showPanel, refreshPanel, closePanel, el, itemRow, sfx, fmtTime } from './ui.js?v=1.7.0';
 
 const BERRY_RESPAWN = 150000;
 const MG_NAMES = { tag: '🏃 Ķeramais', hide: '🙈 Paslēpes' };
@@ -344,12 +344,12 @@ export const Activities = {
     ns.scale.multiplyScalar(1 / m.root.scale.y);
     m.root.add(ns);
     void ownerName;
-    this.scene.add(m.root);
+    this.stage.add(m.root); // mājdzīvnieks iet līdzi arī uz citām zemēm
     return { id, model: m, x: 0, z: 0, heading: 0, init: false };
   },
 
   setPet(id, silent = false) {
-    if (this.pet) { this.scene.remove(this.pet.model.root); this.pet = null; }
+    if (this.pet) { this.stage.remove(this.pet.model.root); this.pet = null; }
     this.save.pet = id || null;
     if (id && PETS[id]) this.pet = this.makePet(id);
     if (!silent) this.sendProfile();
@@ -365,7 +365,7 @@ export const Activities = {
       pet.x += dx / d * sp * dt; pet.z += dz / d * sp * dt;
       pet.heading = angleLerp(pet.heading, Math.atan2(dx, dz), 1 - Math.exp(-dt * 8));
     }
-    const W = this.world;
+    const W = this.terr;
     const y = Math.max(W.groundAt(pet.x, pet.z, oy + 0.3), WATER_Y - 0.1);
     pet.model.root.position.set(pet.x, y, pet.z);
     pet.model.root.rotation.y = pet.heading;
@@ -381,11 +381,11 @@ export const Activities = {
     for (const r of this.remotes.values()) {
       const want = r.prof.pet || null;
       if ((r.pet ? r.pet.id : null) !== want) {
-        if (r.pet) this.scene.remove(r.pet.model.root);
+        if (r.pet) this.stage.remove(r.pet.model.root);
         r.pet = want && PETS[want] ? this.makePet(want) : null;
       }
       if (!r.pet) continue;
-      const near = Math.abs(r.pos.x - me.pos.x) < 120 && Math.abs(r.pos.z - me.pos.z) < 120;
+      const near = (r.zone || 'c') === this.zone && Math.abs(r.pos.x - me.pos.x) < 120 && Math.abs(r.pos.z - me.pos.z) < 120;
       r.pet.model.root.visible = near && !this.mgHidden(r.id);
       if (near) this.movePet(r.pet, r.pos.x, r.pos.z, r.ry, r.pos.y, dt);
     }
@@ -530,7 +530,10 @@ export const Activities = {
   hostMgStart(from, kind) {
     const hs = this.hs, net = this.net, now = Date.now();
     if (hs.mg.phase !== 'none' && hs.mg.phase !== 'done') { net.sendTo(from, { t: 'toast', text: 'Spēle jau notiek! ⏳' }); return; }
-    const players = [...hs.profiles.keys()];
+    // spēles notiek Mežvidos; piedalās tikai tie, kas tur ir (pozīcijas 8. lauks — zemes kods)
+    const zoneOf = (id) => (hs.positions.get(id) || [])[7] || 0;
+    if (zoneOf(from) !== 0) { net.sendTo(from, { t: 'toast', text: 'Ķeramo un paslēpes var spēlēt tikai Mežvidos 🌲' }); return; }
+    const players = [...hs.profiles.keys()].filter((id) => zoneOf(id) === 0);
     if (players.length < 2) { net.sendTo(from, { t: 'toast', text: 'Šai spēlei vajag vismaz 2 spēlētājus — uzaicini draugus! 👥' }); return; }
     const p = hs.positions.get(from) || [0, 0, 0];
     const it = players[Math.floor(Math.random() * players.length)];
@@ -546,7 +549,7 @@ export const Activities = {
     const hs = this.hs, mg = hs.mg, net = this.net;
     if (!mg || mg.phase === 'none') return;
     const pos = (id) => hs.positions.get(id);
-    const dist = (a, b) => { const pa = pos(a), pb = pos(b); return pa && pb ? Math.hypot(pa[0] - pb[0], pa[2] - pb[2]) : 1e9; };
+    const dist = (a, b) => { const pa = pos(a), pb = pos(b); return pa && pb && (pa[7] || 0) === (pb[7] || 0) ? Math.hypot(pa[0] - pb[0], pa[2] - pb[2]) : 1e9; };
     if (mg.phase === 'done') {
       if (now > mg.doneAt + 8000) { hs.mg = { kind: null, phase: 'none' }; net.broadcast({ t: 'mg', mg: hs.mg }); }
       return;

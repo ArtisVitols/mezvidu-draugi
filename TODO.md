@@ -10,6 +10,10 @@
 - [ ] Diennakts maiņa (rīts / diena / vakars) un mākoņu ēnas.
 - [ ] Ja telefoni tiek galā: kaskādes ēnas lielākā attālumā.
 
+## Blakus zemes (1.7.0 — pagaidām līdzenas)
+- [ ] Saturs un uzdevumi katrā zemē (❄️ Ziemeļu klajums, 🌻 Austrumu lauki, 🏖️ Dienvidu kāpas, 🌲 Rietumu sils) — tiks definēts vēlāk.
+      Zemes stāvoklim ir rezervēts `save.zones`; kopīgām lietām (kā sēnes) vajadzēs saimnieka stāvokli pa zemēm.
+
 ## Dzīvnieku tēli
 - [ ] Tagad multfilmas stilā. Reālistiski dzīvnieki ar drēbēm un cepurēm var izskatīties dīvaini —
       ja gribam, vajag īstus animētus modeļus (iespējams, maksas).

@@ -1,5 +1,15 @@
 # Izmaiņu žurnāls
 
+## 1.7.0 — 2026-11-15
+- 🧭 Pasaule tagad ir 5 zemes: Mežvidi centrā (kvadrāts 840 × 840 m) un četras blakus zemes katrā debespusē —
+  ❄️ Ziemeļu klajums, 🌻 Austrumu lauki, 🏖️ Dienvidu kāpas, 🌲 Rietumu sils (pagaidām līdzena zeme, saturs nāks vēlāk).
+- Mežvidu malās kalnos izcirstas takas ar vārtiem un ceļa rādītājiem; pietuvojoties ekrānā parādās, kurp taka ved.
+  Izejot cauri vārtiem, ielādējas jaunā zeme un iepriekšējā tiek noņemta.
+- Mežvidu stāvoklis (sēnes, ogas, dārzi, sacīkstes) turpinās arī tad, kad esi citā zemē; spēle atceras, kurā zemē biji.
+- Karte rāda visas zemes kopā un katra drauga precīzu vietu; kad draugs aiziet uz citu zemi, parādās paziņojums.
+  Istabas sarakstā redzams, kurā zemē katrs ir. Mājdzīvnieks iet līdzi.
+- Ķeramo un paslēpes var spēlēt tikai Mežvidos; ar kartu uz citu zemi nevar.
+
 ## 1.6.0 — 2026-11-14
 - Reālistiskāka grafika: zeme no foto faktūrām (pļava, meža zeme, smiltis, dubļi, akmens), kas dabiski pāriet viena otrā.
 - Foto faktūras trases asfaltam, akmeņiem un pilsdrupām.

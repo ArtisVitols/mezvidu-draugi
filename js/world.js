@@ -1,10 +1,11 @@
 import * as THREE from 'three';
-import { makeNoise2D, mulberry32 } from './noise.js?v=1.6.0';
-import { MUSHROOMS } from './data.js?v=1.6.0';
+import { makeNoise2D, mulberry32 } from './noise.js?v=1.7.0';
+import { MUSHROOMS } from './data.js?v=1.7.0';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mat, smoothstep, lerp, makeTextSprite, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.6.0';
-import { optimizeRig } from './characters.js?v=1.6.0';
-import { findPlaces, placeHeight, inPlace, buildPlaces, updatePlaces, placeBerries } from './places.js?v=1.6.0';
+import { mat, smoothstep, lerp, makeTextSprite, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.7.0';
+import { optimizeRig } from './characters.js?v=1.7.0';
+import { ZONE_HALF, ZONES, DIRS, sqDist, corridor, clampSquare, buildExit, sideOf, alongLat } from './zones.js?v=1.7.0';
+import { findPlaces, placeHeight, inPlace, buildPlaces, updatePlaces, placeBerries } from './places.js?v=1.7.0';
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
@@ -15,8 +16,8 @@ export const HALF = SIZE / 2;
 export const WATER_Y = 0;
 export const VILLAGE_Y = 4;
 export const TRACK_Y = 3;
-export const PLAY_RADIUS = 420;
-const EDGE = PLAY_RADIUS - 12; // no šejienes reljefs ceļas mežainos pakalnos
+export const PLAY_RADIUS = ZONE_HALF; // kvadrāta puse (vārds palicis no apļa laikiem)
+const EDGE = PLAY_RADIUS - 12; // no šejienes reljefs ceļas mežainos pakalnos (kvadrāta malās, izņemot takas)
 const LOD_CH = 80; // apgabala izmērs detalizācijas līmeņiem
 export const TRACK_WIDTH = 12;
 export const TRACK_N = 400;
@@ -145,8 +146,22 @@ export class World {
     const td = this.trackDist(x, z);
     h = lerp(h, TRACK_Y - 0.05, 1 - smoothstep(TRACK_WIDTH / 2 + 3, TRACK_WIDTH / 2 + 16, td));
     if (this.places.length) h = placeHeight(this, x, z, h);
-    if (d > EDGE) h += Math.min(22, (d - EDGE) * (d - EDGE) * 0.045);
+    const e = sqDist(x, z);
+    if (e > EDGE - 60) {
+      // taka uz blakus zemi: sausa, līdzena, kalnos izcirsta grava
+      const cr = corridor(x, z);
+      if (cr > 0) h = lerp(h, Math.min(Math.max(h, 1.8), 7), cr * smoothstep(EDGE - 60, EDGE - 20, e));
+      if (e > EDGE) h += Math.min(22, (e - EDGE) * (e - EDGE) * 0.045) * (1 - cr);
+    }
     return h;
+  }
+
+  // 0..1 — takas zemes krāsa pie izejām uz citām zemēm
+  exitPath(x, z) {
+    const e = sqDist(x, z);
+    if (e < EDGE - 56) return 0;
+    const lat = alongLat(x, z, sideOf(x, z)).lat;
+    return (1 - smoothstep(1.8, 3.4, lat)) * smoothstep(EDGE - 56, EDGE - 40, e);
   }
 
   computeHeights() {
@@ -213,8 +228,7 @@ export class World {
         }
       }
     }
-    const r = Math.hypot(pos.x, pos.z);
-    if (r > PLAY_RADIUS) { pos.x *= PLAY_RADIUS / r; pos.z *= PLAY_RADIUS / r; hit = true; }
+    if (clampSquare(pos, ['n', 'e', 's', 'w'])) hit = true;
     return hit;
   }
 
@@ -234,6 +248,8 @@ export class World {
     this.placeStars();
     this.placeNpcHomes();
     placeBerries(this, PLAY_RADIUS);
+    // vārti un ceļa rādītāji uz četrām blakus zemēm
+    for (const s in DIRS) this.group.add(buildExit(s, `${ZONES[s].icon} ${ZONES[s].name}`, (x, z) => this.getHeight(x, z)));
   }
 
   // dabiska zemes krāsa konkrētā vietā (izmanto gan reljefs, gan zāle)
@@ -260,10 +276,12 @@ export class World {
         c.lerp(P.forestG, Math.min(1, (f - 0.05) * 3.5));
         c.lerp(P.needles, Math.min(0.55, Math.max(0, v2 - 0.35) * Math.min(1, f * 3)));
       }
-      const r = Math.hypot(x, z);
+      const r = Math.hypot(x, z), e = sqDist(x, z);
       if (r < 30) c.lerp(P.village, 0.4);
-      if (h > 13 && r < EDGE + 4) c.lerp(P.rock, Math.min(0.6, (h - 13) / 10));
-      if (r > EDGE + 4) c.lerp(P.forestG, 0.8);
+      if (h > 13 && e < EDGE + 4) c.lerp(P.rock, Math.min(0.6, (h - 13) / 10));
+      if (e > EDGE + 4) c.lerp(P.forestG, 0.8 * (1 - corridor(x, z)));
+      const ep = this.exitPath(x, z);
+      if (ep > 0) c.lerp(P.road, ep * 0.85);
       const sw = this.swampPlace || (this.swampPlace = this.places.find((p) => p.id === 'purvs') || { x: 1e9, z: 0, swamp: 1 });
       const sd = Math.hypot(x - sw.x, z - sw.z);
       if (sd < sw.swamp * 1.5) c.lerp(P.swamp || (P.swamp = new THREE.Color('#5e5a2c')), 0.6 * (1 - smoothstep(sw.swamp * 0.7, sw.swamp * 1.5, sd)));
@@ -275,12 +293,12 @@ export class World {
 
   // foto faktūru slāņu svari: mežs, smiltis, zeme/dubļi, akmens (pļava = atlikums)
   splatAt(x, z, h, ny, out, o) {
-    const r = Math.hypot(x, z);
+    const r = Math.hypot(x, z), e = sqDist(x, z);
     let wF = 0, wS = 0, wD = 0, wR = 0;
     if (h < 0.9) wS = 1 - smoothstep(0.45, 0.95, h);
     if (h < -0.3) { wD = clamp01((-h - 0.3) * 0.8); wS *= 1 - wD; }
     if (h >= 0.6) {
-      const f = r > EDGE + 4 ? 0.5 : this.forest(x, z);
+      const f = e > EDGE + 4 ? 0.5 * (1 - corridor(x, z)) : this.forest(x, z);
       wF = clamp01((f - 0.08) * 3.2) * smoothstep(0.6, 1.2, h) * smoothstep(40, 55, r);
       const rd = this.roadDist(x, z).d;
       if (rd < 3.6) wD = Math.max(wD, 1 - smoothstep(1.6, 3.6, rd));
@@ -289,9 +307,10 @@ export class World {
       if (sd < sw.swamp * 1.4) wD = Math.max(wD, 0.55 * (1 - smoothstep(sw.swamp * 0.6, sw.swamp * 1.4, sd)));
       for (const p of this.places) if ((p.id === 'nometne' || p.id === 'drupas') && Math.hypot(x - p.x, z - p.z) < 6) wD = Math.max(wD, 0.6);
       if (r < 4) wD = Math.max(wD, 0.5);
+      wD = Math.max(wD, this.exitPath(x, z));
     }
     wR = smoothstep(0.88, 0.72, ny);
-    if (h > 13 && r < EDGE + 4) wR = Math.max(wR, Math.min(0.75, (h - 13) / 9));
+    if (h > 13 && e < EDGE + 4) wR = Math.max(wR, Math.min(0.75, (h - 13) / 9));
     const sum = wF + wS + wD + wR;
     const k = sum > 1 ? 1 / sum : 1;
     out[o] = wF * k; out[o + 1] = wS * k; out[o + 2] = wD * k; out[o + 3] = wR * k;
@@ -783,13 +802,14 @@ export class World {
     for (let gx = -HALF; gx < HALF; gx += step) {
       for (let gz = -HALF; gz < HALF; gz += step) {
         const x = gx + (rnd() - 0.5) * step * 0.9, z = gz + (rnd() - 0.5) * step * 0.9;
-        const r = Math.hypot(x, z);
-        if (r > PLAY_RADIUS + 35 || r < 42) { rnd(); rnd(); continue; }
+        const r = Math.hypot(x, z), e = sqDist(x, z);
+        if (e > PLAY_RADIUS + 35 || r < 42) { rnd(); rnd(); continue; }
+        if (e > EDGE - 70 && corridor(x, z) > 0.02) { rnd(); rnd(); continue; } // taka uz blakus zemi
         const h = this.getHeight(x, z);
         if (h < 1.2 || h > 45) { rnd(); rnd(); continue; }
         if (this.roadDist(x, z).d < 5 || inPlace(this, x, z)) { rnd(); rnd(); continue; }
-        if (r > EDGE + 8 && (r > PLAY_RADIUS + 20 || rnd() < 0.4)) { rnd(); continue; }
-        const f = r > EDGE + 8 ? 0.5 : this.forest(x, z);
+        if (e > EDGE + 8 && (e > PLAY_RADIUS + 20 || rnd() < 0.4)) { rnd(); continue; }
+        const f = e > EDGE + 8 ? 0.5 : this.forest(x, z);
         const p = f > 0.12 ? 0.62 : f > 0.0 ? 0.08 : 0.02;
         if (rnd() > p) {
           if (f > 0.05 && rnd() < 0.25 && this.trackDist(x, z) > TRACK_WIDTH / 2 + 3) lists.bush.push({ x, y: h, z, s: 0.6 + rnd() * 0.7, ry: rnd() * 6.28 });
@@ -1120,7 +1140,7 @@ export class World {
     for (let i = 0; i < 24000 && rocks.length < 1400; i++) {
       const x = (rnd() - 0.5) * 2 * (PLAY_RADIUS - 5), z = (rnd() - 0.5) * 2 * (PLAY_RADIUS - 5);
       const r = Math.hypot(x, z);
-      if (r > PLAY_RADIUS - 2 || r < 38) continue;
+      if (sqDist(x, z) > PLAY_RADIUS - 8 || r < 38) continue;
       const h = this.getHeight(x, z);
       if (h < 0.3) continue;
       if (this.trackDist(x, z) < TRACK_WIDTH / 2 + 4 || this.roadDist(x, z).d < 4 || inPlace(this, x, z)) continue;
@@ -1366,7 +1386,7 @@ export class World {
     for (let i = 0; i < 80000 && this.mushrooms.length < 420; i++) {
       const x = (rnd() - 0.5) * 2 * (PLAY_RADIUS - 10), z = (rnd() - 0.5) * 2 * (PLAY_RADIUS - 10);
       const tr = rnd();
-      if (Math.hypot(x, z) > PLAY_RADIUS - 10 || Math.hypot(x, z) < 50) continue;
+      if (sqDist(x, z) > PLAY_RADIUS - 14 || Math.hypot(x, z) < 50) continue;
       const h = this.getHeight(x, z);
       if (h < 1.3 || h > 32) continue;
       if (this.forest(x, z) < 0.2) continue;
@@ -1414,7 +1434,7 @@ export class World {
       for (let i = 0; i < 30000 && got < count; i++) {
         const x = (rnd() - 0.5) * 2 * (PLAY_RADIUS - 15), z = (rnd() - 0.5) * 2 * (PLAY_RADIUS - 15);
         const p1 = rnd() * 6.28, p2 = rnd() * 6.28, sp = 0.6 + rnd() * 0.5;
-        if (Math.hypot(x, z) < 45 || Math.hypot(x, z) > PLAY_RADIUS - 15) continue;
+        if (Math.hypot(x, z) < 45 || sqDist(x, z) > PLAY_RADIUS - 18) continue;
         if (this.trackDist(x, z) < TRACK_WIDTH + R) continue;
         const h = this.getHeight(x, z);
         if (!ok(this.forest(x, z), h)) continue;

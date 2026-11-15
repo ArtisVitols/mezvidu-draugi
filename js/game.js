@@ -1,17 +1,18 @@
 import * as THREE from 'three';
-import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotPos, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.6.0';
-import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.6.0';
-import { Controls } from './controls.js?v=1.6.0';
+import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotPos, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.7.0';
+import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.7.0';
+import { Controls } from './controls.js?v=1.7.0';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS } from './data.js?v=1.6.0';
-import { writeSave } from './save.js?v=1.6.0';
-import { VERSION, BUILD_DATE } from './version.js?v=1.6.0';
-import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.6.0';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.6.0';
-import { Activities, makeTeam } from './activities.js?v=1.6.0';
-import { terrainMaterial, hdrEnvironment, upgradeWater, PlanarReflection, PostFX, loadTexture } from './gfx.js?v=1.6.0';
-import { buildRod, buildDecor } from './props.js?v=1.6.0';
-import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.6.0';
+import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS } from './data.js?v=1.7.0';
+import { writeSave } from './save.js?v=1.7.0';
+import { VERSION, BUILD_DATE } from './version.js?v=1.7.0';
+import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.7.0';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.7.0';
+import { Activities, makeTeam } from './activities.js?v=1.7.0';
+import { terrainMaterial, hdrEnvironment, upgradeWater, PlanarReflection, PostFX, loadTexture } from './gfx.js?v=1.7.0';
+import { buildRod, buildDecor } from './props.js?v=1.7.0';
+import { PlainZone, ZONES, ZONE_IDS, DIRS, OPP, ZONE_HALF, ZONE_SIZE, EXIT_W, zoneOffset, alongLat } from './zones.js?v=1.7.0';
+import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.7.0';
 
 const ANIM = ['idle', 'walk', 'run', 'jump', 'swim', 'sit', 'pet', 'wave', 'fish'];
 const MUSH_RESPAWN = 120000;
@@ -67,7 +68,11 @@ export class Game {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 0.62;
-    this.scene = new THREE.Scene();
+    // stage — īstā three.js aina; scene — Mežvidu (centra zemes) saturs, ko var noņemt, kad esi citā zemē
+    this.stage = new THREE.Scene();
+    this.scene = new THREE.Group();
+    this.stage.add(this.scene);
+    this.zone = 'c';
     this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 450);
 
     // reālistiskas debesis + apkārtnes apgaismojums no tām
@@ -81,19 +86,19 @@ export class Game {
       return sk;
     };
     this.sky = mkSky(380);
-    this.scene.add(this.sky);
+    this.stage.add(this.sky);
     const pmrem = new THREE.PMREMGenerator(this.renderer);
     const envScene = new THREE.Scene();
     envScene.add(mkSky(500));
-    this.scene.environment = pmrem.fromScene(envScene, 0, 0.1, 1000).texture;
+    this.stage.environment = pmrem.fromScene(envScene, 0, 0.1, 1000).texture;
     pmrem.dispose();
-    this.scene.fog = new THREE.Fog(new THREE.Color('#a9c6dc'), 100, 360);
+    this.stage.fog = new THREE.Fog(new THREE.Color('#a9c6dc'), 100, 360);
 
-    this.scene.add(new THREE.HemisphereLight('#cfe3f5', '#4a5a30', 0.5));
+    this.stage.add(new THREE.HemisphereLight('#cfe3f5', '#4a5a30', 0.5));
     const sun = new THREE.DirectionalLight('#fff1d6', 3.2);
     sun.position.copy(this.sunDir).multiplyScalar(120);
-    this.scene.add(sun);
-    this.scene.add(sun.target);
+    this.stage.add(sun);
+    this.stage.add(sun.target);
     this.sun = sun;
     if (hi) {
       this.renderer.shadowMap.enabled = true;
@@ -109,6 +114,8 @@ export class Game {
 
     this.world = new World(WORLD_SEED);
     this.world.lowQ = !hi;
+    this.hi = hi;
+    this.terr = this.world; // aktīvās zemes reljefs (kustībai un kamerai)
     this.world.build(this.scene, this.renderer);
     this.camera.layers.enable(1);
     this.setupGfx(hi, ultra);
@@ -121,15 +128,16 @@ export class Game {
     this.buildMinimap();
 
     // mans tēls
-    const sp = this.save.pos && Math.hypot(this.save.pos.x, this.save.pos.z) < PLAY_RADIUS - 5 && this.world.getHeight(this.save.pos.x, this.save.pos.z) > WATER_Y
-      ? this.save.pos : SPAWN;
+    const sz = ZONES[this.save.zone] ? this.save.zone : 'c';
+    const okPos = (p) => p && Math.max(Math.abs(p.x), Math.abs(p.z)) < PLAY_RADIUS - 5 && (sz !== 'c' || this.world.getHeight(p.x, p.z) > WATER_Y);
+    const sp = okPos(this.save.pos) ? this.save.pos : SPAWN;
     this.me = {
       pos: new THREE.Vector3(sp.x, this.world.getHeight(sp.x, sp.z), sp.z),
       vy: 0, heading: 0, onGround: true, state: 'idle', inKart: false,
       kart: null, boost: 0, dizzy: 0, iceCream: 0, waveT: 0, petT: 0, progress: 0,
     };
     this.avatar = buildAnimal(this.save);
-    this.scene.add(this.avatar.root);
+    this.stage.add(this.avatar.root);
     this.myName = makeTextSprite(this.save.name, { bg: 'rgba(40,120,40,0.7)' });
     this.myName.position.y = 2.25;
     this.avatar.root.add(this.myName);
@@ -137,6 +145,7 @@ export class Game {
     this.initActivities();
 
     this.cam = { yaw: Math.PI * 0.25, pitch: 0.38, dist: 7.5 };
+    if (sz !== 'c') this.switchZone(sz, sp, null);
     this.controls = new Controls($('touch'));
     this.bindHud();
     this.setupNet();
@@ -154,7 +163,7 @@ export class Game {
       } catch (e) { console.warn('Pēcapstrāde nav pieejama', e); this.refl = null; this.post = null; }
     }
     upgradeWater(W, this.refl);
-    hdrEnvironment(this.renderer, this.sunDir, 1.0).then((env) => { this.scene.environment = env; }).catch((e) => console.warn(e));
+    hdrEnvironment(this.renderer, this.sunDir, 1.0).then((env) => { this.stage.environment = env; }).catch((e) => console.warn(e));
     if (!hi) return;
     terrainMaterial().then((m) => W.usePhotoTerrain(m)).catch((e) => console.warn(e));
     Promise.all([new Promise((r, j) => { const im = new Image(); im.onload = () => r(im); im.onerror = j; im.src = 'assets/tex/asphalt_c.jpg'; }), loadTexture('assets/tex/asphalt_n.jpg', false)])
@@ -164,9 +173,9 @@ export class Game {
   }
 
   renderFrame() {
-    if (this.refl && this.refl.enabled) this.refl.update(this.renderer, this.scene, this.camera, this.world.water, WATER_Y);
-    if (this.post && this.post.enabled) this.post.render(this.scene, this.camera);
-    else this.renderer.render(this.scene, this.camera);
+    if (this.refl && this.refl.enabled && this.zone === 'c') this.refl.update(this.renderer, this.stage, this.camera, this.world.water, WATER_Y);
+    if (this.post && this.post.enabled) this.post.render(this.stage, this.camera);
+    else this.renderer.render(this.stage, this.camera);
   }
 
   onResize() {
@@ -313,7 +322,8 @@ export class Game {
     }
   }
 
-  // Kartes pamatattēls visai pasaulei; minikarte rāda apkārtni ap spēlētāju, pieskaroties — visu karti
+  // Mežvidu kartes pamatattēls; minikarte rāda apkārtni ap spēlētāju, pieskaroties — visu karti.
+  // Kopējās kartes koordinātas: lokālā pozīcija + zemes nobīde (zoneOffset), tā redzamas visas zemes kopā.
   buildMinimap() {
     const MS = 420, R = PLAY_RADIUS + 10;
     this.mapR = R; this.mapS = MS;
@@ -329,14 +339,14 @@ export class Game {
       if (h < WATER_Y) col = h < -1.5 ? [44, 110, 170] : [59, 143, 205];
       else if (h < 0.9) col = [222, 205, 150];
       else if (W.trackDist(x, z) < TRACK_WIDTH / 2) col = [90, 90, 96];
-      else if (W.roadDist(x, z).d < 2.5) col = [160, 130, 90];
+      else if (W.roadDist(x, z).d < 2.5 || W.exitPath(x, z) > 0.4) col = [160, 130, 90];
       else if (h > 18) col = [150, 148, 132];
       else if (W.forest(x, z) > 0.12) col = [52, 100, 42];
       else col = [111, 170, 72];
       // vieglas ēnas pēc slīpuma
       const sh = Math.max(-25, Math.min(25, (W.getHeight(x - 2, z - 2) - h) * 9));
       col = col.map((v) => Math.max(0, Math.min(255, v + sh)));
-      if (Math.hypot(x, z) > PLAY_RADIUS) col = [95, 110, 80];
+      if (Math.max(Math.abs(x), Math.abs(z)) > PLAY_RADIUS && W.exitPath(x, z) < 0.4) col = [95, 110, 80];
       const k = (py * MS + px) * 4;
       img.data[k] = col[0]; img.data[k + 1] = col[1]; img.data[k + 2] = col[2]; img.data[k + 3] = 255;
     }
@@ -345,6 +355,32 @@ export class Game {
     this.mapCtx = $('minimap').getContext('2d');
     $('minimap').addEventListener('click', () => this.openBigMap());
   }
+
+  // visas zemes: Mežvidi no pamatattēla, blakus zemes — vienkrāsaini kvadrāti ar nosaukumu
+  drawLands(g, toPx, labels) {
+    const R = this.mapR, H = ZONE_HALF;
+    const [a0, b0] = toPx(-R, -R), [a1, b1] = toPx(R, R);
+    g.drawImage(this.mapBase, a0, b0, a1 - a0, b1 - b0);
+    for (const id of ZONE_IDS) {
+      if (id === 'c') continue;
+      const [ox, oz] = zoneOffset(id), Z = ZONES[id];
+      const [x0, y0] = toPx(ox - H, oz - H), [x1, y1] = toPx(ox + H, oz + H);
+      g.fillStyle = Z.map; g.fillRect(x0, y0, x1 - x0, y1 - y0);
+      g.strokeStyle = 'rgba(90,60,30,0.8)'; g.lineWidth = 1; g.strokeRect(x0, y0, x1 - x0, y1 - y0);
+      // taka no Mežvidiem
+      const [dx, dz] = DIRS[id];
+      const [p0x, p0y] = toPx(dx * (H - 30), dz * (H - 30)), [p1x, p1y] = toPx(dx * (H + 60), dz * (H + 60));
+      g.strokeStyle = '#a07a50'; g.lineWidth = 2; g.beginPath(); g.moveTo(p0x, p0y); g.lineTo(p1x, p1y); g.stroke();
+      if (labels) {
+        const [cx, cy] = toPx(ox, oz);
+        g.fillStyle = 'rgba(0,0,0,0.75)'; g.font = 'bold 13px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.fillText(`${Z.icon} ${Z.name}`, cx, cy);
+      }
+    }
+  }
+
+  // spēlētāja pozīcija kopējā kartē
+  globalPos(zone, x, z) { const [ox, oz] = zoneOffset(zone || 'c'); return [x + ox, z + oz]; }
 
   mapMarkers(g, toPx, big) {
     g.font = (big ? 16 : 11) + 'px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
@@ -365,13 +401,14 @@ export class Game {
     const [vx, vy] = toPx(0, 0); g.fillText('🏡', vx, vy);
     const [kx, ky] = toPx(this.world.kartSpot.x, this.world.kartSpot.z); g.fillText('🏎️', kx, ky);
     for (const [, r] of this.remotes) {
-      if (this.mgHidden && this.mgHidden(r.id)) continue;
-      const [px, py] = toPx(r.pos.x, r.pos.z);
+      if (!r.seen || (this.mgHidden && this.mgHidden(r.id))) continue;
+      const [px, py] = toPx(...this.globalPos(r.zone, r.pos.x, r.pos.z));
       g.fillStyle = PLAYER_DOT[(r.prof.slot || 0) % 4];
       g.beginPath(); g.arc(px, py, big ? 5 : 3.5, 0, 6.3); g.fill();
       g.strokeStyle = '#fff'; g.lineWidth = 1; g.stroke();
+      if (big) { g.fillStyle = '#fff'; g.font = 'bold 11px sans-serif'; g.fillText(r.prof.name, px, py - 11); }
     }
-    const [mx, my] = toPx(this.me.pos.x, this.me.pos.z);
+    const [mx, my] = toPx(...this.globalPos(this.zone, this.me.pos.x, this.me.pos.z));
     const h = this.me.inKart ? this.me.kart.heading : this.me.heading;
     g.save();
     g.translate(mx, my);
@@ -384,29 +421,122 @@ export class Game {
   }
 
   drawMinimap() {
-    const g = this.mapCtx, R = this.mapR, MS = this.mapS;
+    const g = this.mapCtx;
     const VIEW = 130; // metri no centra līdz minikartes malai
-    const cx = this.me.pos.x, cz = this.me.pos.z;
+    const [cx, cz] = this.globalPos(this.zone, this.me.pos.x, this.me.pos.z);
     const scale = 140 / (2 * VIEW);
     const toPx = (x, z) => [70 + (x - cx) * scale, 70 + (z - cz) * scale];
-    g.fillStyle = '#5f6e50'; g.fillRect(0, 0, 140, 140);
-    const sp = MS / (2 * R); // pikseļi uz metru pamatattēlā
-    g.drawImage(this.mapBase, (cx - VIEW + R) * sp, (cz - VIEW + R) * sp, 2 * VIEW * sp, 2 * VIEW * sp, 0, 0, 140, 140);
+    g.fillStyle = '#4d5a40'; g.fillRect(0, 0, 140, 140);
+    this.drawLands(g, toPx, false);
     this.mapMarkers(g, toPx, false);
   }
 
   openBigMap() {
+    if (this.bigMapAll == null) this.bigMapAll = true;
     showPanel('🗺️ Karte', (b) => {
+      const S = 480;
       const c = document.createElement('canvas');
-      c.width = c.height = 420;
+      c.width = c.height = S;
       c.style.cssText = 'width:min(78vw,62vh);height:min(78vw,62vh);display:block;margin:0 auto;border-radius:12px';
       b.append(c);
       const g = c.getContext('2d');
-      g.drawImage(this.mapBase, 0, 0, 420, 420);
-      const R = this.mapR;
-      this.mapMarkers(g, (x, z) => [(x + R) / (2 * R) * 420, (z + R) / (2 * R) * 420], true);
-      b.append(el('div', { style: 'text-align:center;font-size:13px;margin-top:6px;opacity:0.75' }, (this.save.revealed ? '⭐ zvaigznes' : '⭐ — uzkāp 🗼 tornī') + ' · 🏡 ciemats · 🏎️ trase · ⛺🗼🐸🏰🎣 īpašās vietas'));
+      const btn = el('button', { className: 'pbtn', style: 'display:block;margin:8px auto 0' }, '');
+      const legend = el('div', { style: 'text-align:center;font-size:13px;margin-top:6px;opacity:0.75' }, '');
+      const draw = () => {
+        let toPx;
+        if (this.bigMapAll) {
+          const E = ZONE_HALF * 3; // visas 5 zemes krusta formā
+          toPx = (x, z) => [(x + E) / (2 * E) * S, (z + E) / (2 * E) * S];
+        } else {
+          const [ox, oz] = zoneOffset(this.zone), R = this.mapR;
+          toPx = (x, z) => [(x - ox + R) / (2 * R) * S, (z - oz + R) / (2 * R) * S];
+        }
+        g.fillStyle = '#2e3a2a'; g.fillRect(0, 0, S, S);
+        this.drawLands(g, toPx, true);
+        this.mapMarkers(g, toPx, true);
+        const Z = ZONES[this.zone];
+        btn.textContent = this.bigMapAll ? `🔍 Tuvāk: ${Z.icon} ${Z.name}` : '🧭 Visas zemes';
+        legend.textContent = this.bigMapAll
+          ? `Tu esi: ${Z.icon} ${Z.name} · zemju malās ir takas ar vārtiem uz citām zemēm`
+          : (this.save.revealed ? '⭐ zvaigznes' : '⭐ — uzkāp 🗼 tornī') + ' · 🏡 ciemats · 🏎️ trase · ⛺🗼🐸🏰🎣 īpašās vietas';
+      };
+      btn.addEventListener('click', () => { this.bigMapAll = !this.bigMapAll; draw(); });
+      b.append(btn, legend);
+      draw();
     });
+  }
+
+  // ======================= Zemes (pāreja uz blakus kartēm) =======================
+  updateExits(dt) {
+    this.exitWarnT = Math.max(0, (this.exitWarnT || 0) - dt);
+    const sign = $('zone-sign');
+    if (this.zoneBusy) return;
+    const p = this.me.pos, H = ZONE_HALF;
+    const sides = this.zone === 'c' ? ['n', 'e', 's', 'w'] : [OPP[this.zone]];
+    let near = null;
+    for (const s of sides) {
+      const al = alongLat(p.x, p.z, s);
+      if (al.lat < EXIT_W + 8 && al.along > H - 40) near = { s, ...al };
+    }
+    if (!near) { sign.classList.add('hidden'); return; }
+    const dest = this.zone === 'c' ? near.s : 'c';
+    const Z = ZONES[dest];
+    const txt = `🧭 Šī taka ved uz: ${Z.icon} ${Z.name}` + (near.along > H - 12 ? ' — ej cauri vārtiem!' : '');
+    if (sign.textContent !== txt) sign.textContent = txt;
+    sign.classList.remove('hidden');
+    if (near.along > H + 4 && near.lat < EXIT_W) {
+      const warn = (m) => { if (this.exitWarnT <= 0) { this.exitWarnT = 4; toast(m); } };
+      if (this.me.inKart) return warn('🏎️ Ar kartu uz citu zemi nevar — izkāp un ej kājām!');
+      if (this.mgIn && this.mgIn()) return warn('🎲 Spēles laikā nevar aiziet uz citu zemi!');
+      this.travel(dest, near.s);
+    }
+  }
+
+  travel(dest, side) {
+    this.zoneBusy = true;
+    $('zone-sign').classList.add('hidden');
+    const fade = $('zone-fade');
+    fade.textContent = `${ZONES[dest].icon} ${ZONES[dest].name}`;
+    fade.classList.add('on');
+    sfx('beep');
+    const [dx, dz] = DIRS[side], p = this.me.pos;
+    const along = p.x * dx + p.z * dz;
+    // ierodamies jaunās zemes pretējā malā, saglabājot vietu takā
+    const pos = { x: p.x - dx * along - dx * (ZONE_HALF - 8), z: p.z - dz * along - dz * (ZONE_HALF - 8) };
+    setTimeout(() => {
+      this.switchZone(dest, pos, Math.atan2(dx, dz));
+      setTimeout(() => {
+        fade.classList.remove('on');
+        this.zoneBusy = false;
+        this.persist();
+        toast(`📍 ${ZONES[dest].icon} ${ZONES[dest].name}`, 'good');
+      }, 200);
+    }, 450);
+  }
+
+  // noņem iepriekšējo zemi no ainas un ieliek jauno. Mežvidu stāvoklis (sēnes, dārzi, ogas) dzīvo tālāk —
+  // to glabā saimnieks un tavs saglabājums; blakus zemes tiek pilnībā izmestas no atmiņas.
+  switchZone(id, pos, heading) {
+    const prev = this.zone;
+    if (this.fishing) this.stopFishing();
+    if (prev !== id) {
+      if (prev === 'c') this.stage.remove(this.scene);
+      else if (this.terr && this.terr !== this.world) this.terr.dispose();
+      this.zone = id;
+      if (id === 'c') { this.terr = this.world; this.stage.add(this.scene); } else { this.terr = new PlainZone(id, this.hi); this.terr.build(this.stage); }
+    }
+    this.me.pos.set(pos.x, this.terr.groundAt(pos.x, pos.z), pos.z);
+    this.me.vy = 0; this.me.onGround = true;
+    if (heading != null) { this.me.heading = heading; this.cam.yaw = heading + Math.PI; }
+    this.camInit = false;
+    if (this.pet) this.pet.init = false;
+    this.timers.vis = 0; this.timers.send = 0; this.timers.map = 0; this.timers.action = 0;
+  }
+
+  findZoneAction() {
+    const p = this.me.pos, t = this.now();
+    if (this.pet && !(this.petCd > t) && Math.hypot(this.pet.x - p.x, this.pet.z - p.z) < 2.1) return { label: `🤗 Paglaudīt: ${PETS[this.pet.id].name}`, fn: () => this.petMyPet() };
+    return null;
   }
 
   // ======================= HUD =======================
@@ -520,7 +650,10 @@ export class Game {
 
   persist() {
     if (!this.me) return;
-    if (!this.me.inKart) this.save.pos = { x: +this.me.pos.x.toFixed(1), z: +this.me.pos.z.toFixed(1) };
+    if (!this.me.inKart && !this.zoneBusy) {
+      this.save.pos = { x: +this.me.pos.x.toFixed(1), z: +this.me.pos.z.toFixed(1) };
+      this.save.zone = this.zone;
+    }
     writeSave(this.save);
   }
 
@@ -693,6 +826,12 @@ export class Game {
           if (!r) continue;
           r.target.set(e[1], e[2], e[3]);
           r.tRy = e[4]; r.anim = ANIM[e[5]] || 'idle'; r.inKart = !!e[6]; r.progress = e[7] || 0;
+          const z = ZONE_IDS[e[8] || 0] || 'c';
+          if (r.seen && r.zone !== z) {
+            r.pos.copy(r.target);
+            toast(`🧭 ${r.prof.name} devās uz: ${ZONES[z].icon} ${ZONES[z].name}`);
+          }
+          r.zone = z;
           if (!r.seen) { r.pos.copy(r.target); r.seen = true; }
         }
         break;
@@ -765,7 +904,7 @@ export class Game {
       r.avatar.root.add(ns);
       r.nameSprite = ns;
       r.rod = null;
-      if (r.kart) r.kart.seat.add(r.avatar.root); else this.scene.add(r.avatar.root);
+      if (r.kart) r.kart.seat.add(r.avatar.root); else this.stage.add(r.avatar.root);
       r.appearance = appearance;
     } else if (r.prof.hat !== prof.hat) r.avatar.setHat(prof.hat);
     if (r.kart && r.prof.kartColor !== prof.kartColor) r.kart.setColor(this.kartColorHex(prof.kartColor));
@@ -780,7 +919,7 @@ export class Game {
     if (!r) return;
     if (r.avatar.root.parent) r.avatar.root.parent.remove(r.avatar.root);
     if (r.kart) this.scene.remove(r.kart.root);
-    if (r.pet) this.scene.remove(r.pet.model.root);
+    if (r.pet) this.stage.remove(r.pet.model.root);
     this.renderGarden(r.prof.slot, null);
     this.renderDecor(r.prof.slot, null);
     this.setGardenSign(r.prof.slot, null);
@@ -806,7 +945,7 @@ export class Game {
     const camIn = ctl.consumeCam();
     let jump = ctl.consumeJump();
     const action = ctl.consumeAction();
-    if (panelOpen() || this.mgFrozen()) { mv = { x: 0, y: 0, run: false }; jump = false; }
+    if (panelOpen() || this.mgFrozen() || this.zoneBusy) { mv = { x: 0, y: 0, run: false }; jump = false; }
     if (this.fishing && (Math.hypot(mv.x, mv.y) > 0.3 || jump || this.me.inKart)) this.stopFishing();
     if (this.me.dizzy > 0) {
       this.me.dizzy -= dt;
@@ -830,14 +969,20 @@ export class Game {
     this.updateCamera(dt);
     this.updateSun(dt);
     this.updateRemotes(dt);
-    this.updateWorldObjects(dt, t);
-    this.updateActivities(dt, t);
+    if (this.zone === 'c') {
+      this.updateWorldObjects(dt, t);
+      this.updateActivities(dt, t);
+      this.world.updateClouds(dt, this.camera.position);
+      this.timers.vis = (this.timers.vis || 0) - dt;
+      if (this.timers.vis <= 0) { this.timers.vis = 0.3; this.world.updateVisibility(this.camera.position.x, this.camera.position.z); }
+      if (this.world.grassCenter) this.world.grassCenter.set(this.me.pos.x, this.me.pos.z);
+    } else {
+      this.updatePets(dt);
+      this.updateMg(dt, t);
+    }
     this.updateRace(dt, t);
     this.updateEffects(dt);
-    this.world.updateClouds(dt, this.camera.position);
-    this.timers.vis = (this.timers.vis || 0) - dt;
-    if (this.timers.vis <= 0) { this.timers.vis = 0.3; this.world.updateVisibility(this.camera.position.x, this.camera.position.z); }
-    if (this.world.grassCenter) this.world.grassCenter.set(this.me.pos.x, this.me.pos.z);
+    this.updateExits(dt);
 
     this.timers.action -= dt;
     if (this.timers.action <= 0) { this.timers.action = 0.15; this.refreshAction(); }
@@ -856,7 +1001,7 @@ export class Game {
       const p = this.me.pos;
       const ry = this.me.inKart ? this.me.kart.heading : this.me.heading;
       const r2 = (v) => Math.round(v * 100) / 100;
-      this.net.toHost({ t: 'pos', p: [r2(p.x), r2(p.y), r2(p.z), r2(ry), ANIM.indexOf(this.me.state), this.me.inKart ? 1 : 0, r2(this.me.progress || 0)] });
+      this.net.toHost({ t: 'pos', p: [r2(p.x), r2(p.y), r2(p.z), r2(ry), ANIM.indexOf(this.me.state), this.me.inKart ? 1 : 0, r2(this.me.progress || 0), ZONE_IDS.indexOf(this.zone)] });
     }
 
     this.timers.map -= dt;
@@ -867,7 +1012,7 @@ export class Game {
   }
 
   updateWalk(dt, mv, jump) {
-    const me = this.me, W = this.world;
+    const me = this.me, W = this.terr;
     const yaw = this.cam.yaw;
     const fx = -Math.sin(yaw), fz = -Math.cos(yaw);
     const rx = Math.cos(yaw), rz = -Math.sin(yaw);
@@ -893,7 +1038,7 @@ export class Game {
       me.heading = angleLerp(me.heading, Math.atan2(ux, uz), 1 - Math.exp(-dt * 14));
     }
     W.collide(me.pos, 0.4);
-    this.collideIce(me.pos, 0.4);
+    if (this.zone === 'c') this.collideIce(me.pos, 0.4);
     const ground = W.groundAt(me.pos.x, me.pos.z, me.pos.y);
     const deep = ground < WATER_Y - 0.9;
     if (deep && me.pos.y <= WATER_Y + 0.2) {
@@ -939,7 +1084,7 @@ export class Game {
     me.kart = { obj: kart, speed: 0, heading: s.heading, hint: -1, boost: 0, padCd: 0 };
     me.inKart = true;
     this.scene.add(kart.root);
-    this.scene.remove(this.avatar.root);
+    this.stage.remove(this.avatar.root);
     kart.seat.add(this.avatar.root);
     this.avatar.root.position.set(0, 0, 0);
     this.avatar.root.rotation.set(0, 0, 0);
@@ -958,7 +1103,7 @@ export class Game {
     const h = me.kart.heading;
     this.scene.remove(me.kart.obj.root);
     me.kart.obj.seat.remove(this.avatar.root);
-    this.scene.add(this.avatar.root);
+    this.stage.add(this.avatar.root);
     this.avatar.shadow.visible = true;
     me.pos.x += Math.cos(h) * 2; me.pos.z -= Math.sin(h) * 2;
     me.pos.y = this.world.getHeight(me.pos.x, me.pos.z) + 0.5;
@@ -1037,12 +1182,12 @@ export class Game {
     const ox = Math.sin(this.cam.yaw) * cp, oy = Math.sin(this.cam.pitch), oz = Math.cos(this.cam.yaw) * cp;
     for (let s = 0.15; s <= 1.001; s += 0.085) {
       const d = s * dist;
-      if (this.world.getHeight(tx + ox * d, tz + oz * d) + 0.5 > ty + oy * d) { dist = Math.max(1.8, d * 0.85); break; }
+      if (this.terr.getHeight(tx + ox * d, tz + oz * d) + 0.5 > ty + oy * d) { dist = Math.max(1.8, d * 0.85); break; }
     }
     let cx = tx + Math.sin(this.cam.yaw) * cp * dist;
     let cz = tz + Math.cos(this.cam.yaw) * cp * dist;
     let cy = ty + Math.sin(this.cam.pitch) * dist;
-    const gh = Math.max(this.world.getHeight(cx, cz), WATER_Y) + 0.6;
+    const gh = Math.max(this.terr.getHeight(cx, cz), WATER_Y) + 0.6;
     if (cy < gh) cy = gh;
     const k = 1 - Math.exp(-dt * 12);
     if (!this.camInit) { this.camera.position.set(cx, cy, cz); this.camInit = true; }
@@ -1080,7 +1225,7 @@ export class Game {
           // ļoti lēns telefons: izslēdzam ēnas uzreiz
           this.renderer.shadowMap.enabled = false;
           this.sun.castShadow = false;
-          this.scene.traverse((o) => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => { m.needsUpdate = true; }); });
+          this.stage.traverse((o) => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => { m.needsUpdate = true; }); });
           toast('Spēle raustījās — ēnas izslēgtas. Izvēlnē ☰ var mainīt grafiku.', '', 5000);
         }
       }
@@ -1090,6 +1235,8 @@ export class Game {
   updateRemotes(dt) {
     const k = 1 - Math.exp(-dt * 12);
     for (const r of this.remotes.values()) {
+      const here = (r.zone || 'c') === this.zone; // citā zemē esošos rāda tikai kartē
+      if (r.kart) r.kart.root.visible = here;
       const prev = r.pos.clone();
       r.pos.lerp(r.target, k);
       if (r.pos.distanceTo(r.target) > 25) r.pos.copy(r.target);
@@ -1105,7 +1252,7 @@ export class Game {
         this.scene.remove(r.kart.root);
         r.kart.seat.remove(r.avatar.root);
         r.kart = null;
-        this.scene.add(r.avatar.root);
+        this.stage.add(r.avatar.root);
         r.avatar.shadow.visible = true;
       }
       if (r.kart) {
@@ -1117,12 +1264,12 @@ export class Game {
       } else {
         r.avatar.root.position.copy(r.pos);
         r.avatar.root.rotation.y = r.ry;
-        const g = this.world.getHeight(r.pos.x, r.pos.z);
+        const g = this.terr.getHeight(r.pos.x, r.pos.z);
         r.avatar.shadow.position.y = Math.max(g, WATER_Y) - r.pos.y + 0.03;
         r.avatar.animate(dt, r.anim, 5);
         if (r.anim === 'fish' && !r.rod) { r.rod = buildRod(); r.rod.position.set(0, 1.0, 0.32); r.avatar.root.add(r.rod); }
         if (r.rod) r.rod.visible = r.anim === 'fish';
-        r.avatar.root.visible = !this.mgHidden(r.id) || r.pos.distanceTo(this.me.pos) < 30;
+        r.avatar.root.visible = here && (!this.mgHidden(r.id) || r.pos.distanceTo(this.me.pos) < 30);
       }
     }
   }
@@ -1207,7 +1354,7 @@ export class Game {
   spawnFloat(text, pos) {
     const sp = makeTextSprite(text, { bg: 'rgba(0,0,0,0)', fontSize: 64 });
     sp.position.set(pos.x, pos.y + 2, pos.z);
-    this.scene.add(sp);
+    this.stage.add(sp);
     this.effects.push({ obj: sp, life: 1.4, t: 0 });
   }
 
@@ -1272,6 +1419,7 @@ export class Game {
 
   findAction() {
     if (this.me.inKart) return null;
+    if (this.zone !== 'c') return this.findZoneAction();
     const p = this.me.pos, t = this.now();
     let best = null, bd = 1e9;
     const consider = (d, max, label, fn) => { if (d < max && d < bd) { bd = d; best = { label, fn }; } };
@@ -1771,15 +1919,16 @@ export class Game {
       }
       b.append(el('div', { className: 'sect' }, 'Spēlētāji'));
       const animalName = (a) => (ANIMALS.find((x) => x.id === a) || {}).name || a;
-      b.append(itemRow('⭐', `${this.save.name} (tu)`, animalName(this.save.animal) + (this.net.isHost ? ' · saimnieks' : '')));
-      for (const r of this.remotes.values()) b.append(itemRow('🙂', r.prof.name, animalName(r.prof.animal) + (r.id === 0 ? ' · saimnieks' : '')));
+      const zn = (z) => ` · ${ZONES[z || 'c'].icon} ${ZONES[z || 'c'].name}`;
+      b.append(itemRow('⭐', `${this.save.name} (tu)`, animalName(this.save.animal) + (this.net.isHost ? ' · saimnieks' : '') + zn(this.zone)));
+      for (const r of this.remotes.values()) b.append(itemRow('🙂', r.prof.name, animalName(r.prof.animal) + (r.id === 0 ? ' · saimnieks' : '') + zn(r.zone)));
     });
   }
 
   openMenu() {
     showPanel('☰ Izvēlne', (b) => {
       b.append(el('div', { className: 'sect' }, 'Kā spēlēt'));
-      b.append(el('p', { html: '🕹️ <b>Kreisā puse</b> — velc pirkstu, lai staigātu.<br>👆 <b>Labā puse</b> — velc, lai grozītu kameru (2 pirksti — tuvināt).<br>⤒ — lēkt. Dzeltenā poga parādās, kad vari kaut ko darīt.<br>🍄 Mežā lasi sēnes (bet ne sarkanās mušmires!).<br>🌱 Ciemata dārzā stādi sēklas, aplaisti un novāc ražu.<br>🧺 Pārdod ražu tirgū un pērc cepures.<br>🏎️ Kartinga trase ir uz austrumiem — sēdies kartā un sacenties!<br>⭐ Kalnu virsotnēs paslēptas 15 zelta zvaigznes — no 🗼 skatu torņa tās redz kartē.<br>🎣 Nopērc makšķeri pie Ūdra Ojāra un makšķerē ezeros; kad pludiņš raustās — spied „VILKT!”.<br>🫐 Mežā lasi mellenes un avenes, purvā — dzērvenes.<br>⛺ Pie ugunskura var izcept sēnes (dārgāk pārdot).<br>🗺️ Atrodi 3 kartes gabalus (ugunskurs, tornis, purvs) un atver dārguma lādi 🏰 Pilsdrupās!<br>🐾 Suns Sprīdis pārdod mājdzīvniekus, Lapsa Liene — dārza rotājumus.<br>🎲 Ar draugiem spēlē ķeramo un paslēpes.<br>🤝 Katru nedēļu jauns kopīgais mērķis visiem draugiem.' }));
+      b.append(el('p', { html: '🕹️ <b>Kreisā puse</b> — velc pirkstu, lai staigātu.<br>👆 <b>Labā puse</b> — velc, lai grozītu kameru (2 pirksti — tuvināt).<br>⤒ — lēkt. Dzeltenā poga parādās, kad vari kaut ko darīt.<br>🍄 Mežā lasi sēnes (bet ne sarkanās mušmires!).<br>🌱 Ciemata dārzā stādi sēklas, aplaisti un novāc ražu.<br>🧺 Pārdod ražu tirgū un pērc cepures.<br>🏎️ Kartinga trase ir uz austrumiem — sēdies kartā un sacenties!<br>⭐ Kalnu virsotnēs paslēptas 15 zelta zvaigznes — no 🗼 skatu torņa tās redz kartē.<br>🎣 Nopērc makšķeri pie Ūdra Ojāra un makšķerē ezeros; kad pludiņš raustās — spied „VILKT!”.<br>🫐 Mežā lasi mellenes un avenes, purvā — dzērvenes.<br>⛺ Pie ugunskura var izcept sēnes (dārgāk pārdot).<br>🗺️ Atrodi 3 kartes gabalus (ugunskurs, tornis, purvs) un atver dārguma lādi 🏰 Pilsdrupās!<br>🐾 Suns Sprīdis pārdod mājdzīvniekus, Lapsa Liene — dārza rotājumus.<br>🎲 Ar draugiem spēlē ķeramo un paslēpes.<br>🤝 Katru nedēļu jauns kopīgais mērķis visiem draugiem.<br>🧭 Katras malas vidū taka ar vārtiem ved uz citu zemi — kartē redzamas visas zemes un draugi.' }));
       b.append(el('div', { className: 'sect' }, 'Iestatījumi'));
       b.append(el('button', { className: 'pbtn', onclick: () => {
         try { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); } catch (e) { /* */ }

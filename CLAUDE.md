@@ -37,14 +37,23 @@ Static site: plain HTML + ES modules, no build step. Photo textures in `assets/`
 | `js/places.js` | Special places (tower, camp, swamp, ruins, pier): deterministic site search before the height grid, terrain flattening (`placeHeight`), models, walkable platforms, berry bush spots |
 | `js/props.js` | Berry bushes (cloned templates), garden decorations + `DECOR_SPOTS`, fishing rod, bobber |
 | `js/activities.js` | `Activities` mixin on `Game.prototype`: fishing, berries, pets, decor, discovery, treasure, tag/hide-and-seek (host-run), weekly team goal |
+| `js/zones.js` | Lands: `ZONES` (c = Mežvidi + n/e/s/w), `ZONE_HALF` 420, exits (`corridor`, `clampSquare`, `buildExit` gate + signpost), `PlainZone` (flat side land, built on enter and disposed on leave) |
 | `js/gfx.js` | Realistic graphics: photo terrain material (5-layer `sampler2DArray` splat), HDRI environment, water shader upgrade, `PlanarReflection`, `PostFX` (AO, bloom, ACES + grading) |
 | `assets/` | Poly Haven CC0 textures (`tex/*_c.jpg` albedo 1024, `*_n.jpg` normal 512) and `sky.hdr` (256×128) |
-| `TODO.md` | Planned next ideas (graphics points 5–6, places not built yet) |
+| `TODO.md` | Planned next ideas (graphics points 5–6, places not built yet, side land content) |
 | `js/version.js` | Version shown in the UI |
 | `tools/bump-version.mjs` | Sets the version and cache-busting `?v=` tags |
 
 ## World size & rendering budget
-- `SIZE` 960 m terrain, `SEG` 384 (2.5 m cells), playable circle `PLAY_RADIUS` 420 m (edge rises into hills from `EDGE`).
+- `SIZE` 960 m terrain, `SEG` 384 (2.5 m cells), playable **square** half-size `PLAY_RADIUS` = `ZONE_HALF` 420 m (edge rises into
+  hills from `EDGE`, except 4 exit corridors in the middle of each side, `EXIT_W` 7 m half-width).
+- **Zones (lands):** `game.stage` is the real THREE.Scene; `game.scene` is a Group holding only Mežvidi (centre) content, so
+  `this.scene.add` = centre-only object. Shared things (sky, lights, my/remote avatars, pets, floating effects) go on `stage`.
+  In a side land `game.scene` is detached (not disposed: host logic still needs `world`), and a `PlainZone` is built; leaving it disposes it.
+  `game.terr` = active land terrain (movement, camera, pets); `game.world` always stays the centre World (host logic, centre objects).
+  Each land has local coordinates (centre 0,0); global map coords = local + `zoneOffset(id)` (840 m steps). `pos` messages carry the
+  zone index at `p[7]` (`ZONE_IDS`), remotes get `r.zone` and are shown in 3D only when in the same land. Save: `save.zone`, `save.zones` (reserved).
+  Centre-only update code (mushrooms, NPCs, activities, actions) is skipped when `game.zone !== 'c'`; side land actions go in `findZoneAction`.
 - Terrain is 8×8 tiles with normals from the global height grid.
 - Trees are grouped into `LOD_CH` (80 m) chunks in `world.lodChunks`. Near chunks (<100 m) show full instanced trees;
   far chunks show impostors: crossed quads textured from an atlas rendered at startup by `makeImpostorAtlas`

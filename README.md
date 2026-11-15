@@ -30,13 +30,15 @@ Datorā: WASD / bultiņas, atstarpe, E, peles vilkšana.
 - 🎲 Ķeramais un paslēpes ar draugiem
 - 🏎️ Kartinga trase ar turbo bultām — 3 apļu sacīkstes ar draugiem un robotiem
 - 🦌 Meža dzīvnieki: stirnas, zaķi, eži, mežacūkas, vāveres, stārķi — tos var paglaudīt
-- 🗺️ Liela pasaule (~840 m diametrā) — pieskaries minikartei, lai redzētu visu karti
+- 🧭 5 zemes: Mežvidi centrā (840 × 840 m) un katrā debespusē sava zeme — ❄️ Ziemeļu klajums, 🌻 Austrumu lauki, 🏖️ Dienvidu kāpas, 🌲 Rietumu sils.
+  Uz tām ved takas ar vārtiem Mežvidu malās (blakus zemes pagaidām ir līdzenas, saturs nāks vēlāk)
+- 🗺️ Pieskaries minikartei, lai redzētu karti — visas zemes kopā un kur atrodas katrs draugs
 - 🌲 Dabiska pasaule: egļu, priežu, bērzu un ozolu meži, kas šūpojas vējā, pļavas ar ziediem, ezeri ar niedrēm un ūdensrozēm, guļbūvju ciemats
 - ⭐ 15 zelta zvaigznes paslēptas kalnu virsotnēs
 - 📜 Uzdevumi ar balvām
 
 ## Saglabāšana
-Katra spēlētāja progress (monētas, soma, dārzs, zvaigznes, uzdevumi, cepures, mājdzīvnieki, rotājumi, atklātās vietas, kartes gabali, nedēļas mērķis, labākais aplis) tiek saglabāts
+Katra spēlētāja progress (monētas, soma, dārzs, zvaigznes, uzdevumi, cepures, mājdzīvnieki, rotājumi, atklātās vietas, kartes gabali, nedēļas mērķis, labākais aplis, zeme un vieta tajā) tiek saglabāts
 **tā telefona pārlūkā** zem spēlētāja vārda — ik pēc 5 sekundēm un aizverot spēli. Nākamreiz ieraksti to pašu vārdu.
 
 ## Tehniski

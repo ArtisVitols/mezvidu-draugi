@@ -20,6 +20,8 @@ export function defaultSave(name) {
     stars: [],        // atrasto zvaigžņu indeksi
     bestLap: null,
     pos: null,
+    zone: 'c',        // kurā zemē spēlētājs atrodas (c — Mežvidi, n/e/s/w — blakus zemes)
+    zones: {},        // blakus zemju stāvoklis (uzdevumi tiks pievienoti vēlāk)
     playTime: 0,
     rod: false,
     pet: null, ownedPets: [],
