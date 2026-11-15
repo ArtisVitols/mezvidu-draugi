@@ -4,13 +4,13 @@
 // sniega pikas (arī ar draugiem), ziemas drēbes.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { ZONE_HALF, GROUND_Y, DIRS, clampSquare, openSides, buildBorderPosts, disposeTree, smoothRoad, RoadIndex, buildRoadMesh, roadMaterial } from './zones.js?v=1.11.0';
-import { makeTextSprite, canvasTexture, mat, smoothstep, lerp, angleLerp, clamp } from './util.js?v=1.11.0';
-import { buildNPC, flattenStatic } from './characters.js?v=1.11.0';
-import { loadTexture } from './gfx.js?v=1.11.0';
-import { InstanceField } from './instancing.js?v=1.11.0';
-import { makeNoise2D, mulberry32 } from './noise.js?v=1.11.0';
-import { $, toast, sfx } from './ui.js?v=1.11.0';
+import { ZONE_HALF, GROUND_Y, DIRS, clampSquare, openSides, buildBorderPosts, disposeTree, smoothRoad, RoadIndex, buildRoadMesh, roadMaterial } from './zones.js?v=1.11.1';
+import { makeTextSprite, canvasTexture, mat, smoothstep, lerp, angleLerp, clamp } from './util.js?v=1.11.1';
+import { buildNPC, flattenStatic } from './characters.js?v=1.11.1';
+import { loadTexture } from './gfx.js?v=1.11.1';
+import { InstanceField } from './instancing.js?v=1.11.1';
+import { makeNoise2D, mulberry32 } from './noise.js?v=1.11.1';
+import { $, toast, sfx } from './ui.js?v=1.11.1';
 
 const SEED = 9137;
 const TAU = Math.PI * 2;

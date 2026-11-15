@@ -1,5 +1,12 @@
 # Izmaiņu žurnāls
 
+## 1.11.1 — 2026-11-15
+- 🐞 Meža dzīvniekus (stirnas, zaķus, ežus, mežacūkas, vāveres, stārķus) atkal var paglaudīt — poga parādījās, bet neko nedarīja
+  (metodes nosaukums `pet` sakrita ar paša mājdzīvnieka objektu `this.pet`; tagad `petNpc`).
+- Ja kāda darbības poga turpmāk izraisa kļūdu, spēle to parāda paziņojumā, nevis klusi neko nedara.
+- Pārbaudītas visas pārējās darbības pogas (sēnes, ogas, tirgotāji, saldējums, dārzs, tornis, lāde, ugunskurs, makšķerēšana,
+  karts, mājdzīvnieks, ziemeļbrieži, slēpes, pacēlājs, sniega pikas) — tās strādā.
+
 ## 1.11.0 — 2026-11-15
 - 📐 Visas zemes ir divreiz mazākas: katrs kvadrāts tagad 420 × 420 m (agrāk 840 × 840 m). Mežvidu īpašās vietas,
   ziemas kalns ar pacēlāju, laukums un piku kaujas laukums pārvietoti, lai viss ietilptu; līdz kaimiņu zemei ātrāk aiziet.

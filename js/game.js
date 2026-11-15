@@ -1,21 +1,21 @@
 import * as THREE from 'three';
-import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotPos, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.11.0';
-import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.11.0';
-import { Controls } from './controls.js?v=1.11.0';
+import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotPos, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.11.1';
+import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.11.1';
+import { Controls } from './controls.js?v=1.11.1';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS } from './data.js?v=1.11.0';
-import { writeSave } from './save.js?v=1.11.0';
-import { VERSION, BUILD_DATE } from './version.js?v=1.11.0';
-import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.11.0';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.11.0';
-import { Activities, makeTeam } from './activities.js?v=1.11.0';
-import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel } from './quality.js?v=1.11.0';
-import { hdrEnvironment } from './gfx.js?v=1.11.0';
-import { buildRod, buildDecor } from './props.js?v=1.11.0';
-import { InstanceField } from './instancing.js?v=1.11.0';
-import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.11.0';
-import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad } from './zones.js?v=1.11.0';
-import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.11.0';
+import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS } from './data.js?v=1.11.1';
+import { writeSave } from './save.js?v=1.11.1';
+import { VERSION, BUILD_DATE } from './version.js?v=1.11.1';
+import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.11.1';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.11.1';
+import { Activities, makeTeam } from './activities.js?v=1.11.1';
+import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel } from './quality.js?v=1.11.1';
+import { hdrEnvironment } from './gfx.js?v=1.11.1';
+import { buildRod, buildDecor } from './props.js?v=1.11.1';
+import { InstanceField } from './instancing.js?v=1.11.1';
+import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.11.1';
+import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad } from './zones.js?v=1.11.1';
+import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.11.1';
 
 const ANIM = ['idle', 'walk', 'run', 'jump', 'swim', 'sit', 'pet', 'wave', 'fish', 'ski', 'lift', 'throw'];
 const MUSH_RESPAWN = 120000;
@@ -1418,7 +1418,10 @@ export class Game {
     if (panelOpen()) return;
     if (!this.currentAction) this.refreshAction();
     const a = this.currentAction;
-    if (a) { a.fn(); this.timers.action = 0; }
+    if (!a) return;
+    // kļūda darbībā nedrīkst palikt nemanāma (poga „neko nedara”)
+    try { a.fn(); } catch (e) { console.error('Darbības kļūda:', a.label, e); toast('⚠️ Neizdevās — mēģini vēlreiz', 'bad'); }
+    this.timers.action = 0;
   }
 
   currentSeed() {
@@ -1488,7 +1491,7 @@ export class Game {
       const d = d2(n.x, n.z);
       if (d > 2.8) continue;
       if ((this.npcCooldown[n.home.id] || 0) > t) continue;
-      consider(d, 2.8, `🤗 Paglaudīt: ${NPC_TYPES[n.home.type].name}`, () => this.pet(n));
+      consider(d, 2.8, `🤗 Paglaudīt: ${NPC_TYPES[n.home.type].name}`, () => this.petNpc(n));
     }
     return best;
   }
@@ -1534,7 +1537,8 @@ export class Game {
     this.sendProfile();
   }
 
-  pet(n) {
+  // meža dzīvnieka paglaudīšana (ne `pet` — tā sauc paša mājdzīvnieka objektu this.pet)
+  petNpc(n) {
     this.npcCooldown[n.home.id] = this.now() + 20000;
     this.me.petT = 1.2;
     this.me.heading = Math.atan2(n.x - this.me.pos.x, n.z - this.me.pos.z);

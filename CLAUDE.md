@@ -115,6 +115,8 @@ Static site: plain HTML + ES modules, no build step. Photo textures in `assets/`
 - Host-authoritative shared things: mushroom/berry picks (`pick`/`pickB`), weekly team goal (`teamAdd`, merged by max
   from each player's `save.weekly` on `hello`), mini-games (`mgStart`, `hostMgTick`). Unknown messages fall through to
   `hostActivity` / `onActivityMessage` in `activities.js`.
+- Mixins (`Activities`, `Quality`, `Winter`) share `Game.prototype` with instance fields: never give a method the same name as a
+  `this.x = …` field (e.g. `this.pet` is the own-pet object, so animal petting is `petNpc`). `doAction` catches and toasts errors.
 - `ANIM` order in `game.js` is the network encoding of animation states; only append to it.
 
 ## Testing
