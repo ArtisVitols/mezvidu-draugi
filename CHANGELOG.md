@@ -1,5 +1,11 @@
 # Izmaiņu žurnāls
 
+## 1.17.0 — 2026-11-16
+- ⛷️ Ziemas kalns 2× lielāks: virsotne ~157 m (bija ~77 m), nobrauciens ~330 m, slīpums tāds pats kā agrāk. Pacēlājs garāks
+  un ātrāks (28 krēsli). Aiz ziemeļu žoga kalns lēzeni nolaižas līdz līdzenumam (reljefs plašāks par spēles laukumu).
+- 🐰 Trasē slēpo 4 citi slēpotāji (zaķis, lapsa, kaķis, suns): slalomā brauc lejā, aizslīd līdz pacēlājam, brauc augšā un atkal lejā.
+  Visi spēlētāji viņus redz vienās vietās.
+
 ## 1.16.0 — 2026-11-16
 - 🏡 Labots: draugs, kurš pievienojas, uzreiz redz saimnieka lauku (agrāk tas parādījās tikai pēc kādas darbības laukā).
 - 🏡 Visi 4 lauki tagad ir vienādi (pagriezti par 90°), un lauks tiek glabāts neatkarīgi no lauka numura — ja istabā tevi ieliek

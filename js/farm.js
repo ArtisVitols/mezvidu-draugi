@@ -4,13 +4,13 @@
 // dažādām kultūrām starp lauciņiem paliek neliela sprauga. Augšana iet pēc pulksteņa (arī tad, kad spēle aizvērta).
 // Farm — Game papildinājums (mixin).
 import * as THREE from 'three';
-import { World, GARDEN_SLOTS, PLOT_IN, PLOT_OUT, TILE, plotOf, plotSign, tileToSlot, tileToCanon, VILLAGE_Y } from './world.js?v=1.16.0';
-import { buildCrop, flattenStatic } from './characters.js?v=1.16.0';
-import { WORLD_SEED, CROPS, PETS } from './data.js?v=1.16.0';
-import { InstanceField } from './instancing.js?v=1.16.0';
-import { makeTextSprite, canvasTexture } from './util.js?v=1.16.0';
-import { $, toast, sfx, fmtTime } from './ui.js?v=1.16.0';
-import { ZONES, FARM, freeGpu } from './zones.js?v=1.16.0';
+import { World, GARDEN_SLOTS, PLOT_IN, PLOT_OUT, TILE, plotOf, plotSign, tileToSlot, tileToCanon, VILLAGE_Y } from './world.js?v=1.17.0';
+import { buildCrop, flattenStatic } from './characters.js?v=1.17.0';
+import { WORLD_SEED, CROPS, PETS } from './data.js?v=1.17.0';
+import { InstanceField } from './instancing.js?v=1.17.0';
+import { makeTextSprite, canvasTexture } from './util.js?v=1.17.0';
+import { $, toast, sfx, fmtTime } from './ui.js?v=1.17.0';
+import { ZONES, FARM, freeGpu } from './zones.js?v=1.17.0';
 
 const CROP_IDS = Object.keys(CROPS);
 const MAX_TILES = 400;

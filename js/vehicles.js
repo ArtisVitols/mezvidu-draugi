@@ -2,12 +2,12 @@
 // un 🛷 sniega motocikls (tikai Ziemas zemē). Abi stāv stāvvietās; izkāpjot mašīna paliek, kur atstāta.
 // Vehicles — Game papildinājums: iekāpšana, braukšana pa jebkuru reljefu, slīpums, lēcieni, draugu transports.
 import * as THREE from 'three';
-import { mat, lerp, clamp, makeBlobShadow } from './util.js?v=1.16.0';
-import { optimizeRig, tyreGeo } from './characters.js?v=1.16.0';
-import { $, toast, sfx } from './ui.js?v=1.16.0';
-import { DIRS, openSides, neighbour, FARM, FOREST, RACE, ZONE_IDS } from './zones.js?v=1.16.0';
-import { CAR_SPOT, FARM_CAR, WATER_Y } from './world.js?v=1.16.0';
-import { WINTER_CAR, SLED_SPOT } from './winter.js?v=1.16.0';
+import { mat, lerp, clamp, makeBlobShadow } from './util.js?v=1.17.0';
+import { optimizeRig, tyreGeo } from './characters.js?v=1.17.0';
+import { $, toast, sfx } from './ui.js?v=1.17.0';
+import { DIRS, openSides, neighbour, FARM, FOREST, RACE, ZONE_IDS } from './zones.js?v=1.17.0';
+import { CAR_SPOT, FARM_CAR, WATER_Y } from './world.js?v=1.17.0';
+import { WINTER_CAR, SLED_SPOT } from './winter.js?v=1.17.0';
 
 // tīkla kods (pos ziņas 6. lauks): 1 = kartings, 2 = mašīna, 3 = sniega motocikls
 export const VEH_CODE = { car: 2, sled: 3 }; // 4 = pasažieris (p[8] — vadītāja id, p[9] — sēdvieta)

@@ -42,7 +42,7 @@ Datorā: WASD / bultiņas, atstarpe, E, peles vilkšana.
   Pār robežu var pāriet jebkurā vietā, kur aiz tās ir cita zeme (robežu iezīmē sarkanbalti stabiņi, ārējās malās — žogs); kāpas pagaidām ir līdzenas
 - ❄️ **Ziemas zeme** (uz ziemeļiem): sniegs, sniegputenis, sniegotas eglītes, Ziemassvētku egle, sniegavīri un ziemeļbrieži.
   Tēlam automātiski ir ziemas cepure, dūraiņi un plīvojoša šalle.
-  - ⛷️ Slēpošanas kalns: brauc ar krēslu pacēlāju augšā un slēpo lejā (kursorsvira — stūrēt, uz leju — bremzēt, ⤒ — lēkt). Slēpot var visi kopā.
+  - ⛷️ Liels slēpošanas kalns (~157 m augsts, ~330 m garš nobrauciens): brauc ar krēslu pacēlāju augšā un slēpo lejā (kursorsvira — stūrēt, uz leju — bremzēt, ⤒ — lēkt). Slēpot var visi kopā, un trasē slalomā brauc arī citi slēpotāji — zaķis, lapsa, kaķis un suns.
   - ❄️ Sniega piku kauja: laukumā ar sniega vaļņiem met pikas draugiem vai sniegavīru mērķiem (dzeltenā poga „Mest piku”).
 - 🗺️ Pieskaries minikartei, lai redzētu karti — visas zemes kopā un kur atrodas katrs draugs
 - 🌲 Dabiska pasaule: egļu, priežu, bērzu un ozolu meži, kas šūpojas vējā, pļavas ar ziediem, ezeri ar niedrēm un ūdensrozēm, guļbūvju ciemats
