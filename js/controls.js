@@ -1,4 +1,5 @@
 // Skārienekrāna vadība: kreisajā pusē kursorsvira, labajā - kameras grozīšana.
+// Braucot (kartings, mašīna, sniega motocikls) kursorsviras nav: kreisajā pusē pogas gāze/bremze, labajā — stūre ◀ ▶.
 // Datorā: WASD/bultiņas, atstarpe - lēkt, E - darbība, peles vilkšana - kamera.
 export class Controls {
   constructor(el) {
@@ -17,6 +18,21 @@ export class Controls {
     this.base = document.getElementById('joy-base');
     this.knob = document.getElementById('joy-knob');
     this.enabled = true;
+    // braukšanas pogas: katrai pogai savs pirksts (var turēt gāzi un stūrēt vienlaikus)
+    this.drive = false;
+    this.dk = { gas: new Set(), brake: new Set(), left: new Set(), right: new Set() };
+    this.steerV = 0; this.steerT = performance.now();
+    for (const [id, k] of [['btn-gas', 'gas'], ['btn-brake', 'brake'], ['btn-left', 'left'], ['btn-right', 'right']]) {
+      const b = document.getElementById(id);
+      if (!b) continue;
+      const on = (e) => { e.preventDefault(); e.stopPropagation(); try { b.setPointerCapture(e.pointerId); } catch (er) { /* */ } this.dk[k].add(e.pointerId); b.classList.add('on'); };
+      const off = (e) => { this.dk[k].delete(e.pointerId); if (!this.dk[k].size) b.classList.remove('on'); };
+      b.addEventListener('pointerdown', on);
+      b.addEventListener('pointerup', off);
+      b.addEventListener('pointercancel', off);
+      b.addEventListener('lostpointercapture', off);
+      b.addEventListener('contextmenu', (e) => e.preventDefault());
+    }
 
     el.addEventListener('pointerdown', (e) => this.down(e));
     el.addEventListener('pointermove', (e) => this.moveEv(e));
@@ -30,7 +46,7 @@ export class Controls {
       if (e.code === 'KeyE' || e.code === 'Enter') this.actionPressed = true;
     });
     window.addEventListener('keyup', (e) => { this.keys[e.code] = false; });
-    window.addEventListener('blur', () => { this.keys = {}; this.resetJoy(); });
+    window.addEventListener('blur', () => { this.keys = {}; this.resetJoy(); this.clearDrive(); });
   }
 
   down(e) {
@@ -38,7 +54,7 @@ export class Controls {
     this.el.setPointerCapture?.(e.pointerId);
     this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     const leftSide = e.clientX < window.innerWidth * 0.45;
-    if (leftSide && this.joyId === null && e.pointerType !== 'mouse') {
+    if (leftSide && this.joyId === null && e.pointerType !== 'mouse' && !this.drive) {
       this.joyId = e.pointerId;
       this.joyStart = { x: e.clientX, y: e.clientY };
       this.base.style.display = 'block';
@@ -92,9 +108,34 @@ export class Controls {
     if (this.base) this.base.style.display = 'none';
   }
 
-  // apvieno klaviatūru un kursorsviru
+  // braukšanas režīms: pogas redzamas, kursorsviras nav
+  setDrive(on) {
+    if (this.drive === on) return;
+    this.drive = on;
+    if (on) this.resetJoy(); else this.clearDrive();
+    document.body.classList.toggle('driving', on);
+  }
+
+  clearDrive() {
+    for (const k in this.dk) this.dk[k].clear();
+    document.querySelectorAll('.drive-btn.on').forEach((b) => b.classList.remove('on'));
+    this.steerV = 0;
+  }
+
+  // apvieno klaviatūru un kursorsviru (braucot — pogas)
   getMove() {
     let x = this.move.x, y = this.move.y;
+    const now = performance.now(), dt = Math.min(0.1, (now - this.steerT) / 1000);
+    this.steerT = now;
+    if (this.drive) {
+      const d = this.dk;
+      y = (d.gas.size ? 1 : 0) - (d.brake.size ? 1 : 0);
+      // stūre pagriežas pakāpeniski (pogas ir tikai ieslēgts/izslēgts)
+      const want = (d.right.size ? 1 : 0) - (d.left.size ? 1 : 0);
+      const rate = want === 0 ? 8 : Math.sign(want) !== Math.sign(this.steerV) ? 9 : 4.5;
+      this.steerV += Math.max(-rate * dt, Math.min(rate * dt, want - this.steerV));
+      x = this.steerV;
+    }
     const k = this.keys;
     if (k.KeyW || k.ArrowUp) y += 1;
     if (k.KeyS || k.ArrowDown) y -= 1;

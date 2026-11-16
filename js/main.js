@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import { ANIMALS, FUR_COLORS, SHIRT_COLORS } from './data.js?v=1.15.0';
-import { loadSave, writeSave, lastProfileName, listProfiles } from './save.js?v=1.15.0';
-import { buildAnimal } from './characters.js?v=1.15.0';
-import { Net, randomCode } from './net.js?v=1.15.0';
-import { Game } from './game.js?v=1.15.0';
-import { $, initAudio } from './ui.js?v=1.15.0';
-import { VERSION, BUILD_DATE } from './version.js?v=1.15.0';
+import { ANIMALS, FUR_COLORS, SHIRT_COLORS } from './data.js?v=1.16.0';
+import { loadSave, writeSave, lastProfileName, listProfiles } from './save.js?v=1.16.0';
+import { buildAnimal } from './characters.js?v=1.16.0';
+import { Net, randomCode } from './net.js?v=1.16.0';
+import { Game } from './game.js?v=1.16.0';
+import { $, initAudio } from './ui.js?v=1.16.0';
+import { VERSION, BUILD_DATE } from './version.js?v=1.16.0';
 
 const EMOJI = { lacis: '🐻', lapsa: '🦊', zakis: '🐰', kakis: '🐱', cuka: '🐷', suns: '🐶', varde: '🐸', pile: '🦆' };
 let save = null;
@@ -171,6 +171,16 @@ async function launch(net, code) {
     setBusy(false);
   }
 }
+
+// Android, ieejot pilnekrānā, apakšā uz pāris sekundēm parāda „velc no augšas, lai izietu” —
+// tikmēr apakšējās pogas paceļam augstāk, lai paziņojums tās neaizsedz
+let fsNoteT = 0;
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement || !/Android/i.test(navigator.userAgent)) return;
+  document.body.classList.add('fs-note');
+  clearTimeout(fsNoteT);
+  fsNoteT = setTimeout(() => document.body.classList.remove('fs-note'), 5000);
+});
 
 function tryFullscreen() {
   if (!/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) return;

@@ -1,23 +1,23 @@
 import * as THREE from 'three';
-import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.15.0';
-import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.15.0';
-import { Controls } from './controls.js?v=1.15.0';
+import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.16.0';
+import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.16.0';
+import { Controls } from './controls.js?v=1.16.0';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS } from './data.js?v=1.15.0';
-import { writeSave } from './save.js?v=1.15.0';
-import { VERSION, BUILD_DATE } from './version.js?v=1.15.0';
-import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.15.0';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.15.0';
-import { Activities, makeTeam } from './activities.js?v=1.15.0';
-import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel } from './quality.js?v=1.15.0';
-import { hdrEnvironment } from './gfx.js?v=1.15.0';
-import { buildRod, buildDecor } from './props.js?v=1.15.0';
-import { InstanceField } from './instancing.js?v=1.15.0';
-import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.15.0';
-import { Vehicles } from './vehicles.js?v=1.15.0';
-import { Farm, fmtLeft } from './farm.js?v=1.15.0';
-import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.15.0';
-import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.15.0';
+import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS } from './data.js?v=1.16.0';
+import { writeSave } from './save.js?v=1.16.0';
+import { VERSION, BUILD_DATE } from './version.js?v=1.16.0';
+import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.16.0';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.16.0';
+import { Activities, makeTeam } from './activities.js?v=1.16.0';
+import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel } from './quality.js?v=1.16.0';
+import { hdrEnvironment } from './gfx.js?v=1.16.0';
+import { buildRod, buildDecor } from './props.js?v=1.16.0';
+import { InstanceField } from './instancing.js?v=1.16.0';
+import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.16.0';
+import { Vehicles } from './vehicles.js?v=1.16.0';
+import { Farm, fmtLeft } from './farm.js?v=1.16.0';
+import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.16.0';
+import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.16.0';
 
 const ANIM = ['idle', 'walk', 'run', 'jump', 'swim', 'sit', 'pet', 'wave', 'fish', 'ski', 'lift', 'throw'];
 const MUSH_RESPAWN = 120000;
@@ -886,6 +886,8 @@ export class Game {
           }
           r.zone = z;
           if (!r.seen) { r.pos.copy(r.target); r.seen = true; }
+          r.parkE = e;
+          this.remoteParked(r, e);
         }
         break;
       case 'picked': {
@@ -918,7 +920,8 @@ export class Game {
   applyProfile(id, prof) {
     this.profiles.set(id, prof);
     if (id === this.myId) {
-      if (this.mySlot !== prof.slot) this.renderFarm(this.mySlot, null);
+      // vecā vieta jānotīra tikai tad, ja tā nav kāda cita (pirms „welcome” mySlot ir 0 — tas var būt saimnieka lauks!)
+      if (this.mySlot !== prof.slot && !this.slotTaken(this.mySlot, id)) { this.renderFarm(this.mySlot, null); this.setGardenSign(this.mySlot, null); }
       this.mySlot = prof.slot;
       this.setGardenSign(prof.slot, prof.name);
       this.renderFarm(prof.slot, prof.farm || null);
@@ -931,7 +934,7 @@ export class Game {
       r = { id, prof, pos: new THREE.Vector3(SPAWN.x, VILLAGE_Y, SPAWN.z), target: new THREE.Vector3(SPAWN.x, VILLAGE_Y, SPAWN.z), ry: 0, tRy: 0, anim: 'idle', inKart: false, kart: null, progress: 0, seen: false };
       this.remotes.set(id, r);
       this.updateRoomButton();
-    } else if (r.prof.slot !== prof.slot) {
+    } else if (r.prof.slot !== prof.slot && !this.slotTaken(r.prof.slot, id)) {
       this.renderFarm(r.prof.slot, null);
       this.renderDecor(r.prof.slot, null);
       this.setGardenSign(r.prof.slot, null);
@@ -952,6 +955,12 @@ export class Game {
     this.setGardenSign(prof.slot, prof.name);
     this.renderFarm(prof.slot, prof.farm || null);
     this.renderDecor(prof.slot, prof.decor);
+  }
+
+  // vai lauku slot aizņem kāds cits (ne id)
+  slotTaken(slot, id) {
+    for (const [pid, pr] of this.profiles) if (pid !== id && pr.slot === slot) return true;
+    return false;
   }
 
   removeRemote(id) {
@@ -982,6 +991,7 @@ export class Game {
   update(dt) {
     const t = this.now();
     const ctl = this.controls;
+    ctl.setDrive(!!(this.me.inKart || this.me.veh));
     let mv = ctl.getMove();
     const camIn = ctl.consumeCam();
     let jump = ctl.consumeJump();
@@ -1051,7 +1061,7 @@ export class Game {
       const p = this.me.pos;
       const ry = this.me.inKart ? this.me.kart.heading : this.me.veh ? this.me.veh.heading : this.me.heading;
       const r2 = (v) => Math.round(v * 100) / 100;
-      this.net.toHost({ t: 'pos', p: [r2(p.x), r2(p.y), r2(p.z), r2(ry), ANIM.indexOf(this.me.state), this.me.inKart ? 1 : this.vehCode(), r2(this.me.progress || 0), ZONE_IDS.indexOf(this.zone), ...this.rideInfo()] });
+      this.net.toHost({ t: 'pos', p: [r2(p.x), r2(p.y), r2(p.z), r2(ry), ANIM.indexOf(this.me.state), this.me.inKart ? 1 : this.vehCode(), r2(this.me.progress || 0), ZONE_IDS.indexOf(this.zone), ...this.rideInfo(), ...this.parkInfo()] });
     }
 
     this.timers.map -= dt;
@@ -1146,7 +1156,7 @@ export class Game {
     this.cam.yaw = s.heading + Math.PI;
     $('btn-exit-kart').classList.remove('hidden');
     $('btn-jump').classList.add('hidden');
-    toast('🏎️ Velc kursorsviru uz augšu — gāze, uz leju — bremze. Dzeltenās bultas dod turbo!', '', 4500);
+    toast('🏎️ Kreisajā pusē ⛽ gāze un 🛑 bremze, labajā ◀ ▶ stūre. Dzeltenās bultas dod turbo!', '', 4500);
   }
 
   exitKart() {
@@ -1559,6 +1569,12 @@ export class Game {
       else if (near && r.phase === 'lobby') { rb.textContent = `🏁 Pievienoties (${Math.max(0, Math.ceil((r.startAt - 4000 - t) / 1000))})`; rb.classList.remove('hidden'); }
       else rb.classList.add('hidden');
     } else rb.classList.add('hidden');
+    // ja kāds sāk sacīkstes, bet es jau sēžu kartā trasē — pievienojos automātiski (arī tas, kurš iekāpa tikko)
+    if (r.phase === 'lobby' && this.me.inKart && this.zone === RACE && !(r.racers || []).includes(this.myId) && (r.racers || []).length < 4 && this.autoRace !== r.id) {
+      this.autoRace = r.id;
+      this.net.toHost({ t: 'raceReq' });
+      toast('🏁 Tu arī piedalies sacīkstēs! Gaidi startu…', 'good', 3000);
+    }
 
     // botu kartingi
     this.updateBots(dt, t);
@@ -1909,11 +1925,12 @@ export class Game {
   openMenu() {
     showPanel('☰ Izvēlne', (b) => {
       b.append(el('div', { className: 'sect' }, 'Kā spēlēt'));
-      b.append(el('p', { html: '🕹️ <b>Kreisā puse</b> — velc pirkstu, lai staigātu.<br>👆 <b>Labā puse</b> — velc, lai grozītu kameru (2 pirksti — tuvināt).<br>⤒ — lēkt. Dzeltenā poga parādās, kad vari kaut ko darīt.<br>🏡 Centrā ir sēta: katram draugam savs lauks. Nocērt kokus 🪓, novāc akmeņus ⛏️, uzar lauciņus, sēj, aplaisti 💧 un novāc ražu 🧺. Blakus lauciņi ar to pašu kultūru saaug vienā laukā. Augi aug arī tad, kad spēle aizvērta!<br>👥 Draugu sētās var aiziet ciemos (poga 👥 augšā) un aplaistīt viņu laukus.<br>🌲 Austrumos ir Mežvidu mežs: ciems ar tirgu, sēnes, ogas, dzīvnieki.<br>🍄 Mežā lasi sēnes (bet ne sarkanās mušmires!).<br>🧺 Pārdod ražu tirgū un pērc sēklas un cepures.<br>🏎️ Rietumos ir sacīkšu trase ar tuneļiem — sēdies kartā un sacenties!<br>⭐ Kalnu virsotnēs paslēptas 15 zelta zvaigznes — no 🗼 skatu torņa tās redz kartē.<br>🎣 Nopērc makšķeri pie Ūdra Ojāra un makšķerē ezeros; kad pludiņš raustās — spied „VILKT!”.<br>🫐 Mežā lasi mellenes un avenes, purvā — dzērvenes.<br>⛺ Pie ugunskura var izcept sēnes (dārgāk pārdot).<br>🗺️ Atrodi 3 kartes gabalus (ugunskurs, tornis, purvs) un atver dārguma lādi 🏰 Pilsdrupās!<br>🐾 Suns Sprīdis pārdod mājdzīvniekus, Lapsa Liene — dārza rotājumus.<br>🎲 Ar draugiem spēlē ķeramo un paslēpes.<br>🤝 Katru nedēļu jauns kopīgais mērķis visiem draugiem.<br>🧭 Katras malas vidū taka ar vārtiem ved uz citu zemi — kartē redzamas visas zemes un draugi.' }));
+      b.append(el('p', { html: '🕹️ <b>Kreisā puse</b> — velc pirkstu, lai staigātu.<br>🚙 Braucot: kreisajā pusē ⛽ gāze un 🛑 bremze (atpakaļgaita), labajā ◀ ▶ stūre.<br>👆 <b>Labā puse</b> — velc, lai grozītu kameru (2 pirksti — tuvināt).<br>⤒ — lēkt. Dzeltenā poga parādās, kad vari kaut ko darīt.<br>🏡 Centrā ir sēta: katram draugam savs lauks. Nocērt kokus 🪓, novāc akmeņus ⛏️, uzar lauciņus, sēj, aplaisti 💧 un novāc ražu 🧺. Blakus lauciņi ar to pašu kultūru saaug vienā laukā. Augi aug arī tad, kad spēle aizvērta!<br>👥 Draugu sētās var aiziet ciemos (poga 👥 augšā) un aplaistīt viņu laukus.<br>🌲 Austrumos ir Mežvidu mežs: ciems ar tirgu, sēnes, ogas, dzīvnieki.<br>🍄 Mežā lasi sēnes (bet ne sarkanās mušmires!).<br>🧺 Pārdod ražu tirgū un pērc sēklas un cepures.<br>🏎️ Rietumos ir sacīkšu trase ar tuneļiem — sēdies kartā un sacenties!<br>⭐ Kalnu virsotnēs paslēptas 15 zelta zvaigznes — no 🗼 skatu torņa tās redz kartē.<br>🎣 Nopērc makšķeri pie Ūdra Ojāra un makšķerē ezeros; kad pludiņš raustās — spied „VILKT!”.<br>🫐 Mežā lasi mellenes un avenes, purvā — dzērvenes.<br>⛺ Pie ugunskura var izcept sēnes (dārgāk pārdot).<br>🗺️ Atrodi 3 kartes gabalus (ugunskurs, tornis, purvs) un atver dārguma lādi 🏰 Pilsdrupās!<br>🐾 Suns Sprīdis pārdod mājdzīvniekus, Lapsa Liene — dārza rotājumus.<br>🎲 Ar draugiem spēlē ķeramo un paslēpes.<br>🤝 Katru nedēļu jauns kopīgais mērķis visiem draugiem.<br>🧭 Katras malas vidū taka ar vārtiem ved uz citu zemi — kartē redzamas visas zemes un draugi.' }));
       b.append(el('div', { className: 'sect' }, 'Iestatījumi'));
       b.append(el('button', { className: 'pbtn', onclick: () => {
         try { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); } catch (e) { /* */ }
       } }, '⛶ Pilnekrāns'));
+      b.append(el('div', { style: 'font-size:12px;opacity:0.65;margin-top:4px' }, '📲 Padoms: pārlūka izvēlnē „Pievienot sākuma ekrānam” — tad spēle atveras pilnekrānā bez Android paziņojuma apakšā.'));
       b.append(' ');
       // Auto → Augsta → Vidēja → Zema → Viszemākā; mainās uzreiz
       const qb = el('button', { className: 'pbtn' }, `🎨 Grafika: ${this.qualityLabel()}`);

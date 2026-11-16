@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import { makeNoise2D, mulberry32 } from './noise.js?v=1.15.0';
-import { MUSHROOMS } from './data.js?v=1.15.0';
+import { makeNoise2D, mulberry32 } from './noise.js?v=1.16.0';
+import { MUSHROOMS } from './data.js?v=1.16.0';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mat, smoothstep, lerp, makeTextSprite, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.15.0';
-import { optimizeRig, flattenStatic } from './characters.js?v=1.15.0';
-import { ZONE_HALF, ZONES, DIRS, GROUND_Y, sqDist, clampSquare, buildBorderPosts, smoothRoad, RoadIndex, buildRoadMesh, ROAD_HW, FOREST, neighbour, openSides, buildTerrainFence, wood } from './zones.js?v=1.15.0';
-import { findPlaces, placeHeight, inPlace, buildPlaces, updatePlaces, placeBerries } from './places.js?v=1.15.0';
+import { mat, smoothstep, lerp, makeTextSprite, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.16.0';
+import { optimizeRig, flattenStatic } from './characters.js?v=1.16.0';
+import { ZONE_HALF, ZONES, DIRS, GROUND_Y, sqDist, clampSquare, buildBorderPosts, smoothRoad, RoadIndex, buildRoadMesh, ROAD_HW, FOREST, neighbour, openSides, buildTerrainFence, wood } from './zones.js?v=1.16.0';
+import { findPlaces, placeHeight, inPlace, buildPlaces, updatePlaces, placeBerries } from './places.js?v=1.16.0';
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
@@ -51,7 +51,9 @@ export const PLOT_IN = 9, PLOT_OUT = 266, TILE = 2.5;
 // (centrā un robežu vidū 0 — tur ceļi satiekas ar kaimiņu zemju ceļiem)
 const SW = Math.PI / ZONE_HALF;
 export const roadNS = (z) => (Math.abs(z) >= ZONE_HALF ? 0 : 30 * Math.sin(SW * z) + 12 * Math.sin(2 * SW * z));
-export const roadEW = (x) => (Math.abs(x) >= ZONE_HALF ? 0 : -26 * Math.sin(SW * x) + 14 * Math.sin(2 * SW * x));
+// roadEW(x) = −roadNS(x): sēta ir simetriska pret 90° pagriezienu — visi 4 lauki ir vienādi (pagriezti),
+// tāpēc katra spēlētāja lauku glabā „0. lauka” koordinātēs un var parādīt jebkurā laukā
+export const roadEW = (x) => -roadNS(x);
 {
   const ns = [[0, -380], [0, -318]], ew = [[-380, 0], [-318, 0]];
   for (let t = -300; t <= 300; t += 25) { ns.push([roadNS(t), t]); ew.push([t, roadEW(t)]); }
@@ -59,13 +61,19 @@ export const roadEW = (x) => (Math.abs(x) >= ZONE_HALF ? 0 : -26 * Math.sin(SW *
   ROADS.farm = [ns, ew];
 }
 export const plotSign = (slot) => [slot % 2 ? 1 : -1, slot < 2 ? -1 : 1];
+// cik reizes 0. lauks jāpagriež par 90° (x,z → −z,x), lai iegūtu lauku slot
+export const PLOT_ROT = [0, 1, 3, 2];
+export function rotPlot(x, z, slot) { for (let k = PLOT_ROT[slot]; k > 0; k--) [x, z] = [-z, x]; return [x, z]; }
+// lauciņu režģis: 0. lauka (kanoniskās) koordinātes ↔ lauka slot koordinātes
+export function tileToSlot(ix, iz, slot) { for (let k = PLOT_ROT[slot]; k > 0; k--) [ix, iz] = [-1 - iz, ix]; return [ix, iz]; }
+export function tileToCanon(ix, iz, slot) { for (let k = PLOT_ROT[slot]; k > 0; k--) [ix, iz] = [iz, -1 - ix]; return [ix, iz]; }
 // katra lauka "mājas" vieta pie pagalma (24 m no abiem ceļiem): zīme ar vārdu un rotājumi
-export const GARDEN_SLOTS = [0, 1, 2, 3].map((s) => {
-  const [sx, sz] = plotSign(s);
-  let x = sx * 24, z = sz * 24;
-  for (let k = 0; k < 4; k++) { x = roadNS(z) + sx * 24; z = roadEW(x) + sz * 24; }
+const HOME0 = (() => {
+  let x = -24, z = -24;
+  for (let k = 0; k < 6; k++) { x = roadNS(z) - 24; z = roadEW(x) - 24; }
   return { x, z };
-});
+})();
+export const GARDEN_SLOTS = [0, 1, 2, 3].map((s) => { const [x, z] = rotPlot(HOME0.x, HOME0.z, s); return { x, z }; });
 // kura lauka iekšpusē ir punkts (-1 — nevienā)
 export function plotOf(x, z) {
   if (Math.abs(x) > PLOT_OUT || Math.abs(z) > PLOT_OUT) return -1;
@@ -903,25 +911,31 @@ export class World {
     const rnd = mulberry32(this.seed + 4242);
     this.plotObjs = [];
     const trees = ['ozols', 'berzs', 'egle', 'priede'], R = { egle: 0.45, priede: 0.35, berzs: 0.3, ozols: 0.55 };
-    for (let slot = 0; slot < 4; slot++) {
-      const [sx, sz] = plotSign(slot), home = GARDEN_SLOTS[slot];
-      let nr = 0;
-      for (const [type, n] of [['tree', 16], ['rock', 22], ['bush', 10]]) {
-        let got = 0;
-        for (let k = 0; k < 5000 && got < n; k++) {
-          const x = sx * (PLOT_IN + 6 + rnd() * (PLOT_OUT - PLOT_IN - 14)), z = sz * (PLOT_IN + 6 + rnd() * (PLOT_OUT - PLOT_IN - 14));
-          const a = rnd(), b = rnd(), c = rnd();
-          if (plotOf(x, z) !== slot || Math.hypot(x - home.x, z - home.z) < 24 || this.roadDist(x, z).d < 7) continue;
-          if (this.plotObjs.some((o) => Math.hypot(o.x - x, o.z - z) < 7)) continue;
-          const kind = type === 'tree' ? trees[Math.floor(a * 4)] : type;
-          const s = type === 'tree' ? 0.85 + b * 0.5 : type === 'rock' ? 0.5 + b * 0.9 : 0.8 + b * 0.6;
-          const r = type === 'tree' ? R[kind] * s : type === 'rock' ? s * 0.85 : 0;
-          const o = { id: slot * 100 + nr++, slot, type, kind, x, z, y: this.getHeight(x, z), s, ry: c * 6.28, r };
-          this.plotObjs.push(o);
-          if (r) this.addCollider(x, z, r, o.id);
-          got++;
-        }
+    // vietas izvēlas 0. laukā, pārējos laukos tās pašas vietas pagrieztas (id nr. visiem laukiem nozīmē to pašu vietu);
+    // koka suga, izmērs un pagrieziens katrā laukā savs
+    const home = GARDEN_SLOTS[0], spots = [];
+    for (const [type, n] of [['tree', 16], ['rock', 22], ['bush', 10]]) {
+      let got = 0;
+      for (let k = 0; k < 5000 && got < n; k++) {
+        const x = -(PLOT_IN + 6 + rnd() * (PLOT_OUT - PLOT_IN - 14)), z = -(PLOT_IN + 6 + rnd() * (PLOT_OUT - PLOT_IN - 14));
+        if (plotOf(x, z) !== 0 || Math.hypot(x - home.x, z - home.z) < 24 || this.roadDist(x, z).d < 7) continue;
+        if (spots.some((o) => Math.hypot(o.x - x, o.z - z) < 7)) continue;
+        spots.push({ type, x, z });
+        got++;
       }
+    }
+    for (let slot = 0; slot < 4; slot++) {
+      const r2 = mulberry32(this.seed + 4300 + slot * 17);
+      spots.forEach((sp, nr) => {
+        const [x, z] = rotPlot(sp.x, sp.z, slot), type = sp.type;
+        const a = r2(), b = r2(), c = r2();
+        const kind = type === 'tree' ? trees[Math.floor(a * 4)] : type;
+        const s = type === 'tree' ? 0.85 + b * 0.5 : type === 'rock' ? 0.5 + b * 0.9 : 0.8 + b * 0.6;
+        const r = type === 'tree' ? R[kind] * s : type === 'rock' ? s * 0.85 : 0;
+        const o = { id: slot * 100 + nr, slot, type, kind, x, z, y: this.getHeight(x, z), s, ry: c * 6.28, r };
+        this.plotObjs.push(o);
+        if (r) this.addCollider(x, z, r, o.id);
+      });
     }
   }
 
@@ -1601,18 +1615,19 @@ export class World {
       for (let i = 0; i < COUNT; i++) off.set([gr() * TILE, gr() * TILE, gr() * 6.28, 0.7 + gr() * 0.7], i * 4);
       tg.setAttribute('aOff', new THREE.InstancedBufferAttribute(off, 4));
       const gm = new THREE.MeshStandardMaterial({ map: grassTexture(), alphaTest: 0.45, side: THREE.DoubleSide, roughness: 1 });
-      const U = { uCenter: { value: new THREE.Vector2() }, uHeightTex: { value: hTex }, uGroundTex: { value: gTex } };
+      const U = { uCenter: { value: new THREE.Vector2() }, uHeightTex: { value: hTex }, uGroundTex: { value: gTex }, uGrassR: { value: 1 } };
       this.grassCenter = U.uCenter.value;
+      this.grassR = U.uGrassR; // zāles lauka rādiuss (grafikas līmenis)
       gm.onBeforeCompile = (sh) => {
         Object.assign(sh.uniforms, U, { uWind: windTime });
-        sh.vertexShader = `uniform float uWind; uniform vec2 uCenter; uniform sampler2D uHeightTex; uniform sampler2D uGroundTex;
+        sh.vertexShader = `uniform float uWind; uniform float uGrassR; uniform vec2 uCenter; uniform sampler2D uHeightTex; uniform sampler2D uGroundTex;
           attribute vec4 aOff; varying vec3 vGrass;\n` + sh.vertexShader.replace('#include <begin_vertex>', `
           vec3 transformed = vec3(position);
           vec2 gp = aOff.xy + ${TILE.toFixed(1)} * floor((uCenter - aOff.xy) / ${TILE.toFixed(1)} + 0.5);
           vec2 tuv = (gp + ${HALF.toFixed(1)}) / ${SIZE.toFixed(1)};
           float gh = texture2D(uHeightTex, tuv).r;
           vec4 gc = texture2D(uGroundTex, tuv);
-          float gd = length(gp - uCenter) / ${(TILE / 2).toFixed(1)};
+          float gd = length(gp - uCenter) / (${(TILE / 2).toFixed(1)} * uGrassR);
           float gs = aOff.w * smoothstep(0.12, 0.45, gc.a) * (1.0 - smoothstep(0.45, 1.0, gd)); // tālumā stiebri pakāpeniski mazāki — neparādās pēkšņi
           float cs = cos(aOff.z), sn = sin(aOff.z);
           transformed.xz = mat2(cs, -sn, sn, cs) * transformed.xz;

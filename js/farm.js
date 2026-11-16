@@ -4,13 +4,13 @@
 // dažādām kultūrām starp lauciņiem paliek neliela sprauga. Augšana iet pēc pulksteņa (arī tad, kad spēle aizvērta).
 // Farm — Game papildinājums (mixin).
 import * as THREE from 'three';
-import { World, GARDEN_SLOTS, PLOT_IN, PLOT_OUT, TILE, plotOf, plotSign, VILLAGE_Y } from './world.js?v=1.15.0';
-import { buildCrop, flattenStatic } from './characters.js?v=1.15.0';
-import { WORLD_SEED, CROPS, PETS } from './data.js?v=1.15.0';
-import { InstanceField } from './instancing.js?v=1.15.0';
-import { makeTextSprite, canvasTexture } from './util.js?v=1.15.0';
-import { $, toast, sfx, fmtTime } from './ui.js?v=1.15.0';
-import { ZONES, FARM, freeGpu } from './zones.js?v=1.15.0';
+import { World, GARDEN_SLOTS, PLOT_IN, PLOT_OUT, TILE, plotOf, plotSign, tileToSlot, tileToCanon, VILLAGE_Y } from './world.js?v=1.16.0';
+import { buildCrop, flattenStatic } from './characters.js?v=1.16.0';
+import { WORLD_SEED, CROPS, PETS } from './data.js?v=1.16.0';
+import { InstanceField } from './instancing.js?v=1.16.0';
+import { makeTextSprite, canvasTexture } from './util.js?v=1.16.0';
+import { $, toast, sfx, fmtTime } from './ui.js?v=1.16.0';
+import { ZONES, FARM, freeGpu } from './zones.js?v=1.16.0';
 
 const CROP_IDS = Object.keys(CROPS);
 const MAX_TILES = 400;
@@ -61,6 +61,51 @@ export const Farm = {
     this.gardenSigns = [];
     this.gardenSignNames = [];
     this.farmOn = false;
+    this.fixFarm();
+  },
+
+  // Saglabājums glabā lauku „0. lauka” koordinātēs (v: 2) — tas parādās tajā laukā, kuru istabā iedala.
+  // Vecie saglabājumi (pasaules koordinātes) tiek pārrēķināti; lauciņi, kas vairs nav lauka iekšpusē
+  // (piem., uz jaunā līkumotā ceļa), tiek noņemti un raža / sēklas atdotas somā.
+  fixFarm() {
+    const f = this.save.farm;
+    const parse = (k) => k.split(',').map(Number);
+    if (f.v !== 2) {
+      const cnt = [0, 0, 0, 0];
+      for (const k in f.t) { const [ix, iz] = parse(k), s = plotOf((ix + 0.5) * TILE, (iz + 0.5) * TILE); if (s >= 0) cnt[s]++; }
+      const from = cnt.indexOf(Math.max(...cnt));
+      const t = {};
+      for (const k in f.t) { const [ix, iz] = parse(k), [a, b] = tileToCanon(ix, iz, from); t[tkey(a, b)] = f.t[k]; }
+      f.t = t;
+      f.cl = [...new Set(f.cl.map((id) => id % 100))];
+      f.v = 2;
+    }
+    let lost = 0, items = 0;
+    for (const k in f.t) {
+      const [ix, iz] = parse(k);
+      if (this.tileOk(ix, iz, 0)) continue;
+      const v = f.t[k];
+      if (v.c && CROPS[v.c]) {
+        if (this.cropProgress(v) >= 1) { this.addItem(v.c, CROPS[v.c].yield); items += CROPS[v.c].yield; } else { this.addItem(v.c + '_seed'); items++; }
+      }
+      delete f.t[k]; lost++;
+    }
+    if (lost) setTimeout(() => toast(`🛣️ ${lost} lauciņi bija uz ceļa vai ārpus lauka — tos noņēmām${items ? `, raža un sēklas ir tavā somā 🎒` : ''}.`, 'good', 6000), 7000);
+  },
+
+  // vai lauciņš (ix, iz) viss ir lauka slot iekšpusē un ne pie mājas vietas
+  tileOk(ix, iz, slot) {
+    const cx = (ix + 0.5) * TILE, cz = (iz + 0.5) * TILE, h = TILE / 2;
+    if (plotOf(cx, cz) !== slot) return false;
+    for (const [dx, dz] of [[-h, -h], [h, -h], [-h, h], [h, h]]) if (plotOf(cx + dx, cz + dz) !== slot) return false;
+    const home = GARDEN_SLOTS[slot];
+    return Math.hypot(cx - home.x, cz - home.z) >= 8;
+  },
+
+  // mana lauka lauciņa atslēga saglabājumā (pasaules lauciņš → 0. lauka koordinātes)
+  ckey(key) {
+    const [ix, iz] = key.split(',').map(Number), [a, b] = tileToCanon(ix, iz, this.mySlot);
+    return tkey(a, b);
   },
 
   loadFarm() {
@@ -106,6 +151,11 @@ export const Farm = {
 
   renderFarm(slot, view) {
     if (slot == null || slot < 0 || slot > 3 || !this.farmViews) return;
+    // skats ir 0. lauka koordinātēs → pagriežam uz šo lauku; nocirsto objektu nr. → šī lauka id
+    if (view) view = {
+      t: view.t.map((e) => { const [a, b] = tileToSlot(e[0], e[1], slot); return [a, b, ...e.slice(2)]; }),
+      cl: (view.cl || []).map((id) => slot * 100 + (id % 100)),
+    };
     this.farmViews[slot] = view;
     this.farmRen[slot].key = null; // pārzīmēs updateFarm
     this.farmClearedDirty = true;
@@ -118,7 +168,19 @@ export const Farm = {
     if (this.farmClearedDirty) {
       this.farmClearedDirty = false;
       const cl = new Set();
-      this.farmViews.forEach((v, s) => { if (v && v.cl) for (const id of v.cl) if (Math.floor(id / 100) === s) cl.add(id); });
+      this.farmViews.forEach((v, s) => {
+        if (!v) return;
+        for (const id of v.cl) cl.add(id);
+        // koks vai akmens, kas stāv uz uzarta lauciņa (piem., no vecāka saglabājuma), arī pazūd
+        const tiles = new Set(v.t.map((e) => tkey(e[0], e[1])));
+        if (tiles.size) for (const o of this.farmW.plotObjs) {
+          if (o.slot !== s || cl.has(o.id)) continue;
+          const r = Math.max(0.5, o.r);
+          for (const [dx, dz] of [[0, 0], [-r, -r], [r, -r], [-r, r], [r, r]]) {
+            if (tiles.has(tkey(Math.floor((o.x + dx) / TILE), Math.floor((o.z + dz) / TILE)))) { cl.add(o.id); break; }
+          }
+        }
+      });
       this.farmW.cleared = cl;
       for (const o of this.farmW.plotObjs) this.plotField.setHidden(o.id, cl.has(o.id));
     }
@@ -146,12 +208,7 @@ export const Farm = {
     const ix = Math.floor(x / TILE), iz = Math.floor(z / TILE);
     const cx = (ix + 0.5) * TILE, cz = (iz + 0.5) * TILE;
     const slot = plotOf(cx, cz);
-    if (slot < 0) return null;
-    // viss lauciņš lauka iekšpusē, ne pie mājas vietas
-    const h = TILE / 2;
-    for (const [dx, dz] of [[-h, -h], [h, -h], [-h, h], [h, h]]) if (plotOf(cx + dx, cz + dz) !== slot) return null;
-    const home = GARDEN_SLOTS[slot];
-    if (Math.hypot(cx - home.x, cz - home.z) < 8) return null;
+    if (slot < 0 || !this.tileOk(ix, iz, slot)) return null;
     return { ix, iz, cx, cz, slot, key: tkey(ix, iz) };
   },
 
@@ -173,7 +230,7 @@ export const Farm = {
 
   // lauciņa dati no skata (jebkuram laukam): null vai { c, at, w }
   farmTile(slot, key) {
-    if (slot === this.mySlot) return this.save.farm.t[key] || null;
+    if (slot === this.mySlot) return this.save.farm.t[this.ckey(key)] || null;
     const v = this.farmViews[slot];
     if (!v) return null;
     for (const e of v.t) if (tkey(e[0], e[1]) === key) return e.length > 2 ? { c: CROP_IDS[e[2]], at: e[3], w: !!e[4] } : {};
@@ -309,7 +366,7 @@ export const Farm = {
     const tl = this.tileAt(me.pos.x, me.pos.z);
     if (!tl) return;
     if (tl.slot === slot) {
-      const v = this.save.farm.t[tl.key];
+      const v = this.save.farm.t[this.ckey(tl.key)];
       const blocked = this.farmW.plotObjs.find((o) => o.slot === slot && !this.farmW.cleared.has(o.id) && Math.abs(o.x - tl.cx) < TILE / 2 + 0.8 && Math.abs(o.z - tl.cz) < TILE / 2 + 0.8);
       if (!v) {
         if (blocked) consider(9, 10, '🪓 Vispirms notīri šo vietu', () => toast('Šeit aug koks vai ir akmens — vispirms nocērt vai novāc to!'));
@@ -341,7 +398,7 @@ export const Farm = {
     sfx('pick');
     if (n < HITS[o.type]) { this.spawnFloat(o.type === 'tree' ? '🪓' : '⛏️', new THREE.Vector3(o.x, o.y + 1, o.z)); return; }
     const f = this.save.farm;
-    if (!f.cl.includes(o.id)) f.cl.push(o.id);
+    if (!f.cl.includes(o.id % 100)) f.cl.push(o.id % 100);
     const coins = o.type === 'tree' ? 3 : o.type === 'rock' ? 2 : 1;
     this.addCoins(coins, true);
     this.spawnFloat(o.type === 'tree' ? '🪵' : o.type === 'rock' ? '🪨' : '🌿', new THREE.Vector3(o.x, o.y + 1, o.z));
@@ -353,7 +410,7 @@ export const Farm = {
   plowTile(tl) {
     const f = this.save.farm;
     if (Object.keys(f.t).length >= MAX_TILES) { toast(`Uzarti jau ${MAX_TILES} lauciņi — vairāk nevar apstrādāt 🙂`); return; }
-    f.t[tl.key] = {};
+    f.t[this.ckey(tl.key)] = {};
     this.me.petT = 0.6;
     sfx('plant');
     this.spawnFloat('⛏️', new THREE.Vector3(tl.cx, this.me.pos.y, tl.cz));
@@ -362,7 +419,7 @@ export const Farm = {
   },
 
   sowTile(tl, crop) {
-    const v = this.save.farm.t[tl.key];
+    const v = this.save.farm.t[this.ckey(tl.key)];
     if (!v || v.c || !(this.save.inv[crop + '_seed'] > 0)) return;
     this.save.inv[crop + '_seed']--;
     v.c = crop; v.at = Math.round(this.now() / 1000); v.w = false;
@@ -375,7 +432,7 @@ export const Farm = {
   },
 
   waterTile(tl) {
-    const v = this.save.farm.t[tl.key];
+    const v = this.save.farm.t[this.ckey(tl.key)];
     if (!v || !v.c) return;
     // aplaistot ātrums mainās tikai no šī brīža (paveiktais procents saglabājas)
     const p = this.cropProgress(v);
@@ -388,11 +445,11 @@ export const Farm = {
   },
 
   harvestTile(tl) {
-    const v = this.save.farm.t[tl.key];
+    const v = this.save.farm.t[this.ckey(tl.key)];
     if (!v || !v.c || this.cropProgress(v) < 1) return;
     const def = CROPS[v.c];
     this.addItem(v.c, def.yield);
-    this.save.farm.t[tl.key] = {}; // zeme paliek uzarta — var sēt vēlreiz
+    this.save.farm.t[this.ckey(tl.key)] = {}; // zeme paliek uzarta — var sēt vēlreiz
     this.stat('harvested');
     this.me.petT = 0.6;
     sfx('pick');
@@ -404,7 +461,7 @@ export const Farm = {
   // draugs aplaistīja manu lauciņu (water ziņa)
   onFarmWater(m) {
     if (m.owner === this.myId) {
-      const v = this.save.farm.t[m.plot];
+      const v = typeof m.plot === 'string' ? this.save.farm.t[this.ckey(m.plot)] : null;
       if (v && v.c && !v.w) {
         const p = this.cropProgress(v);
         v.w = true; v.at = Math.round(this.now() / 1000 - p * CROPS[v.c].grow * 0.6);

@@ -1,5 +1,17 @@
 # Izmaiņu žurnāls
 
+## 1.16.0 — 2026-11-16
+- 🏡 Labots: draugs, kurš pievienojas, uzreiz redz saimnieka lauku (agrāk tas parādījās tikai pēc kādas darbības laukā).
+- 🏡 Visi 4 lauki tagad ir vienādi (pagriezti par 90°), un lauks tiek glabāts neatkarīgi no lauka numura — ja istabā tevi ieliek
+  citā laukā, tavs lauks parādās tur pilnībā, bez svešiem žogiem pa vidu, un ar visiem augiem var darboties. Lauciņi, kas pēc ceļu
+  maiņas palika uz ceļa vai ārpus lauka, noņemti — gatavā raža vai sēklas atdotas somā. Koki/akmeņi uz uzartas zemes pazūd.
+- 🚙 Atstātā mašīna (vai sniega motocikls) tagad redzama arī draugiem; tieši blakus mašīnai „Sēsties” uzvar citas darbības (piem., aršanu).
+- 🏁 Ja kāds sāk sacīkstes, bet tu jau sēdi kartā trasē — tu pievienojies automātiski un starta brīdī esi starta vietā.
+- 🎮 Braukšanas vadība: kreisajā pusē ⛽ gāze un 🛑 bremze, labajā ◀ ▶ stūre (kartings, mašīna, sniega motocikls). Kursorsvira tikai kājām.
+- 📱 Android pilnekrāna paziņojuma laikā apakšējās pogas uz brīdi paceļas augstāk. Izvēlnē padoms pievienot spēli sākuma ekrānam.
+- 🎨 Viszemākā grafika vairs nav izplūdusi: pilna izšķirtspēja, zāle tuvumā, daļa sīko detaļu; ātrumu ietaupa bez ēnām un ar tuvāku miglu.
+  Tikai ja telefons joprojām nevelk, Auto nedaudz samazina izšķirtspēju (līdz 85 %).
+
 ## 1.15.0 — 2026-11-15
 - 🌿 Zāle redzama daudz tālāk (~42 m ap tēlu, nevis ~23 m), un tālumā stiebri pakāpeniski samazinās — zāle vairs „neizaug” pēkšņi priekšā.
 - 🐾 Mājdzīvnieks ielec mašīnā (vai sniega motociklā) un brauc līdzi — arī tad, ja brauc līdzi draugam; izkāpjot atkal skrien blakus.

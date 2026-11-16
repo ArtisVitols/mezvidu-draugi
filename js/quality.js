@@ -1,21 +1,23 @@
 // Grafikas līmeņi un automātiska pielāgošana pēc kadru ātruma (fps).
 // Visi iestatījumi mainās uzreiz spēles laikā (bez pārlādes), tāpēc „Auto” var kāpt uz augšu un leju.
 import * as THREE from 'three';
-import { PlanarReflection, PostFX, upgradeWater, terrainMaterial, loadTexture } from './gfx.js?v=1.15.0';
-import { toast } from './ui.js?v=1.15.0';
+import { PlanarReflection, PostFX, upgradeWater, terrainMaterial, loadTexture } from './gfx.js?v=1.16.0';
+import { toast } from './ui.js?v=1.16.0';
 
 export const Q_ORDER = ['lowest', 'low', 'mid', 'high'];
 export const Q_MODES = ['auto', 'high', 'mid', 'low', 'lowest'];
 export const Q_LABEL = { auto: 'Auto', high: 'Augsta', mid: 'Vidēja', low: 'Zema', lowest: 'Viszemākā' };
 
-// pr — izšķirtspējas reizinātājs; shadow — ēnu kartes izmērs (0 = bez ēnām); grass — zāles blīvums;
+// pr — izšķirtspējas reizinātājs; shadow — ēnu kartes izmērs (0 = bez ēnām); grass — zāles blīvums; grassR — zāles lauka rādiuss (1 = ~42 m);
 // detail — sīko detaļu (ziedi, akmeņi, niedres, zāle) redzamības attāluma reizinātājs (0 = nerāda);
 // fog/far — redzamības attālums; treeNear — līdz cik metriem pilni koki (tālāk — attēli)
 export const QUALITY = {
   high: { pr: 1.5, post: true, refl: true, shadow: 2048, soft: true, photo: true, grass: 1, detail: 1, fog: [100, 360], far: 450, treeNear: 100 },
   mid: { pr: 1.25, post: false, refl: false, shadow: 2048, soft: true, photo: true, grass: 1, detail: 1, fog: [100, 360], far: 450, treeNear: 100 },
-  low: { pr: 1, post: false, refl: false, shadow: 1024, soft: false, photo: false, grass: 0.5, detail: 0.7, fog: [80, 280], far: 340, treeNear: 75 },
-  lowest: { pr: 0.75, post: false, refl: false, shadow: 0, soft: false, photo: false, grass: 0, detail: 0, fog: [60, 210], far: 250, treeNear: 55 },
+  low: { pr: 1, post: false, refl: false, shadow: 1024, soft: false, photo: false, grass: 0.5, grassR: 0.85, detail: 0.7, fog: [80, 280], far: 340, treeNear: 75 },
+  // viszemākā: asa bilde (pilna izšķirtspēja), bet mazāk darba — bez ēnām, zāle tikai tuvumā, tuvāka migla;
+  // izšķirtspēju nedaudz samazina (līdz 0,85) tikai tad, ja telefons joprojām nevelk (dinamiski, Auto režīmā)
+  lowest: { pr: 1, post: false, refl: false, shadow: 0, soft: false, photo: false, grass: 0.4, grassR: 0.6, detail: 0.5, fog: [55, 200], far: 240, treeNear: 50 },
 };
 
 const LS_MODE = 'mezvidi_gfx', LS_AUTO = 'mezvidi_auto_q', LS_BLOCK = 'mezvidi_auto_block';
@@ -73,6 +75,7 @@ export const Quality = {
     const Q = QUALITY[level], prev = this.Q, R = this.renderer;
     this.qLevel = level;
     this.Q = Q;
+    this.prScale = 1;
     R.setPixelRatio(Math.min(window.devicePixelRatio || 1, Q.pr));
     if (Q.post || Q.refl) this.ensureFx();
     if (this.post) this.post.enabled = Q.post;
@@ -106,6 +109,7 @@ export const Quality = {
     if (W.grassMesh) {
       W.grassMesh.count = Math.round(W.grassMesh.userData.full * Q.grass);
       W.grassMesh.visible = Q.grass > 0;
+      if (W.grassR) W.grassR.value = Q.grassR || 1;
     }
     const reflOn = !!(Q.refl && this.refl) && W === this.world; // atspulgs tikai meža ezeros
     if (W.water && W.waterRefl !== reflOn) { upgradeWater(W, reflOn ? this.refl : null); W.waterRefl = reflOn; }
@@ -166,6 +170,14 @@ export const Quality = {
       return;
     }
     if (fps < DOWN_FPS && i > 0) { a.good = 0; this.autoChange(Q_ORDER[i - 1]); return; }
+    // viszemākajā līmenī: ja joprojām lēni — nedaudz mazāka izšķirtspēja; kad atkal ātri — atpakaļ uz pilnu
+    if (i === 0 && (fps < DOWN_FPS ? this.prScale > 0.86 : fps >= 45 && this.prScale < 1)) {
+      this.prScale = Math.round(Math.max(0.85, Math.min(1, this.prScale + (fps < DOWN_FPS ? -0.05 : 0.05))) * 100) / 100;
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.Q.pr) * this.prScale);
+      this.onResize();
+      a.hold = 1;
+      if (fps >= 45) return;
+    }
     if (fps >= UP_FPS && i < Q_ORDER.length - 1) {
       const next = Q_ORDER[i + 1];
       if (++a.good >= 2 && !(blocks()[next] > Date.now())) {

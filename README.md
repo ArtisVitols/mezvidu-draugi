@@ -14,6 +14,8 @@ Pašreizējā versija: **1.6.0** (redzama sākuma ekrānā un ☰ izvēlnē). Iz
 5. **Spēlēt vienam** darbojas arī bez interneta.
 
 **Vadība:** kreisā ekrāna puse — kursorsvira, labā puse — kamera (2 pirksti — tuvināt), ⤒ — lēkt, dzeltenā poga — darbība.
+**Braucot** (kartings, mašīna, sniega motocikls): kreisajā pusē ⛽ gāze un 🛑 bremze, labajā ◀ ▶ stūre.
+📲 Padoms Android telefonā: pārlūka izvēlnē „Pievienot sākuma ekrānam” — tad spēle atveras pilnekrānā bez paziņojuma apakšā.
 Datorā: WASD / bultiņas, atstarpe, E, peles vilkšana.
 
 ## Ko var darīt
@@ -25,6 +27,7 @@ Datorā: WASD / bultiņas, atstarpe, E, peles vilkšana.
   - Blakus lauciņi ar to pašu kultūru saaug vienā vienmērīgā laukā; dažādām kultūrām starp lauciņiem paliek sprauga
   - ⏰ Augi aug pēc pulksteņa — arī tad, kad spēle aizvērta
   - 👥 Draugu sētās var aiziet ciemos (👥 poga → „Ciemos”) un aplaistīt viņu laukus
+  - Visi 4 lauki ir vienādi (pagriezti), tāpēc tavs lauks paliek tāds pats, lai kurā laukā istabā tevi ieliek
 - 🧺 Tirgus: Ūdrs Ojārs (sēklas, makšķere), Āpsis Arnolds (uzpērk ražu, zivis, ogas), Pūce Paula (cepures, kartinga krāsas), Suns Sprīdis (mājdzīvnieki), Lapsa Liene (dārza rotājumi), Bebrs Bruno ar saldējuma ratiņiem
 - 🎣 Makšķerēšana ezeros: kad pludiņš raustās — „VILKT!”. Raudas, asari, līdakas un reta zelta zivtiņa (no laipas ķeras labāk)
 - 🫐 Ogas: mellenes mežā, avenes meža malās, dzērvenes purvā
@@ -71,7 +74,8 @@ un atver `http://localhost:8000`.
 - **Augsta** — foto faktūras, ūdens atspulgi, mīkstas ēnas, krāsu korekcija, augstāka izšķirtspēja;
 - **Vidēja** — foto faktūras un ēnas, bez atspulgiem un pēcapstrādes;
 - **Zema** — vienkāršas krāsas, asas ēnas, retāka zāle, mazāks redzamības attālums;
-- **Viszemākā** — bez ēnām, zāles un sīkām detaļām, zemāka izšķirtspēja, īsāks redzamības attālums — vājākajiem telefoniem.
+- **Viszemākā** — asa bilde (pilna izšķirtspēja), bet bez ēnām, zāle tikai tuvumā, mazāk sīku detaļu, īsāks redzamības attālums — vājākajiem telefoniem.
+  Ja telefons arī tad nevelk, Auto nedaudz samazina izšķirtspēju (ne vairāk kā līdz 85 %) un, kad kļūst ātrāk, atkal palielina.
 
 **Auto** mēra, cik kadru sekundē telefons zīmē: ja spēle raustās, grafika kļūst vienkāršāka; ja telefons
 ilgi tiek galā viegli, tā tiek uzlabota (līdz Augstai). Atrastais līmenis tiek atcerēts nākamajai reizei.

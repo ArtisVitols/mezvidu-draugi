@@ -2,12 +2,12 @@
 // un 🛷 sniega motocikls (tikai Ziemas zemē). Abi stāv stāvvietās; izkāpjot mašīna paliek, kur atstāta.
 // Vehicles — Game papildinājums: iekāpšana, braukšana pa jebkuru reljefu, slīpums, lēcieni, draugu transports.
 import * as THREE from 'three';
-import { mat, lerp, clamp, makeBlobShadow } from './util.js?v=1.15.0';
-import { optimizeRig, tyreGeo } from './characters.js?v=1.15.0';
-import { $, toast, sfx } from './ui.js?v=1.15.0';
-import { DIRS, openSides, neighbour, FARM, FOREST, RACE } from './zones.js?v=1.15.0';
-import { CAR_SPOT, FARM_CAR, WATER_Y } from './world.js?v=1.15.0';
-import { WINTER_CAR, SLED_SPOT } from './winter.js?v=1.15.0';
+import { mat, lerp, clamp, makeBlobShadow } from './util.js?v=1.16.0';
+import { optimizeRig, tyreGeo } from './characters.js?v=1.16.0';
+import { $, toast, sfx } from './ui.js?v=1.16.0';
+import { DIRS, openSides, neighbour, FARM, FOREST, RACE, ZONE_IDS } from './zones.js?v=1.16.0';
+import { CAR_SPOT, FARM_CAR, WATER_Y } from './world.js?v=1.16.0';
+import { WINTER_CAR, SLED_SPOT } from './winter.js?v=1.16.0';
 
 // tīkla kods (pos ziņas 6. lauks): 1 = kartings, 2 = mašīna, 3 = sniega motocikls
 export const VEH_CODE = { car: 2, sled: 3 }; // 4 = pasažieris (p[8] — vadītāja id, p[9] — sēdvieta)
@@ -189,25 +189,32 @@ export const Vehicles = {
       p.obj.root.visible = true;
     }
     // paša atstātā mašīna citā zemē paliek tur — šeit tās nav
-    if (this.myParked && this.myParked.zone !== this.zone) { this.myParked.obj.root.removeFromParent(); this.myParked = null; }
+    // (tā paliek tajā zemē — draugi to tur redz; atgriežoties tā atkal ir vietā)
+    const mp = this.myParked;
+    if (mp && mp.zone !== this.zone) mp.obj.root.removeFromParent();
+    else if (mp && !mp.obj.root.parent) this.stage.add(mp.obj.root);
+    // draugu atstātās mašīnas šajā zemē
+    if (this.remotes) for (const r of this.remotes.values()) { r.parkKey = null; this.remoteParked(r, r.parkE); }
   },
 
   // dzeltenā poga: iekāpt (no stāvvietas vai savā atstātajā mašīnā)
   vehicleActions(consider, d2) {
     if (this.me.veh || this.me.ride || this.me.ski || this.me.lift) return;
+    // tieši blakus mašīnai iekāpšana uzvar citas darbības (piem., aršanu laukā)
+    const near = (d, kind) => (d < (kind === 'car' ? 3.2 : 2.4) ? 0.2 * d / 3.2 : d);
     // braukt līdzi draugam (viņa mašīnai jābūt apstājušās vai lēnai)
     for (const r of this.remotes.values()) {
       if (!r.vehObj || (r.zone || 'c') !== this.zone) continue;
       const sp = r.netVel ? Math.hypot(r.netVel.x, r.netVel.z) : 0;
       if (sp > 4) continue;
-      consider(d2(r.pos.x, r.pos.z), r.vehObj.kind === 'car' ? 4.2 : 3.2, `${DEF[r.vehObj.kind].icon} Braukt līdzi: ${r.prof.name}`, () => this.joinRide(r));
+      consider(near(d2(r.pos.x, r.pos.z), r.vehObj.kind), r.vehObj.kind === 'car' ? 4.2 : 3.2, `${DEF[r.vehObj.kind].icon} Braukt līdzi: ${r.prof.name}`, () => this.joinRide(r));
     }
-    const mp = this.myParked;
-    if (mp) consider(d2(mp.x, mp.z), mp.kind === 'car' ? 4.2 : 3.2, `${DEF[mp.kind].icon} Sēsties: ${DEF[mp.kind].name}`, () => this.enterVehicle(mp.kind, mp));
+    const mp = this.myParked && this.myParked.zone === this.zone ? this.myParked : null;
+    if (mp) consider(near(d2(mp.x, mp.z), mp.kind), mp.kind === 'car' ? 4.2 : 3.2, `${DEF[mp.kind].icon} Sēsties: ${DEF[mp.kind].name}`, () => this.enterVehicle(mp.kind, mp));
     for (const k in this.parked || {}) {
       const p = this.parked[k];
       if (!p.spot || !p.obj.root.visible) continue;
-      consider(d2(p.spot.x, p.spot.z), k === 'car' ? 4.2 : 3.2, `${DEF[k].icon} Sēsties: ${DEF[k].name}`, () => this.enterVehicle(k, null));
+      consider(near(d2(p.spot.x, p.spot.z), k), k === 'car' ? 4.2 : 3.2, `${DEF[k].icon} Sēsties: ${DEF[k].name}`, () => this.enterVehicle(k, null));
     }
   },
 
@@ -239,8 +246,8 @@ export const Vehicles = {
     $('btn-jump').classList.add('hidden');
     sfx('beep');
     toast(kind === 'car'
-      ? '🚙 Kursorsvira uz augšu — gāze, uz leju — bremze/atpakaļgaita. Pa grants ceļu var aizbraukt uz citām zemēm!'
-      : '🛷 Sniega motocikls brauc pa visu sniegu un kalnos! Uz augšu — gāze, uz leju — bremze.', 'good', 5000);
+      ? '🚙 Kreisajā pusē ⛽ gāze un 🛑 bremze/atpakaļgaita, labajā ◀ ▶ stūre. Pa grants ceļu var aizbraukt uz citām zemēm!'
+      : '🛷 Sniega motocikls brauc pa visu sniegu un kalnos! Kreisajā pusē ⛽ gāze un 🛑 bremze, labajā ◀ ▶ stūre.', 'good', 5000);
   },
 
   exitVehicle() {
@@ -257,7 +264,8 @@ export const Vehicles = {
     this.terr.collide(me.pos, 0.4);
     me.pos.y = this.terr.groundAt(me.pos.x, me.pos.z) + 0.3;
     me.heading = h;
-    // mašīna paliek turpat
+    // mašīna paliek turpat (vecā atstātā, ja tāda bija, pazūd — katram viena)
+    if (this.myParked && this.myParked.obj !== v.obj) this.myParked.obj.root.removeFromParent();
     this.myParked = { kind: v.kind, obj: v.obj, x: v.obj.root.position.x, z: v.obj.root.position.z, heading: h, zone: this.zone };
     me.veh = null; me.state = 'idle';
     $('btn-exit-kart').classList.add('hidden');
@@ -348,6 +356,34 @@ export const Vehicles = {
     const v = this.me.veh;
     if (v) { if (heading != null) v.heading = heading; v.vy = 0; v.air = false; v.visY = null; v.speed = Math.min(v.speed, 8); if (v.kind === 'car') this.stat('carTrips'); }
     this.placeParked();
+  },
+
+  // mana atstātā mašīna pos ziņai: [veids, x, z, virziens, zemes nr.] (draugi to redz stāvam)
+  parkInfo() {
+    const mp = this.myParked;
+    if (!mp || this.me.veh) return [0, 0, 0, 0, 0];
+    const r2 = (v) => Math.round(v * 100) / 100;
+    return [VEH_CODE[mp.kind], r2(mp.x), r2(mp.z), r2(mp.heading), ZONE_IDS.indexOf(mp.zone)];
+  },
+
+  // drauga atstātā mašīna (no pos ziņas e[11..15]); rāda tikai manā zemē un kamēr viņš ar to nebrauc
+  remoteParked(r, e) {
+    const code = e ? e[11] | 0 : 0, kind = CODE_KIND[code];
+    const zone = kind ? ZONE_IDS[e[15] | 0] : null;
+    const show = kind && zone === this.zone && r.vehCode !== code;
+    if (!show) { if (r.parkObj) { r.parkObj.root.removeFromParent(); r.parkObj = null; r.parkKey = null; } return; }
+    const key = `${kind}|${e[12]}|${e[13]}|${e[14]}|${this.zone}`;
+    if (r.parkObj && r.parkKey === key) return;
+    if (r.parkObj && r.parkObj.kind !== kind) { r.parkObj.root.removeFromParent(); r.parkObj = null; }
+    if (!r.parkObj) { r.parkObj = buildVeh(kind, this.kartColorHex(r.prof.kartColor)); this.stage.add(r.parkObj.root); }
+    r.parkKey = key;
+    const x = e[12], z = e[13], h = e[14], o = r.parkObj, D = DEF[kind];
+    const sl = slopeAt((a, b) => this.terr.getHeight(a, b), x, z, h, D.len, D.wid);
+    o.root.position.set(x, sl.y, z);
+    o.root.rotation.y = h;
+    o.body.rotation.set(-sl.pitch, 0, sl.roll, 'YXZ');
+    o.root.children[1].position.y = 0.04;
+    r.parkAt = { x, z };
   },
 
   vehCode() { return this.me.veh ? VEH_CODE[this.me.veh.kind] : this.me.ride ? RIDE_CODE : 0; },
@@ -492,6 +528,9 @@ export const Vehicles = {
   // vai draugs brauc ar mašīnu / ir pasažieris (attālo pozīciju prognozei)
   remoteMoving(r) { return r.vehCode === 2 || r.vehCode === 3 || r.vehCode === RIDE_CODE; },
 
-  removeRemoteVehicle(r) { if (r.vehObj) { r.vehObj.root.removeFromParent(); r.vehObj = null; } },
+  removeRemoteVehicle(r) {
+    if (r.vehObj) { r.vehObj.root.removeFromParent(); r.vehObj = null; }
+    if (r.parkObj) { r.parkObj.root.removeFromParent(); r.parkObj = null; r.parkKey = null; }
+  },
 };
 
