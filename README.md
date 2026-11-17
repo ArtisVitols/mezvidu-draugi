@@ -79,7 +79,8 @@ un atver `http://localhost:8000`.
   Ja telefons arī tad nevelk, Auto nedaudz samazina izšķirtspēju (ne vairāk kā līdz 85 %) un, kad kļūst ātrāk, atkal palielina.
 
 **Auto** mēra, cik kadru sekundē telefons zīmē: ja spēle raustās, grafika kļūst vienkāršāka; ja telefons
-ilgi tiek galā viegli, tā tiek uzlabota (līdz Augstai). Atrastais līmenis tiek atcerēts nākamajai reizei.
+ilgi tiek galā viegli, tā tiek uzlabota (līdz Augstai). Ja augstākais līmenis tomēr ir par smagu, Auto atgriežas zemāk un
+to pašu mēģina vēlreiz pēc 30 s (tad pēc 1, 2, … līdz 5 min). Atrastais līmenis tiek atcerēts nākamajai reizei.
 Grafika mainās uzreiz, bez pārlādes.
 Faktūras un debesu attēls — [Poly Haven](https://polyhaven.com) (CC0), mapē `assets/`.
 

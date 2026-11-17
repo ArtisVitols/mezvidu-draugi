@@ -1,5 +1,10 @@
 # Izmaiņu žurnāls
 
+## 1.19.1 — 2026-11-17
+- 🎨 Auto grafika vairs nebloķē līmeni uz 2 dienām. Ja pēc uzlabošanas fps nokrītas zem 40, Auto atgriežas zemāk un to pašu
+  līmeni mēģina atkal pēc 30 s, tad 1 min, 2 min, 4 min (ne retāk kā ik 5 min) — īslaicīgs lēnums vairs neliedz labāku grafiku.
+  Vecās 2 dienu bloķēšanas tiek izdzēstas.
+
 ## 1.19.0 — 2026-11-17
 - ⚡ Ātrāka grafika vājākiem telefoniem. Mērījums (tās pašas 7 vietas visās zemēs, pirms → pēc):
   Viszemākā un Zemā grafika zīmē ~1,5× ātrāk (kadra laiks −35 % / −33 %), trijstūru −25 % / −37 %;

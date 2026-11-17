@@ -108,8 +108,8 @@ Static site: plain HTML + ES modules, no build step. Photo textures in `assets/`
   (0 = camera layer 1 off), fog/far, tree LOD distance). `applyQuality(level)` switches everything live (no reload; shadow
   on/off recompiles materials; water is re-upgraded when reflection toggles; photo textures/PostFX are created lazily).
   Mode in localStorage `mezvidi_gfx`: `auto` (default) or a fixed level. `autoQuality()` (called each frame) measures fps in 3 s windows:
-  < 27 → one level down; ≥ 50 for ~6 s → try one level up; a trial level must hold ≥ 40 fps or it is reverted and blocked for 2 days
-  (`mezvidi_auto_block`). Last auto level is remembered (`mezvidi_auto_q`); the first guess uses `deviceMemory`/`hardwareConcurrency`.
+  < 27 → one level down; ≥ 50 for ~6 s → try one level up; a trial level must hold ≥ 40 fps for 2 windows or it is reverted
+  and retried after a session-only backoff (`RETRY_MS` 30 s, doubling up to `RETRY_MAX` 5 min; the old 2-day `mezvidi_auto_block` is removed). Last auto level is remembered (`mezvidi_auto_q`); the first guess uses `deviceMemory`/`hardwareConcurrency`.
   With PostFX the scene renders into a HalfFloat MSAA target, so tone mapping/sRGB happen in the PostFX composite shader.
   **Cheap lighting** (`cheap: true` on lowest/low): `patchCheapLighting()` in quality.js wraps parts of three's physical lighting chunks in
   `#ifndef CHEAP_LIGHT` (no GGX specular, no IBL radiance, no multiscatter — diffuse sun + hemisphere + env irradiance stay).

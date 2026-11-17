@@ -1,8 +1,8 @@
 // Grafikas līmeņi un automātiska pielāgošana pēc kadru ātruma (fps).
 // Visi iestatījumi mainās uzreiz spēles laikā (bez pārlādes), tāpēc „Auto” var kāpt uz augšu un leju.
 import * as THREE from 'three';
-import { PlanarReflection, PostFX, upgradeWater, terrainMaterial, loadTexture } from './gfx.js?v=1.19.0';
-import { toast } from './ui.js?v=1.19.0';
+import { PlanarReflection, PostFX, upgradeWater, terrainMaterial, loadTexture } from './gfx.js?v=1.19.1';
+import { toast } from './ui.js?v=1.19.1';
 
 export const Q_ORDER = ['lowest', 'low', 'mid', 'high'];
 export const Q_MODES = ['auto', 'high', 'mid', 'low', 'lowest'];
@@ -21,7 +21,7 @@ export const QUALITY = {
   lowest: { pr: 1, post: false, refl: false, shadow: 0, soft: false, photo: false, grass: 0.4, grassR: 0.6, detail: 0.5, fog: [55, 200], far: 240, treeNear: 50, cheap: true },
 };
 
-const LS_MODE = 'mezvidi_gfx', LS_AUTO = 'mezvidi_auto_q', LS_BLOCK = 'mezvidi_auto_block', LS_STATS = 'mezvidi_stats';
+const LS_MODE = 'mezvidi_gfx', LS_AUTO = 'mezvidi_auto_q', LS_STATS = 'mezvidi_stats';
 export function statsWanted() { return ls.get(LS_STATS) === '1'; }
 const ls = {
   get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
@@ -29,8 +29,10 @@ const ls = {
 };
 const DOWN_FPS = 27;     // zem šī — līmeni zemāk
 const UP_FPS = 50;       // virs šī ~6 s — mēģina līmeni augstāk
-const TRIAL_FPS = 40;    // pēc paaugstināšanas jābūt vismaz tik, citādi atpakaļ un šo līmeni ilgāk nemēģina
-const BLOCK_MS = 2 * 24 * 3600 * 1000;
+const TRIAL_FPS = 40;    // pēc paaugstināšanas jābūt vismaz tik, citādi atpakaļ
+// pēc neizdevušās paaugstināšanas to pašu līmeni atkal mēģina pēc 30 s, tad 60 s, 120 s … līdz 5 min
+// (tikai šajā spēles reizē — lēnums var būt īslaicīgs; bez šīs pauzes grafika raustītos augšā–lejā)
+const RETRY_MS = 30000, RETRY_MAX = 300000;
 
 export function loadQualityMode() {
   const m = ls.get(LS_MODE);
@@ -72,7 +74,7 @@ function setCheap(m, on) {
   m.needsUpdate = true;
 }
 
-function blocks() { try { return JSON.parse(ls.get(LS_BLOCK) || '{}'); } catch (e) { return {}; } }
+try { localStorage.removeItem('mezvidi_auto_block'); } catch (e) { /* vecā 2 dienu bloķēšana (līdz 1.19.0) */ }
 
 export const Quality = {
   // foto faktūras ielādē tikai tad, kad tās pirmo reizi vajag; atgriežoties tās tiek augšupielādētas no jauna
@@ -219,12 +221,12 @@ export const Quality = {
   },
 
   // Automātika: mēra fps 3 s logos. Lēni → līmeni zemāk. Ilgi ātri → mēģina augstāk; ja pēc tam kļūst lēni,
-  // atgriežas un šo līmeni uz šīs ierīces 2 dienas vairs nemēģina.
+  // atgriežas un to pašu līmeni mēģina atkal pēc 30 s → 60 s → … līdz 5 min (tikai šajā spēles reizē).
   autoQuality() {
     const now = performance.now();
     if (!(now < this.cheapAt)) { this.cheapAt = now + 1500; this.cheapScan(false); }
     if (this.qMode !== 'auto') return;
-    const a = this.qa || (this.qa = { last: now, t: 0, n: 0, hold: 4, good: 0, trial: null, trialN: 0 });
+    const a = this.qa || (this.qa = { last: now, t: 0, n: 0, hold: 4, good: 0, trial: null, trialN: 0, retry: {}, wait: {} });
     const d = (now - a.last) / 1000;
     a.last = now;
     // ielāde, cita lietotne vai ļoti liela aizture — nemērām
@@ -237,12 +239,13 @@ export const Quality = {
     const i = Q_ORDER.indexOf(this.qLevel);
     if (a.trial === this.qLevel) {
       if (fps < TRIAL_FPS) {
-        const b = blocks(); b[this.qLevel] = Date.now() + BLOCK_MS; ls.set(LS_BLOCK, JSON.stringify(b));
+        const w = a.wait[this.qLevel] = Math.min(RETRY_MAX, (a.wait[this.qLevel] || RETRY_MS / 2) * 2);
+        a.retry[this.qLevel] = now + w;
         a.trial = null;
         this.autoChange(Q_ORDER[i - 1]);
         return;
       }
-      if (++a.trialN >= 2) a.trial = null; // apstiprināts
+      if (++a.trialN >= 2) { a.trial = null; delete a.wait[this.qLevel]; } // apstiprināts
       return;
     }
     if (fps < DOWN_FPS && i > 0) { a.good = 0; this.autoChange(Q_ORDER[i - 1]); return; }
@@ -256,7 +259,7 @@ export const Quality = {
     }
     if (fps >= UP_FPS && i < Q_ORDER.length - 1) {
       const next = Q_ORDER[i + 1];
-      if (++a.good >= 2 && !(blocks()[next] > Date.now())) {
+      if (++a.good >= 2 && !(a.retry[next] > now)) {
         a.good = 0; a.trial = next; a.trialN = 0;
         this.autoChange(next);
       }

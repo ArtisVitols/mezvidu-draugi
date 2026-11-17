@@ -1,9 +1,9 @@
 // Īpašās vietas pasaulē: skatu tornis, ugunskura vieta, purvs, pilsdrupas, makšķernieku laipa.
 // Vietas atrod deterministiski pēc reljefa (visiem spēlētājiem vienādas), būvē to modeļus un ogu krūmu vietas.
 import * as THREE from 'three';
-import { mulberry32 } from './noise.js?v=1.19.0';
-import { mat, noiseTexture, makeTextSprite, smoothstep } from './util.js?v=1.19.0';
-import { optimizeRig, flattenStatic } from './characters.js?v=1.19.0';
+import { mulberry32 } from './noise.js?v=1.19.1';
+import { mat, noiseTexture, makeTextSprite, smoothstep } from './util.js?v=1.19.1';
+import { optimizeRig, flattenStatic } from './characters.js?v=1.19.1';
 
 const TAU = Math.PI * 2;
 const angDiff = (a, b) => { let d = Math.abs(a - b) % TAU; return d > Math.PI ? TAU - d : d; };
