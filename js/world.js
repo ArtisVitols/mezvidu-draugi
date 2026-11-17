@@ -1,11 +1,12 @@
 import * as THREE from 'three';
-import { makeNoise2D, mulberry32 } from './noise.js?v=1.19.1';
-import { MUSHROOMS } from './data.js?v=1.19.1';
+import { makeNoise2D, mulberry32 } from './noise.js?v=1.20.0';
+import { MUSHROOMS } from './data.js?v=1.20.0';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mat, smoothstep, lerp, makeTextSprite, makeSignBoard, signWood, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.19.1';
-import { optimizeRig, flattenStatic } from './characters.js?v=1.19.1';
-import { ZONE_HALF, ZONES, DIRS, GROUND_Y, sqDist, clampSquare, buildBorderPosts, smoothRoad, RoadIndex, buildRoadMesh, ROAD_HW, FOREST, neighbour, openSides, buildTerrainFence, wood } from './zones.js?v=1.19.1';
-import { findPlaces, placeHeight, inPlace, buildPlaces, updatePlaces, placeBerries } from './places.js?v=1.19.1';
+import { mat, smoothstep, lerp, makeTextSprite, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.20.0';
+import { optimizeRig, flattenStatic } from './characters.js?v=1.20.0';
+import { ZONE_HALF, ZONES, DIRS, GROUND_Y, sqDist, clampSquare, buildBorderPosts, smoothRoad, RoadIndex, buildRoadMesh, ROAD_HW, FOREST, neighbour, openSides, buildTerrainFence, wood } from './zones.js?v=1.20.0';
+import { buildGardenHouse, buildGreenhouse, buildGateArch, buildFingerpost, buildRoadSign, HOUSE } from './farmyard.js?v=1.20.0';
+import { findPlaces, placeHeight, inPlace, buildPlaces, updatePlaces, placeBerries } from './places.js?v=1.20.0';
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
@@ -45,14 +46,18 @@ const ROADS = {
 export const CAR_SPOT = { x: 46, z: 40, heading: 0.9 };
 export const FARM_CAR = { x: -10, z: 6, heading: Math.PI / 2 };
 
-// ---------- sēta: 4 spēlētāju lauki (katrs savā ceturtdaļā starp līkumotajiem ceļiem un meža joslu) ----------
-export const PLOT_IN = 9, PLOT_OUT = 266, TILE = 2.5;
+// ---------- sēta: 4 spēlētāju sētas krustojuma stūros ----------
+// Katrā stūrī iežogota sēta (YARD_IN..YARD_OUT m no abiem ceļiem): dārzs 20×20 lauciņi (TILE 2,5 m — 50×50 m),
+// dārza mājiņa, siltumnīca un pagalms ar rotājumiem. Ceļi centrā ir taisni, tāpēc dārzi ir kvadrāti, paralēli ceļiem.
+export const YARD_IN = 9, YARD_OUT = 81, TILE = 2.5;
+export const PLOT_IN = YARD_IN, PLOT_OUT = YARD_OUT; // vecie nosaukumi
+export const GARDEN_T = [-25, -6]; // dārza lauciņi 0. sētā: ix un iz no −25 līdz −6 (20 × 20)
 // sētas ceļu līkumi: ziemeļu–dienvidu ceļš x = roadNS(z), rietumu–austrumu ceļš z = roadEW(x)
-// (centrā un robežu vidū 0 — tur ceļi satiekas ar kaimiņu zemju ceļiem)
+// (līdz ~95 m no centra taisni, tālāk līkumoti; centrā un robežu vidū 0 — tur ceļi satiekas ar kaimiņu zemju ceļiem)
 const SW = Math.PI / ZONE_HALF;
-export const roadNS = (z) => (Math.abs(z) >= ZONE_HALF ? 0 : 30 * Math.sin(SW * z) + 12 * Math.sin(2 * SW * z));
-// roadEW(x) = −roadNS(x): sēta ir simetriska pret 90° pagriezienu — visi 4 lauki ir vienādi (pagriezti),
-// tāpēc katra spēlētāja lauku glabā „0. lauka” koordinātēs un var parādīt jebkurā laukā
+export const roadNS = (z) => (Math.abs(z) >= ZONE_HALF ? 0 : (30 * Math.sin(SW * z) + 12 * Math.sin(2 * SW * z)) * smoothstep(95, 150, Math.abs(z)));
+// roadEW(x) = −roadNS(x): sēta ir simetriska pret 90° pagriezienu — visas 4 sētas ir vienādas (pagrieztas),
+// tāpēc katra spēlētāja dārzu glabā „0. sētas” koordinātēs un var parādīt jebkurā sētā
 export const roadEW = (x) => -roadNS(x);
 {
   const ns = [[0, -380], [0, -318]], ew = [[-380, 0], [-318, 0]];
@@ -61,25 +66,43 @@ export const roadEW = (x) => -roadNS(x);
   ROADS.farm = [ns, ew];
 }
 export const plotSign = (slot) => [slot % 2 ? 1 : -1, slot < 2 ? -1 : 1];
-// cik reizes 0. lauks jāpagriež par 90° (x,z → −z,x), lai iegūtu lauku slot
+// cik reizes 0. sēta jāpagriež par 90° (x,z → −z,x), lai iegūtu sētu slot; objekta pagrieziens ap Y: −k·π/2
 export const PLOT_ROT = [0, 1, 3, 2];
 export function rotPlot(x, z, slot) { for (let k = PLOT_ROT[slot]; k > 0; k--) [x, z] = [-z, x]; return [x, z]; }
-// lauciņu režģis: 0. lauka (kanoniskās) koordinātes ↔ lauka slot koordinātes
+export const rotPlotY = (slot) => -PLOT_ROT[slot] * Math.PI / 2;
+// lauciņu režģis: 0. sētas (kanoniskās) koordinātes ↔ sētas slot koordinātes
 export function tileToSlot(ix, iz, slot) { for (let k = PLOT_ROT[slot]; k > 0; k--) [ix, iz] = [-1 - iz, ix]; return [ix, iz]; }
 export function tileToCanon(ix, iz, slot) { for (let k = PLOT_ROT[slot]; k > 0; k--) [ix, iz] = [iz, -1 - ix]; return [ix, iz]; }
-// katra lauka "mājas" vieta pie pagalma (24 m no abiem ceļiem): zīme ar vārdu un rotājumi
-const HOME0 = (() => {
-  let x = -24, z = -24;
-  for (let k = 0; k < 6; k++) { x = roadNS(z) - 24; z = roadEW(x) - 24; }
-  return { x, z };
-})();
-export const GARDEN_SLOTS = [0, 1, 2, 3].map((s) => { const [x, z] = rotPlot(HOME0.x, HOME0.z, s); return { x, z }; });
-// kura lauka iekšpusē ir punkts (-1 — nevienā)
+export const gardenTile = (a, b) => a >= GARDEN_T[0] && a <= GARDEN_T[1] && b >= GARDEN_T[0] && b <= GARDEN_T[1];
+// 0. sētas plāns (x, z < 0): mājas vieta ar rotājumiem aizmugurē, mājiņa un siltumnīca sānos (durvis pret dārzu, +x),
+// vārti abos ceļa pusēs (a — attālums no ceļa līdz vārtu vidum)
+export const YARD = { home: { x: -37, z: -72 }, house: { x: -72, z: -22 }, green: { x: -72, z: -49 }, gateA: 37.5 };
+export const GARDEN_SLOTS = [0, 1, 2, 3].map((s) => { const [x, z] = rotPlot(YARD.home.x, YARD.home.z, s); return { x, z }; });
+// kurā sētā (iežogotajā teritorijā) ir punkts (-1 — nevienā)
 export function plotOf(x, z) {
-  if (Math.abs(x) > PLOT_OUT || Math.abs(z) > PLOT_OUT) return -1;
-  const u = x - roadNS(z), v = z - roadEW(x);
-  if (Math.abs(u) < PLOT_IN || Math.abs(v) < PLOT_IN) return -1;
-  return (u > 0 ? 1 : 0) + (v > 0 ? 2 : 0);
+  const a = Math.abs(x), b = Math.abs(z);
+  if (a < YARD_IN || b < YARD_IN || a > YARD_OUT || b > YARD_OUT) return -1;
+  return (x > 0 ? 1 : 0) + (z > 0 ? 2 : 0);
+}
+// cik tālu ārpus sētu kvadrāta (0 — iekšā vai starp sētām pie krustojuma)
+const yardOut = (x, z) => Math.hypot(Math.max(0, Math.abs(x) - YARD_OUT), Math.max(0, Math.abs(z) - YARD_OUT));
+// kas sētā ir šajā punktā: 'house' | 'green' | 'garden' | 'yard' | null (ārpus sētām) — kartei un zālei
+export function yardPart(x, z) {
+  const s = plotOf(x, z);
+  if (s < 0) return null;
+  for (let k = PLOT_ROT[s]; k > 0; k--) [x, z] = [z, -x]; // atpakaļ uz 0. sētu
+  if (Math.abs(x - YARD.house.x) < 3.3 && Math.abs(z - YARD.house.z) < 2.8) return 'house';
+  if (Math.abs(x - YARD.green.x) < 3.2 && Math.abs(z - YARD.green.z) < 5.7) return 'green';
+  if (gardenTile(Math.floor(x / TILE), Math.floor(z / TILE))) return 'garden';
+  return 'yard';
+}
+export const inYardBuilding = (x, z) => { const p = yardPart(x, z); return p === 'house' || p === 'green'; };
+// vārtu zīmju vietas sētai slot: [{x, z, ry}] (dēlis karājas vārtu arkā)
+export function gateSpots(slot) {
+  return [[-YARD.gateA, -YARD_IN, 0], [-YARD_IN, -YARD.gateA, Math.PI / 2]].map(([x, z, ry]) => {
+    const [px, pz] = rotPlot(x, z, slot);
+    return { x: px, z: pz, ry: ry + rotPlotY(slot) };
+  });
 }
 
 export const VENDORS = [
@@ -296,7 +319,7 @@ export class World {
   // reljefs bez grants ceļiem, vietām un robežas
   baseHeight(x, z) {
     const d = Math.hypot(x, z);
-    if (this.mode === 'farm') return lerp(this.farmHeight(x, z), VILLAGE_Y, 1 - smoothstep(44, 72, d));
+    if (this.mode === 'farm') return lerp(this.farmHeight(x, z), VILLAGE_Y, 1 - smoothstep(4, 22, yardOut(x, z))); // sētas un krustojums līdzeni
     let h = this.naturalHeight(x, z);
     if (this.mode === 'race') h += 2.6; // trasē mazāk ezeru
     if (this.mode === 'forest') return lerp(h, VILLAGE_Y, 1 - smoothstep(34, 62, d));
@@ -956,12 +979,12 @@ export class World {
     const trees = ['ozols', 'berzs', 'egle', 'priede'], R = { egle: 0.45, priede: 0.35, berzs: 0.3, ozols: 0.55 };
     // vietas izvēlas 0. laukā, pārējos laukos tās pašas vietas pagrieztas (id nr. visiem laukiem nozīmē to pašu vietu);
     // koka suga, izmērs un pagrieziens katrā laukā savs
-    const home = GARDEN_SLOTS[0], spots = [];
-    for (const [type, n] of [['tree', 16], ['rock', 22], ['bush', 10]]) {
+    // tikai dārza laukumā (0. sētā x, z no −61 līdz −14) — tos novāc, lai varētu uzart
+    const spots = [];
+    for (const [type, n] of [['tree', 4], ['rock', 8], ['bush', 5]]) {
       let got = 0;
       for (let k = 0; k < 5000 && got < n; k++) {
-        const x = -(PLOT_IN + 6 + rnd() * (PLOT_OUT - PLOT_IN - 14)), z = -(PLOT_IN + 6 + rnd() * (PLOT_OUT - PLOT_IN - 14));
-        if (plotOf(x, z) !== 0 || Math.hypot(x - home.x, z - home.z) < 24 || this.roadDist(x, z).d < 7) continue;
+        const x = -(14 + rnd() * 47), z = -(14 + rnd() * 47);
         if (spots.some((o) => Math.hypot(o.x - x, o.z - z) < 7)) continue;
         spots.push({ type, x, z });
         got++;
@@ -973,7 +996,7 @@ export class World {
         const [x, z] = rotPlot(sp.x, sp.z, slot), type = sp.type;
         const a = r2(), b = r2(), c = r2();
         const kind = type === 'tree' ? trees[Math.floor(a * 4)] : type;
-        const s = type === 'tree' ? 0.85 + b * 0.5 : type === 'rock' ? 0.5 + b * 0.9 : 0.8 + b * 0.6;
+        const s = type === 'tree' ? 0.7 + b * 0.35 : type === 'rock' ? 0.5 + b * 0.8 : 0.8 + b * 0.6;
         const r = type === 'tree' ? R[kind] * s : type === 'rock' ? s * 0.85 : 0;
         const o = { id: slot * 100 + nr, slot, type, kind, x, z, y: this.getHeight(x, z), s, ry: c * 6.28, r };
         this.plotObjs.push(o);
@@ -982,7 +1005,7 @@ export class World {
     }
   }
 
-  // sētas pagalms: lauku žogi gar ceļiem (ar vārtiem pie mājas vietas) un ceļa rādītāji
+  // sētas: žogi ar vārtu arkām, dārza mājiņa, siltumnīca; krustojumā ceļa rādītājs, gar ceļiem — ceļa zīmes
   buildFarmYard() {
     const posts = [], rails = [];
     const H = (x, z) => this.getHeight(x, z);
@@ -999,21 +1022,40 @@ export class World {
             g.translate((x + ax) / 2, (y + ay) / 2 + hy, (z + az) / 2);
             rails.push(g);
           }
+          // žogs ir ciets (apļu virkne)
+          for (let t = 0.35; t < len; t += 0.7) this.addCollider(ax + (x - ax) * t / len, az + (z - az) * t / len, 0.22);
         }
         prev = [x, y, z, gap];
       }
     };
+    const st = new THREE.Group(); // statiskās būves — apvienos flattenStatic
+    const place = (o, slot, lx, lz, ry = 0) => {
+      const [x, z] = rotPlot(lx, lz, slot);
+      o.position.set(x, H(x, z), z); o.rotation.y = ry + rotPlotY(slot);
+      return o;
+    };
+    const addCol = (cols, slot, lx, lz) => {
+      for (const [cx, cz, r] of cols) { const [x, z] = rotPlot(lx + cx, lz + cz, slot); this.addCollider(x, z, r); }
+    };
+    this.yardBuildings = [];
+    const I = YARD_IN, O = YARD_OUT, gA = YARD.gateA;
     for (let slot = 0; slot < 4; slot++) {
-      const [sx, sz] = plotSign(slot), home = GARDEN_SLOTS[slot];
-      const A = [], B = [];
-      for (let t = 0; t <= PLOT_OUT - 6; t += 3) {
-        // gar rietumu–austrumu ceļu un gar ziemeļu–dienvidu ceļu (seko līkumiem); vārti pretī mājas vietai
-        let x = sx * t, z = roadEW(x) + sz * PLOT_IN;
-        if ((x - roadNS(z)) * sx >= PLOT_IN) A.push([x, z, Math.abs(x - home.x) < 7]);
-        z = sz * t; x = roadNS(z) + sx * PLOT_IN;
-        if ((z - roadEW(x)) * sz >= PLOT_IN) B.push([x, z, Math.abs(z - home.z) < 7]);
-      }
-      line(A); line(B);
+      // 0. sētas žogs (x, z < 0), pagriezts uz sētu slot; vārti abās ceļa pusēs
+      const side = (f) => { const pts = []; for (let a = I; a <= O + 0.01; a += 3) pts.push([...rotPlot(...f(a), slot), Math.abs(a - gA) < 4.6]); line(pts); };
+      side((a) => [-a, -I]); side((a) => [-I, -a]); side((a) => [-a, -O]); side((a) => [-O, -a]);
+      // vārtu arkas (dēli ar vārdu pakar farm.js — gateSpots)
+      st.add(place(buildGateArch(), slot, -gA, -I, Math.PI / 2));
+      st.add(place(buildGateArch(), slot, -I, -gA, 0));
+      // dārza mājiņa un siltumnīca (durvis pret dārzu)
+      const hs = buildGardenHouse();
+      place(hs.obj, slot, YARD.house.x, YARD.house.z);
+      this.group.add(hs.obj); // atsevišķi: sienas/jumts mainās, kad esi iekšā
+      addCol(hs.colliders, slot, YARD.house.x, YARD.house.z);
+      const [hx, hz] = rotPlot(YARD.house.x, YARD.house.z, slot);
+      this.yardBuildings.push({ slot, x: hx, z: hz, y0: H(hx, hz), ry: rotPlotY(slot), inner: HOUSE.inner, roof: hs.roof, wallMat: hs.wallMat });
+      const gh = buildGreenhouse();
+      this.group.add(place(gh.obj, slot, YARD.green.x, YARD.green.z));
+      addCol(gh.colliders, slot, YARD.green.x, YARD.green.z);
     }
     const pg = new THREE.CylinderGeometry(0.06, 0.08, 1.25, 5).translate(0, 0.45, 0);
     const im = new THREE.InstancedMesh(pg, wood(), posts.length);
@@ -1025,33 +1067,24 @@ export class World {
     rm.castShadow = true;
     this.group.add(rm);
     rails.forEach((g) => g.dispose());
-    // ceļa rādītājs krustojumā: stabs ar 4 bultu dēļiem, katrs rāda savā ceļā
-    {
-      let px = 6, pz = -6;
-      for (let k = 0; k < 6; k++) { px = roadNS(pz) + 6.5; pz = roadEW(px) - 6.5; }
-      const py = H(px, pz), PH = 6.2, fp = new THREE.Group();
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.16, PH, 8), signWood());
-      pole.position.set(px, py + PH / 2 - 0.3, pz); pole.castShadow = true;
-      fp.add(pole);
-      const cap = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.35, 8), signWood());
-      cap.position.set(px, py + PH - 0.12, pz);
-      fp.add(cap);
-      this.addCollider(px, pz, 0.35);
-      const R = 28;
-      [[roadNS(-R), -R, '❄️ Ziemas zeme', '#3b6c9c'], [R, roadEW(R), '🌲 Mežs · 🛒 tirgus', '#3c7432'],
-        [-R, roadEW(-R), '🏁 Sacīkšu trase', '#a33a2c'], [roadNS(R), R, '🏖️ Kāpas', '#b9853a']].forEach(([tx, tz, txt, col], i) => {
-        const { obj, w } = makeSignBoard(txt, { arrow: true, h: 0.95, color: col });
-        const dx = tx - px, dz = tz - pz, l = Math.hypot(dx, dz);
-        const off = w / 2 + 0.25;
-        obj.position.set(px + dx / l * off, py + PH - 0.85 - i * 1.15, pz + dz / l * off);
-        obj.rotation.y = Math.atan2(-dz, dx);
-        fp.add(obj);
-      });
-      this.group.add(flattenStatic(fp));
+    // ceļa rādītājs pie krustojuma (stūrī starp ceļiem un 1. sētas žogu)
+    const fp = buildFingerpost([[0, -1, '❄️ Ziemas zeme'], [1, 0, '🌲 Mežs · 🛒 tirgus'], [-1, 0, '🏁 Sacīkšu trase'], [0, 1, '🏖️ Kāpas']]);
+    fp.position.set(6.4, H(6.4, -6.4), -6.4);
+    st.add(fp);
+    this.addCollider(6.4, -6.4, 0.2);
+    // ceļa malas zīmes 100 m no krustojuma (labajā pusē braucot prom); aizmugurē — atpakaļ uz sētu
+    const R = 100, toB = ZONE_HALF - R;
+    for (const [dx, dz, txt] of [[0, -1, '❄️ Ziemas zeme'], [1, 0, '🌲 Mežs · 🛒 tirgus'], [-1, 0, '🏁 Sacīkšu trase'], [0, 1, '🏖️ Kāpas']]) {
+      const px = dx ? dx * R : roadNS(dz * R), pz = dz ? dz * R : roadEW(dx * R);
+      const rx = -dz, rz = dx, off = ROAD_HW + 1.6; // labā puse
+      const x = px + rx * off, z = pz + rz * off;
+      const sg = buildRoadSign(`${txt}  ${toB} m`, `🏡 Mežvidu sēta  ${R} m`);
+      sg.position.set(x, H(x, z), z);
+      sg.rotation.y = Math.atan2(-dx, -dz);
+      st.add(sg);
+      this.addCollider(x, z, 0.3);
     }
-    const t = makeTextSprite('🏡 Mežvidu sēta', { fontSize: 56, bg: 'rgba(60,120,40,0.85)', scale: 1.1 });
-    t.position.set(0, VILLAGE_Y + 6, 0);
-    this.group.add(t);
+    this.group.add(flattenStatic(st));
   }
 
   // uzartajos lauciņos zāli nezīmē (tiles — [[ix, iz], ...])
@@ -1234,7 +1267,7 @@ export class World {
           if ((t && t.e < 4 && t.d < 16) || Math.hypot(x - this.kartSpot.x, z - this.kartSpot.z) < 16 || Math.hypot(x - this.carSpot.x, z - this.carSpot.z) < 10) { rnd(); rnd(); continue; }
         }
         const f = this.forest(x, z);
-        const p = f > 0.12 ? 0.62 : this.mode === 'farm' ? 0 : f > 0.0 ? 0.08 : 0.02;
+        const p = f > 0.12 ? 0.62 : this.mode === 'farm' ? (yardOut(x, z) > 8 ? 0.012 : 0) : f > 0.0 ? 0.08 : 0.02;
         if (rnd() > p) {
           if (f > 0.05 && rnd() < 0.25 && this.trackDist(x, z) > TRACK_WIDTH / 2 + 3) lists.bush.push({ x, y: h, z, s: 0.6 + rnd() * 0.7, ry: rnd() * 6.28 });
           continue;
@@ -1257,7 +1290,7 @@ export class World {
           const skip = rr() < 0.3, off = 6.2 + rr() * 1.2, t = rr(), s = 0.8 + rr() * 0.45, ry = rr() * 6.28;
           if (skip) continue;
           const x = l[i].x - tz * off * side, z = l[i].z + tx * off * side;
-          if (Math.hypot(x, z) < 34 || sqDist(x, z) > 262 || this.roadDist(x, z).d < 4.5 || GARDEN_SLOTS.some((g) => Math.hypot(g.x - x, g.z - z) < 13)) continue;
+          if (yardOut(x, z) < 6 || sqDist(x, z) > 262 || this.roadDist(x, z).d < 4.5) continue;
           const h = this.getHeight(x, z);
           if (t < 0.32) { lists.bush.push({ x, y: h, z, s: s + 0.1, ry }); continue; }
           const kind = t < 0.78 ? 'berzs' : 'ozols';
@@ -1650,6 +1683,7 @@ export class World {
         dens *= smoothstep(2.0, 3.2, this.roadDist(x, z).d);
         dens *= smoothstep(TRACK_WIDTH / 2 + 0.3, TRACK_WIDTH / 2 + 1.6, this.trackDist(x, z));
         if (Math.hypot(x, z) < 2.2) dens = 0;
+        if (this.mode === 'farm' && inYardBuilding(x, z)) dens = 0; // mājiņā un siltumnīcā zāle neaug
         const f = this.forest(x, z);
         dens *= 1 - Math.min(0.6, Math.max(0, f) * 2.5);
         dens *= 0.55 + 0.45 * (gnz(x * 0.08, z * 0.08) * 0.5 + 0.5);

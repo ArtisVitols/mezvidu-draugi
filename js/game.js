@@ -1,23 +1,23 @@
 import * as THREE from 'three';
-import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.19.1';
-import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.19.1';
-import { Controls } from './controls.js?v=1.19.1';
+import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, yardPart, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.20.0';
+import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.20.0';
+import { Controls } from './controls.js?v=1.20.0';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS } from './data.js?v=1.19.1';
-import { writeSave } from './save.js?v=1.19.1';
-import { VERSION, BUILD_DATE } from './version.js?v=1.19.1';
-import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.19.1';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.19.1';
-import { Activities, makeTeam } from './activities.js?v=1.19.1';
-import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel, statsWanted } from './quality.js?v=1.19.1';
-import { hdrEnvironment } from './gfx.js?v=1.19.1';
-import { buildRod, buildDecor } from './props.js?v=1.19.1';
-import { InstanceField } from './instancing.js?v=1.19.1';
-import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.19.1';
-import { Vehicles } from './vehicles.js?v=1.19.1';
-import { Farm, fmtLeft } from './farm.js?v=1.19.1';
-import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.19.1';
-import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.19.1';
+import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS } from './data.js?v=1.20.0';
+import { writeSave } from './save.js?v=1.20.0';
+import { VERSION, BUILD_DATE } from './version.js?v=1.20.0';
+import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.20.0';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.20.0';
+import { Activities, makeTeam } from './activities.js?v=1.20.0';
+import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel, statsWanted } from './quality.js?v=1.20.0';
+import { hdrEnvironment } from './gfx.js?v=1.20.0';
+import { buildRod, buildDecor } from './props.js?v=1.20.0';
+import { InstanceField } from './instancing.js?v=1.20.0';
+import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.20.0';
+import { Vehicles } from './vehicles.js?v=1.20.0';
+import { Farm, fmtLeft } from './farm.js?v=1.20.0';
+import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.20.0';
+import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.20.0';
 
 const ANIM = ['idle', 'walk', 'run', 'jump', 'swim', 'sit', 'pet', 'wave', 'fish', 'ski', 'lift', 'throw'];
 const MUSH_RESPAWN = 120000;
@@ -328,6 +328,7 @@ export class Game {
       else if (h > 18) col = [150, 148, 132];
       else if (W.forest(x, z) > 0.12) col = [52, 100, 42];
       else col = farm ? [128, 182, 82] : [111, 170, 72];
+      if (farm) { const yp = yardPart(x, z); if (yp) col = yp === 'house' ? [170, 60, 48] : yp === 'green' ? [205, 230, 235] : yp === 'garden' ? [168, 140, 98] : [146, 196, 98]; }
       // vieglas ēnas pēc slīpuma
       const sh = Math.max(-25, Math.min(25, (W.getHeight(x - 2, z - 2) - h) * 9));
       col = col.map((v) => Math.max(0, Math.min(255, v + sh)));
@@ -396,7 +397,7 @@ export class Game {
       // sētas lauku īpašnieki
       g.font = 'bold 11px sans-serif'; g.fillStyle = '#fff';
       for (const [, pr] of this.profiles) {
-        const [sx, sz] = plotSign(pr.slot), [px, py] = toPx0(hx + sx * 137, hz + sz * 137);
+        const [sx, sz] = plotSign(pr.slot), [px, py] = toPx0(hx + sx * 45, hz + sz * 45);
         g.fillText(`🏡 ${pr.name}`, px, py);
       }
       g.font = '16px sans-serif';

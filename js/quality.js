@@ -1,8 +1,8 @@
 // Grafikas līmeņi un automātiska pielāgošana pēc kadru ātruma (fps).
 // Visi iestatījumi mainās uzreiz spēles laikā (bez pārlādes), tāpēc „Auto” var kāpt uz augšu un leju.
 import * as THREE from 'three';
-import { PlanarReflection, PostFX, upgradeWater, terrainMaterial, loadTexture } from './gfx.js?v=1.19.1';
-import { toast } from './ui.js?v=1.19.1';
+import { PlanarReflection, PostFX, upgradeWater, terrainMaterial, loadTexture } from './gfx.js?v=1.20.0';
+import { toast } from './ui.js?v=1.20.0';
 
 export const Q_ORDER = ['lowest', 'low', 'mid', 'high'];
 export const Q_MODES = ['auto', 'high', 'mid', 'low', 'lowest'];

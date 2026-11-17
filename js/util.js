@@ -310,50 +310,70 @@ export function signWood() {
   if (!signWoodMat) signWoodMat = new THREE.MeshStandardMaterial({ color: 0x6e4a2a, roughness: 0.9 });
   return signWoodMat;
 }
+// style: 'wood' — gaišs koka dēlis ar iededzinātiem tumšiem burtiem; 'road' — krāsaina metāla zīme (tūrisma zīmju brūnā)
+// ar baltu apmali un baltiem burtiem. back — cits teksts aizmugurē (citādi abās pusēs viens).
+let signMetalMat = null;
+function signFace(text, cw, PX, opts) {
+  const style = opts.style || 'wood';
+  const font = `bold ${Math.round(PX * 0.58)}px system-ui, sans-serif`;
+  return canvasTexture(cw, PX, (g, w, h) => {
+    g.font = font; g.textAlign = 'center'; g.textBaseline = 'middle';
+    if (style === 'road') {
+      g.fillStyle = opts.color || '#6e3f1f'; g.fillRect(0, 0, w, h);
+      g.strokeStyle = '#fff'; g.lineWidth = 6; roundRect(g, 9, 9, w - 18, h - 18, 14); g.stroke();
+      g.fillStyle = '#fff'; g.fillText(text, w / 2, h / 2 + 3);
+      return;
+    }
+    // koks: dēļi ar šķiedrām, tumšākas malas
+    g.fillStyle = opts.color || '#b58450'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 40; i++) {
+      g.globalAlpha = 0.08 + Math.random() * 0.12;
+      g.strokeStyle = Math.random() < 0.6 ? '#4a2c12' : '#f2d3a0';
+      g.lineWidth = 1 + Math.random() * 2.5;
+      const y = Math.random() * h;
+      g.beginPath(); g.moveTo(0, y); g.bezierCurveTo(w * 0.3, y + (Math.random() - 0.5) * 10, w * 0.7, y + (Math.random() - 0.5) * 10, w, y); g.stroke();
+    }
+    g.globalAlpha = 1;
+    const vg = g.createLinearGradient(0, 0, 0, h);
+    vg.addColorStop(0, 'rgba(40,20,5,0.35)'); vg.addColorStop(0.18, 'rgba(40,20,5,0)'); vg.addColorStop(0.82, 'rgba(40,20,5,0)'); vg.addColorStop(1, 'rgba(40,20,5,0.4)');
+    g.fillStyle = vg; g.fillRect(0, 0, w, h);
+    // iededzināti burti: gaiša ēna apakšā, tumšs teksts virsū
+    g.fillStyle = 'rgba(255,236,200,0.55)'; g.fillText(text, w / 2 + 1.5, h / 2 + 5.5);
+    g.fillStyle = opts.textColor || '#2c1709'; g.fillText(text, w / 2, h / 2 + 3);
+  });
+}
 export function makeSignBoard(text, opts = {}) {
   const H = opts.h || 0.8, PX = 128;
-  const font = `bold ${Math.round(PX * 0.6)}px system-ui, sans-serif`;
   const m0 = document.createElement('canvas').getContext('2d');
-  m0.font = font;
-  const cw = Math.ceil(Math.max(m0.measureText(text).width + PX * 0.7, PX * 2.4));
-  const base = opts.color || '#8a5a32';
-  const tex = canvasTexture(cw, PX, (g, w, h) => {
-    g.fillStyle = base; g.fillRect(0, 0, w, h);
-    // dēļu šuves un koka šķiedras
-    g.globalAlpha = 0.18;
-    for (let i = 0; i < 26; i++) {
-      g.strokeStyle = Math.random() < 0.5 ? '#000' : '#fff';
-      g.lineWidth = 1 + Math.random() * 2;
-      const y = Math.random() * h;
-      g.beginPath(); g.moveTo(0, y); g.bezierCurveTo(w * 0.3, y + (Math.random() - 0.5) * 8, w * 0.7, y + (Math.random() - 0.5) * 8, w, y); g.stroke();
-    }
-    g.globalAlpha = 0.45; g.fillStyle = '#2a170a'; g.fillRect(0, h * 0.5 - 1.5, w, 3);
-    g.globalAlpha = 1; g.strokeStyle = 'rgba(30,16,6,0.8)'; g.lineWidth = 8; g.strokeRect(4, 4, w - 8, h - 8);
-    g.font = font; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.lineJoin = 'round'; g.lineWidth = 10; g.strokeStyle = '#2a1608';
-    g.strokeText(text, w / 2, h / 2 + 4);
-    g.fillStyle = opts.textColor || '#fff4d6';
-    g.fillText(text, w / 2, h / 2 + 4);
-  });
-  tex.anisotropy = 4;
-  const W = H * cw / PX, D = 0.09;
-  const faceMat = new THREE.MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: 0x4a4a4a, roughness: 0.85 });
-  faceMat.userData.sign = true;
+  m0.font = `bold ${Math.round(PX * 0.58)}px system-ui, sans-serif`;
+  const tw = Math.max(m0.measureText(text).width, opts.back ? m0.measureText(opts.back).width : 0);
+  const cw = Math.ceil(Math.max(tw + PX * 0.75, PX * 2, (opts.minW || 0) / H * PX));
+  const W = H * cw / PX, road = opts.style === 'road', D = opts.thin || road ? 0.035 : Math.max(0.04, H * 0.12);
+  const mk = (t) => {
+    const tex = signFace(t, cw, PX, opts);
+    tex.anisotropy = 4;
+    const m = new THREE.MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: 0x404040, roughness: road ? 0.5 : 0.85 });
+    m.userData.sign = true;
+    return m;
+  };
+  const faceMat = mk(text), backMat = opts.back ? mk(opts.back) : faceMat;
   const obj = new THREE.Group();
   let body;
+  const e = road ? 0.012 : H * 0.07;
   if (opts.arrow) {
-    const s = new THREE.Shape(), e = 0.06, x0 = -W / 2 - e, x1 = W / 2, y = H / 2 + e;
-    s.moveTo(x0, -y); s.lineTo(x1, -y); s.lineTo(x1 + H * 0.5, 0); s.lineTo(x1, y); s.lineTo(x0, y); s.closePath();
-    body = new THREE.ExtrudeGeometry(s, { depth: D, bevelEnabled: false }).translate(0, 0, -D / 2);
-  } else body = new THREE.BoxGeometry(W + 0.14, H + 0.14, D);
-  const bm = new THREE.Mesh(body, signWood());
+    const sh = new THREE.Shape(), x0 = -W / 2 - e, x1 = W / 2, y = H / 2 + e;
+    sh.moveTo(x0, -y); sh.lineTo(x1, -y); sh.lineTo(x1 + H * 0.55, 0); sh.lineTo(x1, y); sh.lineTo(x0, y); sh.closePath();
+    body = new THREE.ExtrudeGeometry(sh, { depth: D, bevelEnabled: false }).translate(0, 0, -D / 2);
+  } else body = new THREE.BoxGeometry(W + e * 2, H + e * 2, D);
+  if (road && !signMetalMat) signMetalMat = new THREE.MeshStandardMaterial({ color: '#8d9297', roughness: 0.45, metalness: 0.6 });
+  const bm = new THREE.Mesh(body, road ? signMetalMat : signWood());
   bm.castShadow = true;
   obj.add(bm);
   const fg = new THREE.PlaneGeometry(W, H);
   const front = new THREE.Mesh(fg, faceMat);
-  front.position.z = D / 2 + 0.004;
-  const back = new THREE.Mesh(fg, faceMat);
-  back.rotation.y = Math.PI; back.position.z = -D / 2 - 0.004;
+  front.position.z = D / 2 + 0.003;
+  const back = new THREE.Mesh(fg, backMat);
+  back.rotation.y = Math.PI; back.position.z = -D / 2 - 0.003;
   obj.add(front, back);
   return { obj, w: W };
 }

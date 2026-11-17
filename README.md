@@ -21,14 +21,17 @@ Datorā: WASD / bultiņas, atstarpe, E, peles vilkšana.
 ## Ko var darīt
 - 🍄 Lasīt baravikas un gailenes mežā (sarkanās mušmires ir indīgas!)
 - 🤝 Nedēļas kopīgais mērķis — katru pirmdienu jauns (sēnes, zivis, ogas, raža, dzīvnieki, sacīkstes); skaitās visu draugu darbi, progress saglabājas
-- 🏡 **Sēta** (centrā): katram no 4 draugiem savs liels lauks (ceturtdaļa sētas) — pļava ar dažiem kokiem un akmeņiem, apkārt mežs; starp laukiem līkumoti ceļi ar bērzu rindām.
-  - 🪓 Nocērt kokus, ⛏️ novāc akmeņus, ⛏️ uzar 2,5 m lauciņus (cik gribi, līdz 400), 🌱 sēj, 💧 aplaisti, 🧺 novāc ražu un pārdod tirgū
+- 🏡 **Sēta** (centrā): krustojuma 4 stūros 4 vienādas iežogotas sētas — katram draugam sava. Katrā sētā: dārzs 20 × 20 lauciņi,
+  sarkana dārza mājiņa (var ieiet — iekšā galds, plaukts, paklājs), stikla siltumnīca ar tomātu dobēm un pagalms rotājumiem.
+  Ceļi pie sētām taisni, tālāk līkumoti ar bērzu rindām; apkārt pļava un mežs.
+  - 🪓 Nocērt kokus, ⛏️ novāc akmeņus, ⛏️ uzar 2,5 m lauciņus (līdz 400), 🌱 sēj, 💧 aplaisti, 🧺 novāc ražu un pārdod tirgū
   - 🌾 9 kultūras: burkāni, auzas, kartupeļi, kvieši, tomāti, zemenes, kāposti, saulgriezes, ķirbji — dārgākās aug ilgāk (līdz 1 stundai), bet nes vairāk
   - Blakus lauciņi ar to pašu kultūru saaug vienā vienmērīgā laukā; dažādām kultūrām starp lauciņiem paliek sprauga
   - ⏰ Augi aug pēc pulksteņa — arī tad, kad spēle aizvērta
-  - 👥 Draugu sētās var aiziet ciemos (👥 poga → „Ciemos”) un aplaistīt viņu laukus
-  - Visi 4 lauki ir vienādi (pagriezti), tāpēc tavs lauks paliek tāds pats, lai kurā laukā istabā tevi ieliek
-  - Pie katra lauka vārtiem (abos ceļos) — koka vārtu arka ar lieliem burtiem „🏡 <vārds> sēta” (brīvam laukam „🌾 Brīvs lauks”); krustojumā ceļa rādītājs ar 4 krāsainām bultām uz ziemas zemi, mežu un tirgu, sacīkšu trasi un kāpām
+  - 👥 Draugu sētās var aiziet ciemos (👥 poga → „Ciemos”) un aplaistīt viņu dārzus
+  - Visas 4 sētas ir vienādas (pagrieztas), tāpēc tavs dārzs paliek tāds pats, lai kurā sētā istabā tevi ieliek
+  - 🪧 Abos sētas vārtos arkā karājas koka dēlis ar īpašnieka vārdu; krustojumā koka ceļa rādītājs, un katrā ceļā 100 m no krustojuma
+    brūna ceļa zīme, kas rāda, kurp ceļš ved (otrā pusē — atpakaļ uz sētu)
 - 🧺 Tirgus: Ūdrs Ojārs (sēklas, makšķere), Āpsis Arnolds (uzpērk ražu, zivis, ogas), Pūce Paula (cepures, kartinga krāsas), Suns Sprīdis (mājdzīvnieki), Lapsa Liene (dārza rotājumi), Bebrs Bruno ar saldējuma ratiņiem
 - 🎣 Makšķerēšana ezeros: kad pludiņš raustās — „VILKT!”. Raudas, asari, līdakas un reta zelta zivtiņa (no laipas ķeras labāk)
 - 🫐 Ogas: mellenes mežā, avenes meža malās, dzērvenes purvā

@@ -4,13 +4,13 @@
 // dažādām kultūrām starp lauciņiem paliek neliela sprauga. Augšana iet pēc pulksteņa (arī tad, kad spēle aizvērta).
 // Farm — Game papildinājums (mixin).
 import * as THREE from 'three';
-import { World, GARDEN_SLOTS, PLOT_IN, PLOT_OUT, TILE, plotOf, plotSign, roadNS, roadEW, tileToSlot, tileToCanon, VILLAGE_Y } from './world.js?v=1.19.1';
-import { buildCrop, flattenStatic } from './characters.js?v=1.19.1';
-import { WORLD_SEED, CROPS, PETS } from './data.js?v=1.19.1';
-import { InstanceField } from './instancing.js?v=1.19.1';
-import { canvasTexture, makeSignBoard, signWood } from './util.js?v=1.19.1';
-import { $, toast, sfx, fmtTime } from './ui.js?v=1.19.1';
-import { ZONES, FARM, freeGpu } from './zones.js?v=1.19.1';
+import { World, TILE, plotOf, tileToSlot, tileToCanon, gardenTile, gateSpots, rotPlot, YARD } from './world.js?v=1.20.0';
+import { buildCrop, flattenStatic } from './characters.js?v=1.20.0';
+import { WORLD_SEED, CROPS, PETS } from './data.js?v=1.20.0';
+import { InstanceField } from './instancing.js?v=1.20.0';
+import { canvasTexture, makeSignBoard } from './util.js?v=1.20.0';
+import { $, toast, sfx, fmtTime } from './ui.js?v=1.20.0';
+import { ZONES, FARM, freeGpu } from './zones.js?v=1.20.0';
 
 const CROP_IDS = Object.keys(CROPS);
 const MAX_TILES = 400;
@@ -70,7 +70,7 @@ export const Farm = {
   fixFarm() {
     const f = this.save.farm;
     const parse = (k) => k.split(',').map(Number);
-    if (f.v !== 2) {
+    if (!(f.v >= 2)) {
       const cnt = [0, 0, 0, 0];
       for (const k in f.t) { const [ix, iz] = parse(k), s = plotOf((ix + 0.5) * TILE, (iz + 0.5) * TILE); if (s >= 0) cnt[s]++; }
       const from = cnt.indexOf(Math.max(...cnt));
@@ -80,6 +80,9 @@ export const Farm = {
       f.cl = [...new Set(f.cl.map((id) => id % 100))];
       f.v = 2;
     }
+    // 1.20.0: sētas pārbūvētas (mazāks dārzs 20×20, citi novācamie objekti) — nocirstie objekti sākas no jauna
+    let rebuilt = false;
+    if (f.v === 2) { f.cl = []; f.v = 3; rebuilt = true; }
     let lost = 0, items = 0;
     for (const k in f.t) {
       const [ix, iz] = parse(k);
@@ -90,16 +93,14 @@ export const Farm = {
       }
       delete f.t[k]; lost++;
     }
-    if (lost) setTimeout(() => toast(`🛣️ ${lost} lauciņi bija uz ceļa vai ārpus lauka — tos noņēmām${items ? `, raža un sēklas ir tavā somā 🎒` : ''}.`, 'good', 6000), 7000);
+    if (lost) setTimeout(() => toast(rebuilt ? `🏡 Sēta pārbūvēta! ${lost} lauciņi bija ārpus jaunā dārza — tos noņēmām${items ? `, raža un sēklas ir tavā somā 🎒` : ''}.`
+      : `🛣️ ${lost} lauciņi bija ārpus dārza — tos noņēmām${items ? `, raža un sēklas ir tavā somā 🎒` : ''}.`, 'good', 7000), 7000);
   },
 
-  // vai lauciņš (ix, iz) viss ir lauka slot iekšpusē un ne pie mājas vietas
+  // vai lauciņš (ix, iz) ir sētas slot dārzā (20 × 20 lauciņi)
   tileOk(ix, iz, slot) {
-    const cx = (ix + 0.5) * TILE, cz = (iz + 0.5) * TILE, h = TILE / 2;
-    if (plotOf(cx, cz) !== slot) return false;
-    for (const [dx, dz] of [[-h, -h], [h, -h], [-h, h], [h, h]]) if (plotOf(cx + dx, cz + dz) !== slot) return false;
-    const home = GARDEN_SLOTS[slot];
-    return Math.hypot(cx - home.x, cz - home.z) >= 8;
+    const [a, b] = tileToCanon(ix, iz, slot);
+    return gardenTile(a, b);
   },
 
   // mana lauka lauciņa atslēga saglabājumā (pasaules lauciņš → 0. lauka koordinātes)
@@ -201,6 +202,7 @@ export const Farm = {
       this.farmW.setGrassHoles(all);
     }
     this.updateTileHL();
+    this.updateYardHouses();
   },
 
   // lauciņš zem spēlētāja un vai tas pieder kādam laukam
@@ -351,36 +353,34 @@ export const Farm = {
         if (o.material && o.material.userData.sign) { o.material.map.dispose(); o.material.dispose(); }
       });
     }
-    // vārtu arkas abos lauka vārtos (pie abiem ceļiem): divi stabi ar lielu dēli virsū
-    const g = new THREE.Group(), W = this.farmW, H = (x, z) => W.getHeight(x, z);
-    const home = GARDEN_SLOTS[slot], [sx, sz] = plotSign(slot), d = PLOT_IN + 0.6;
-    const txt = name ? `🏡 ${name} sēta` : '🌾 Brīvs lauks';
-    const gates = [
-      [home.x, roadEW(home.x) + sz * d, 1, (roadEW(home.x + 1) - roadEW(home.x - 1)) / 2],
-      [roadNS(home.z) + sx * d, home.z, (roadNS(home.z + 1) - roadNS(home.z - 1)) / 2, 1],
-    ];
-    const postG = new THREE.CylinderGeometry(0.11, 0.14, 1, 7).translate(0, 0.5, 0);
-    for (const [x, z, tx, tz] of gates) {
-      const l = Math.hypot(tx, tz), ux = tx / l, uz = tz / l;
-      const { obj, w } = makeSignBoard(txt, { h: 1.35, color: name ? '#8a5a32' : '#6f6a58' });
-      const half = w / 2 + 0.25, top = Math.max(H(x - ux * half, z - uz * half), H(x + ux * half, z + uz * half)) + 4.2;
-      for (const k of [-1, 1]) {
-        const qx = x + ux * half * k, qz = z + uz * half * k, qy = H(qx, qz) - 0.2;
-        const post = new THREE.Mesh(postG, signWood());
-        post.scale.y = top - qy + 0.35; post.position.set(qx, qy, qz); post.castShadow = true;
-        g.add(post);
-      }
-      obj.position.set(x, top - 0.25, z);
-      obj.rotation.y = Math.atan2(-uz, ux);
+    // koka dēlis ar vārdu, kas karājas abu vārtu arkās
+    const g = new THREE.Group(), W = this.farmW;
+    const txt = name ? `🏡 ${name}` : '🌾 Brīvā sēta';
+    for (const sp of gateSpots(slot)) {
+      const { obj } = makeSignBoard(txt, { h: 0.46, style: 'wood', minW: 2.1, color: name ? '#b58450' : '#9c9586' });
+      obj.position.set(sp.x, W.getHeight(sp.x, sp.z) + 2.6, sp.z);
+      obj.rotation.y = sp.ry;
       g.add(obj);
-      const beam = new THREE.Mesh(new THREE.BoxGeometry(half * 2 + 0.5, 0.16, 0.22), signWood());
-      beam.position.set(x, top + 0.4, z); beam.rotation.y = obj.rotation.y; beam.castShadow = true;
-      g.add(beam);
     }
-    const fg = flattenStatic(g); // ~3 zīmēšanas izsaukumi visai zīmei
+    const fg = flattenStatic(g);
     g.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
     this.farmScene.add(fg);
     this.gardenSigns[slot] = fg;
+  },
+
+  // dārza mājiņa: kad esi iekšā, jumts paslēpjas un sienas kļūst caurspīdīgas (lai kamera redz)
+  updateYardHouses() {
+    const p = this.me.pos;
+    for (const b of this.farmW.yardBuildings || []) {
+      const dx = p.x - b.x, dz = p.z - b.z, c = Math.cos(b.ry), s = Math.sin(b.ry);
+      const lx = dx * c - dz * s, lz = dx * s + dz * c;
+      const inside = Math.abs(lx) < b.inner[0] && Math.abs(lz) < b.inner[1] && p.y < b.y0 + 2;
+      if (inside === !!b.inside) continue;
+      b.inside = inside;
+      b.roof.visible = !inside;
+      b.wallMat.transparent = inside; b.wallMat.opacity = inside ? 0.28 : 1; b.wallMat.depthWrite = !inside;
+      b.wallMat.needsUpdate = true;
+    }
   },
 
   // ---------- darbības (dzeltenā poga) ----------
@@ -517,9 +517,10 @@ export const Farm = {
     if (me.inKart || me.veh || me.ride) { toast('Vispirms izkāp 🚶'); return; }
     if (this.mgIn && this.mgIn()) { toast('🎲 Spēles laikā nevar aiziet!'); return; }
     if (this.zoneBusy) return;
-    const h = GARDEN_SLOTS[slot], [sx, sz] = plotSign(slot);
-    const pos = { x: h.x - sx * 4, z: h.z - sz * 9 };
-    const heading = Math.atan2(sx, sz);
+    // pie sētas galvenajiem vārtiem (ceļa pusē), skatoties uz sētu
+    const [gx, gz] = rotPlot(-YARD.gateA, -5, slot), [dx, dz] = rotPlot(0, -1, slot);
+    const pos = { x: gx, z: gz };
+    const heading = Math.atan2(dx, dz);
     if (this.zone === FARM) {
       me.pos.set(pos.x, this.farmW.getHeight(pos.x, pos.z), pos.z);
       me.heading = heading; this.cam.yaw = heading + Math.PI; this.camInit = false;

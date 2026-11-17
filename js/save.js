@@ -14,7 +14,7 @@ export function defaultSave(name) {
     ownedKarts: ['sarkana'],
     coins: 20,
     inv: { burkans_seed: 3, auzas_seed: 4 },
-    farm: { t: {}, cl: [], v: 2 }, // sētas lauks (0. lauka koordinātēs): uzartie lauciņi {"ix,iz": {c, at, w}} un nocirsto koku/akmeņu nr. (0–99)
+    farm: { t: {}, cl: [], v: 3 }, // sētas dārzs (0. sētas koordinātēs): uzartie lauciņi {"ix,iz": {c, at, w}} un nocirsto koku/akmeņu nr. (0–99)
     layout: 2,        // 2 — sēta centrā, mežs austrumos, trase rietumos (1.14.0)
     stats: {},
     quests: {},       // id -> true, kad saņemta balva

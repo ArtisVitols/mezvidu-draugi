@@ -1,5 +1,17 @@
 # Izmaiņu žurnāls
 
+## 1.20.0 — 2026-11-17
+- 🏡 Sēta pārbūvēta: krustojuma 4 stūros 4 vienādas iežogotas sētas (72 × 72 m). Katrā — dārzs 20 × 20 lauciņi (kvadrāts,
+  paralēls ceļiem), sarkana dārza mājiņa, kurā var ieiet (iekšā jumts paslēpjas un sienas kļūst caurspīdīgas), stikla siltumnīca
+  ar tomātu dobēm un pagalms rotājumiem. Žogi un sienas ir cieti — sētā ieiet pa vārtiem abās ceļa pusēs.
+  Ceļi pie sētām tagad taisni, tālāk — līkumoti kā agrāk. Apkārt pļava ar retiem kokiem un mežs.
+- 🪧 Jaunas, mazākas un skaistākas zīmes: vārtu arkā karājas koka dēlis ar iededzinātu īpašnieka vārdu; krustojumā ~3 m augsts
+  koka ceļa rādītājs ar 4 bultām; katrā ceļā 100 m no krustojuma brūna ceļa zīme („❄️ Ziemas zeme 215 m”, otrā pusē „🏡 Mežvidu sēta 100 m”).
+  Peldošie uzraksti sētā noņemti.
+- 💾 Vecie dārzi pārnesti: lauciņi, kas iekļaujas jaunajā dārzā, paliek; pārējie noņemti, un raža / sēklas atdotas somā.
+  Novācamie koki un akmeņi dārzā sākas no jauna.
+- 👥 „Ciemos” tagad atved pie drauga sētas galvenajiem vārtiem.
+
 ## 1.19.1 — 2026-11-17
 - 🎨 Auto grafika vairs nebloķē līmeni uz 2 dienām. Ja pēc uzlabošanas fps nokrītas zem 40, Auto atgriežas zemāk un to pašu
   līmeni mēģina atkal pēc 30 s, tad 1 min, 2 min, 4 min (ne retāk kā ik 5 min) — īslaicīgs lēnums vairs neliedz labāku grafiku.
