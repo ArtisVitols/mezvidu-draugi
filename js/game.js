@@ -1,23 +1,25 @@
 import * as THREE from 'three';
-import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, yardPart, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.20.0';
-import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.20.0';
-import { Controls } from './controls.js?v=1.20.0';
+import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, yardPart, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.21.0';
+import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.21.0';
+import { Controls } from './controls.js?v=1.21.0';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS } from './data.js?v=1.20.0';
-import { writeSave } from './save.js?v=1.20.0';
-import { VERSION, BUILD_DATE } from './version.js?v=1.20.0';
-import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.20.0';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.20.0';
-import { Activities, makeTeam } from './activities.js?v=1.20.0';
-import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel, statsWanted } from './quality.js?v=1.20.0';
-import { hdrEnvironment } from './gfx.js?v=1.20.0';
-import { buildRod, buildDecor } from './props.js?v=1.20.0';
-import { InstanceField } from './instancing.js?v=1.20.0';
-import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.20.0';
-import { Vehicles } from './vehicles.js?v=1.20.0';
-import { Farm, fmtLeft } from './farm.js?v=1.20.0';
-import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.20.0';
-import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.20.0';
+import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS, TREES, FRUITS, CLOTHES, SLOTS, DECOR } from './data.js?v=1.21.0';
+import { writeSave } from './save.js?v=1.21.0';
+import { VERSION, BUILD_DATE } from './version.js?v=1.21.0';
+import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.21.0';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.21.0';
+import { icon, iconEl, fishSvg } from './icons.js?v=1.21.0';
+import { Activities, makeTeam } from './activities.js?v=1.21.0';
+import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel, statsWanted } from './quality.js?v=1.21.0';
+import { hdrEnvironment } from './gfx.js?v=1.21.0';
+import { buildRod, buildDecor } from './props.js?v=1.21.0';
+import { InstanceField } from './instancing.js?v=1.21.0';
+import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.21.0';
+import { Vehicles } from './vehicles.js?v=1.21.0';
+import { Farm, fmtLeft } from './farm.js?v=1.21.0';
+import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.21.0';
+import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.21.0';
+import { plotOf } from './world.js?v=1.21.0';
 
 const ANIM = ['idle', 'walk', 'run', 'jump', 'swim', 'sit', 'pet', 'wave', 'fish', 'ski', 'lift', 'throw'];
 const MUSH_RESPAWN = 120000;
@@ -27,8 +29,6 @@ const BOTS = [
   { name: 'Lapsa Laura 🤖', animal: 'lapsa', fur: '#e8742a', shirt: '#2fa84f', kart: '#2ab04a', speed: 15.5 },
   { name: 'Lācis Lauris 🤖', animal: 'lacis', fur: '#8b5a2b', shirt: '#f2c12e', kart: '#e8c020', speed: 17 },
 ];
-const SEED_ICON = '🌱';
-const MUSH_ICON = { baravika: '🍄', gailene: '🍄', musmire: '🍄' };
 const PLAYER_DOT = ['#ff4040', '#40a0ff', '#ffd040', '#c060ff'];
 
 export class Game {
@@ -130,7 +130,7 @@ export class Game {
       vy: 0, heading: 0, onGround: true, state: 'idle', inKart: false,
       kart: null, boost: 0, dizzy: 0, iceCream: 0, waveT: 0, petT: 0, progress: 0,
     };
-    this.avatar = buildAnimal(this.save);
+    this.avatar = buildAnimal(this.avatarProf());
     this.stage.add(this.avatar.root);
     this.myName = makeTextSprite(this.save.name, { bg: 'rgba(40,120,40,0.7)' });
     this.myName.position.y = 2.25;
@@ -139,6 +139,7 @@ export class Game {
     this.initActivities();
 
     this.cam = { yaw: Math.PI * 0.25, pitch: 0.38, dist: 7.5 };
+    this.initVehicles();
     this.switchZone(sz, sp, null); // ielādējas saglabātā zeme (mežs tiek izlādēts, ja tā nav mežs)
     this.controls = new Controls($('touch'));
     this.bindHud();
@@ -299,22 +300,25 @@ export class Game {
     this.ice.pos = new THREE.Vector3();
   }
 
-  // Kartes pamatattēli zemēm ar reljefu (sēta, mežs, trase); minikarte rāda apkārtni ap spēlētāju, pieskaroties — visu karti.
+  // Kartes pamatattēli zemēm ar reljefu (sēta, mežs, trase); minikarte rāda apkārtni ap spēlētāju (pagriezta pēc
+  // skatīšanās virziena — bulta vienmēr centrā un uz augšu), pieskaroties — liela karte (šī zeme / visas zemes).
   // Kopējās kartes koordinātas: lokālā pozīcija + zemes nobīde (zoneOffset), tā redzamas visas zemes kopā.
   buildMinimap() {
     this.mapR = PLAY_RADIUS + 10;
     this.mapBases = { [FOREST]: this.mapBase(this.world), [FARM]: this.mapBase(this.farmW), [RACE]: this.mapBase(this.raceW) };
+    this.mapHi = {};
     this.mapCtx = $('minimap').getContext('2d');
     $('minimap').addEventListener('click', () => this.openBigMap());
   }
 
-  mapBase(W) {
-    const MS = 360, R = ZONE_HALF;
+  mapBase(W, MS = 360) {
+    const R = ZONE_HALF;
     const c = document.createElement('canvas');
     c.width = c.height = MS;
     const g = c.getContext('2d');
     const img = g.createImageData(MS, MS);
     const farm = W.mode === 'farm';
+    const st = 2 * R / MS;
     for (let py = 0; py < MS; py++) for (let px = 0; px < MS; px++) {
       const x = -R + (px + 0.5) / MS * 2 * R, z = -R + (py + 0.5) / MS * 2 * R;
       const h = W.getHeight(x, z);
@@ -330,7 +334,7 @@ export class Game {
       else col = farm ? [128, 182, 82] : [111, 170, 72];
       if (farm) { const yp = yardPart(x, z); if (yp) col = yp === 'house' ? [170, 60, 48] : yp === 'green' ? [205, 230, 235] : yp === 'garden' ? [168, 140, 98] : [146, 196, 98]; }
       // vieglas ēnas pēc slīpuma
-      const sh = Math.max(-25, Math.min(25, (W.getHeight(x - 2, z - 2) - h) * 9));
+      const sh = Math.max(-25, Math.min(25, (W.getHeight(x - st * 1.4, z - st * 1.4) - h) * 9 * 1.4 / Math.max(0.6, st)));
       col = col.map((v) => Math.max(0, Math.min(255, v + sh)));
       const k = (py * MS + px) * 4;
       img.data[k] = col[0]; img.data[k + 1] = col[1]; img.data[k + 2] = col[2]; img.data[k + 3] = 255;
@@ -340,12 +344,13 @@ export class Game {
   }
 
   // visas zemes: Mežvidi no pamatattēla, blakus zemes — vienkrāsaini kvadrāti ar nosaukumu
-  drawLands(g, toPx, labels) {
+  drawLands(g, toPx, labels, hiZone = null) {
     const H = ZONE_HALF;
     for (const id of ZONE_IDS) {
       const [ox, oz] = zoneOffset(id), Z = ZONES[id];
       const [x0, y0] = toPx(ox - H, oz - H), [x1, y1] = toPx(ox + H, oz + H);
-      if (this.mapBases[id]) g.drawImage(this.mapBases[id], x0, y0, x1 - x0, y1 - y0);
+      const base = (hiZone === id && this.mapHi[id]) || this.mapBases[id];
+      if (base) g.drawImage(base, x0, y0, x1 - x0, y1 - y0);
       else if (id === 'n') g.drawImage(winterMap(), x0, y0, x1 - x0, y1 - y0); // ziemas zemei — īsta karte
       else {
         g.fillStyle = Z.map; g.fillRect(x0, y0, x1 - x0, y1 - y0);
@@ -361,10 +366,11 @@ export class Game {
         for (const [ic, x, z] of WINTER_ICONS) { const [px, py] = toPx(ox + x, oz + z); g.fillText(ic, px, py); }
       }
       g.strokeStyle = 'rgba(90,60,30,0.8)'; g.lineWidth = 1; g.strokeRect(x0, y0, x1 - x0, y1 - y0);
-      if (labels) {
+      if (labels === 'all') {
         const [cx, cy] = toPx(ox, oz);
-        g.fillStyle = 'rgba(0,0,0,0.75)'; g.font = 'bold 13px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-        g.fillText(`${Z.icon} ${Z.name}`, cx, cy);
+        g.font = 'bold 15px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.lineWidth = 4; g.strokeStyle = 'rgba(255,255,255,0.85)'; g.strokeText(`${Z.icon} ${Z.name}`, cx, cy);
+        g.fillStyle = 'rgba(0,0,0,0.85)'; g.fillText(`${Z.icon} ${Z.name}`, cx, cy);
       }
     }
   }
@@ -372,100 +378,175 @@ export class Game {
   // spēlētāja pozīcija kopējā kartē
   globalPos(zone, x, z) { const [ox, oz] = zoneOffset(zone || 'c'); return [x + ox, z + oz]; }
 
-  mapMarkers(g, toPx0, big) {
-    g.font = (big ? 16 : 11) + 'px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  // ikona ar baltu apli (labi redzama uz jebkuras zemes)
+  mapIcon(g, ic, x, y, size, ring = null) {
+    g.beginPath(); g.arc(x, y, size * 0.72, 0, 6.3);
+    g.fillStyle = ring || 'rgba(255,255,255,0.85)'; g.fill();
+    g.strokeStyle = 'rgba(0,0,0,0.35)'; g.lineWidth = 1; g.stroke();
+    g.font = size + 'px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(ic, x, y + size * 0.06);
+  }
+  mapLabel(g, text, x, y, size = 12, color = '#fff') {
+    g.font = `bold ${size}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.7)'; g.strokeText(text, x, y);
+    g.fillStyle = color; g.fillText(text, x, y);
+  }
+  // bulta (spēlētājs): virziens h pasaulē, rot — kartes pagrieziens
+  mapArrow(g, x, y, h, rot, k, fill, stroke) {
+    g.save(); g.translate(x, y); g.rotate(Math.atan2(Math.cos(h), Math.sin(h)) + rot + Math.PI / 2);
+    g.fillStyle = fill;
+    g.beginPath(); g.moveTo(0, -7 * k); g.lineTo(5 * k, 5.5 * k); g.lineTo(0, 3 * k); g.lineTo(-5 * k, 5.5 * k); g.closePath(); g.fill();
+    g.strokeStyle = stroke; g.lineWidth = 1.6; g.stroke();
+    g.restore();
+  }
+
+  // zoom: 0 — minikarte, 1 — zemes karte, 2 — visas zemes
+  mapMarkers(g, toPx0, zoom, rot = 0) {
+    const big = zoom > 0, IS = zoom === 1 ? 20 : zoom === 2 ? 13 : 11;
     const [fx, fz] = zoneOffset(FOREST), [rx, rz] = zoneOffset(RACE), [hx, hz] = zoneOffset(FARM);
     const toPx = (x, z) => toPx0(x + fx, z + fz); // meža objekti
-    for (const p of this.world.places) { const [px, py] = toPx(p.x, p.z); g.fillText(PLACES[p.id].icon, px, py); }
+    for (const p of this.world.places) { const [px, py] = toPx(p.x, p.z); if (big) this.mapIcon(g, PLACES[p.id].icon, px, py, IS); else { g.font = IS + 'px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(PLACES[p.id].icon, px, py); } }
     const mg = this.mg;
     if (this.mgIn && this.mgIn()) {
-      const [cx, cy] = toPx(mg.cx, mg.cz), [ex] = toPx(mg.cx + mg.R, mg.cz);
+      const [cx, cy] = toPx(mg.cx, mg.cz), [ex, ey] = toPx(mg.cx + mg.R, mg.cz);
       g.strokeStyle = '#ff3030'; g.lineWidth = 2; g.setLineDash([5, 4]);
-      g.beginPath(); g.arc(cx, cy, Math.abs(ex - cx), 0, 6.3); g.stroke(); g.setLineDash([]);
+      g.beginPath(); g.arc(cx, cy, Math.hypot(ex - cx, ey - cy), 0, 6.3); g.stroke(); g.setLineDash([]);
     }
     g.fillStyle = '#ffe14a';
     this.world.stars.forEach((s) => {
       if (this.save.stars.includes(s.id) || !this.save.revealed) return;
       const [px, py] = toPx(s.x, s.z);
-      g.beginPath(); g.arc(px, py, big ? 3.5 : 2, 0, 6.3); g.fill();
+      g.beginPath(); g.arc(px, py, big ? 4 : 2, 0, 6.3); g.fill();
     });
-    g.font = (big ? 16 : 11) + 'px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-    const [vx, vy] = toPx(0, 0); g.fillText('🛒', vx, vy);
-    const [kx, ky] = toPx0(this.raceW.kartSpot.x + rx, this.raceW.kartSpot.z + rz); g.fillText('🏎️', kx, ky);
-    const [ux, uy] = toPx0(hx, hz); g.fillText('🏡', ux, uy);
+    if (zoom === 1) {
+      // tirgotāji un aka meža ciematā
+      for (const v of VENDORS) { const [px, py] = toPx(v.x, v.z); this.mapIcon(g, v.title.split(' ')[0], px, py, 16); }
+      const [wx, wy] = toPx(0, 0); this.mapIcon(g, '🪙', wx, wy, 16, 'rgba(160,220,255,0.9)');
+      const [ix, iy] = toPx(this.ice.pos.x, this.ice.pos.z); this.mapIcon(g, '🍦', ix, iy, 14);
+    } else { const [vx, vy] = toPx(0, 0); if (big) this.mapIcon(g, '🛒', vx, vy, IS); else { g.font = IS + 'px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('🛒', vx, vy); } }
+    const [kx, ky] = toPx0(this.raceW.kartSpot.x + rx, this.raceW.kartSpot.z + rz);
+    if (big) this.mapIcon(g, '🏎️', kx, ky, IS); else { g.font = IS + 'px sans-serif'; g.fillText('🏎️', kx, ky); }
     if (big) {
-      // sētas lauku īpašnieki
-      g.font = 'bold 11px sans-serif'; g.fillStyle = '#fff';
-      for (const [, pr] of this.profiles) {
-        const [sx, sz] = plotSign(pr.slot), [px, py] = toPx0(hx + sx * 45, hz + sz * 45);
-        g.fillText(`🏡 ${pr.name}`, px, py);
+      // sētas un to īpašnieki
+      for (let slot = 0; slot < 4; slot++) {
+        const [sx, sz] = plotSign(slot), [px, py] = toPx0(hx + sx * 45, hz + sz * 45);
+        let owner = null;
+        for (const [, pr] of this.profiles) if (pr.slot === slot) owner = pr.name;
+        if (zoom === 1 || owner) this.mapLabel(g, owner ? `🏡 ${owner}` : '🌾 brīva', px, py, zoom === 1 ? 15 : 11, owner ? '#fff' : '#e8e0c0');
       }
-      g.font = '16px sans-serif';
+    } else { const [ux, uy] = toPx0(hx, hz); g.font = IS + 'px sans-serif'; g.fillText('🏡', ux, uy); }
+    // transports (mašīnas, velosipēds, sniega motocikls)
+    for (const v of this.vehMarkers()) {
+      if (v.driven) continue; // braucošo rāda pie braucēja
+      const [px, py] = toPx0(...this.globalPos(v.zone, v.x, v.z));
+      this.mapIcon(g, v.kind === 'car' ? '🚙' : v.kind === 'bike' ? '🚲' : '🛷', px, py, zoom === 1 ? 17 : zoom === 2 ? 12 : 10, v.color);
     }
+    // draugi
     for (const [, r] of this.remotes) {
       if (!r.seen || (this.mgHidden && this.mgHidden(r.id))) continue;
       const [px, py] = toPx0(...this.globalPos(r.zone, r.pos.x, r.pos.z));
-      g.fillStyle = PLAYER_DOT[(r.prof.slot || 0) % 4];
-      g.beginPath(); g.arc(px, py, big ? 5 : 3.5, 0, 6.3); g.fill();
-      g.strokeStyle = '#fff'; g.lineWidth = 1; g.stroke();
-      if (big) { g.fillStyle = '#fff'; g.font = 'bold 11px sans-serif'; g.fillText(r.prof.name, px, py - 11); }
+      const col = PLAYER_DOT[(r.prof.slot || 0) % 4];
+      const vk = r.vehCode === 2 ? '🚙' : r.vehCode === 5 ? '🚲' : r.vehCode === 3 ? '🛷' : r.vehCode === 1 ? '🏎️' : null;
+      if (vk && big) this.mapIcon(g, vk, px, py, zoom === 1 ? 17 : 12, col);
+      this.mapArrow(g, px, py, r.ry, rot, big ? (zoom === 1 ? 1.6 : 1.2) : 1, col, '#fff');
+      if (big) this.mapLabel(g, r.prof.name, px, py - (zoom === 1 ? 20 : 14), zoom === 1 ? 14 : 11);
     }
     const [mx, my] = toPx0(...this.globalPos(this.zone, this.me.pos.x, this.me.pos.z));
-    const h = this.me.inKart ? this.me.kart.heading : this.me.heading;
-    g.save();
-    g.translate(mx, my);
-    g.rotate(-h + Math.PI);
-    const k = big ? 1.4 : 1;
-    g.fillStyle = '#fff';
-    g.beginPath(); g.moveTo(0, -6 * k); g.lineTo(4.5 * k, 5 * k); g.lineTo(-4.5 * k, 5 * k); g.closePath(); g.fill();
-    g.strokeStyle = '#d00'; g.lineWidth = 1.5; g.stroke();
-    g.restore();
+    const h = this.me.inKart ? this.me.kart.heading : this.me.veh ? this.me.veh.heading : this.me.heading;
+    this.mapArrow(g, mx, my, h, rot, zoom === 1 ? 1.9 : zoom === 2 ? 1.4 : 1.15, '#fff', '#d00');
+    if (big) this.mapLabel(g, 'Tu', mx, my - (zoom === 1 ? 22 : 15), zoom === 1 ? 14 : 11, '#ffe14a');
   }
 
+  // minikarte: spēlētājs centrā, bulta uz augšu; karte griežas ap viņu (augša — kur skaties/ej)
   drawMinimap() {
-    const g = this.mapCtx;
-    const VIEW = 120; // metri no centra līdz minikartes malai
+    const g = this.mapCtx, S = 140, c = S / 2;
+    const VIEW = 110; // metri no centra līdz minikartes malai
     const [cx, cz] = this.globalPos(this.zone, this.me.pos.x, this.me.pos.z);
-    const scale = 140 / (2 * VIEW);
-    const toPx = (x, z) => [70 + (x - cx) * scale, 70 + (z - cz) * scale];
-    g.fillStyle = '#4d5a40'; g.fillRect(0, 0, 140, 140);
-    this.drawLands(g, toPx, false);
-    this.mapMarkers(g, toPx, false);
+    const scale = S / (2 * VIEW);
+    const h = this.me.inKart ? this.me.kart.heading : this.me.veh ? this.me.veh.heading : this.me.heading;
+    const rot = -Math.PI / 2 - Math.atan2(Math.cos(h), Math.sin(h));
+    const cs = Math.cos(rot), sn = Math.sin(rot);
+    g.fillStyle = '#4d5a40'; g.fillRect(0, 0, S, S);
+    g.save(); g.translate(c, c); g.rotate(rot);
+    this.drawLands(g, (x, z) => [(x - cx) * scale, (z - cz) * scale], false);
+    g.restore();
+    const toPx = (x, z) => { const dx = (x - cx) * scale, dy = (z - cz) * scale; return [c + dx * cs - dy * sn, c + dx * sn + dy * cs]; };
+    this.mapMarkers(g, toPx, 0, rot);
+    // ziemeļu zīme uz malas
+    const nx = c + sn * (c - 9), ny = c - cs * (c - 9);
+    g.beginPath(); g.arc(nx, ny, 8, 0, 6.3); g.fillStyle = 'rgba(200,30,30,0.9)'; g.fill();
+    g.font = 'bold 11px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#fff'; g.fillText('N', nx, ny + 0.5);
   }
 
+  // liela karte: vispirms zeme, kurā esi (detalizēti), poga — visas zemes; pieskaroties zemei visu zemju skatā — tuvāk
   openBigMap() {
-    if (this.bigMapAll == null) this.bigMapAll = true;
+    const view = { all: false, zone: this.zone };
+    const box = $('panel').querySelector('.panel-box');
+    let timer = null;
     showPanel('🗺️ Karte', (b) => {
-      const S = 480;
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const css = Math.floor(Math.min(window.innerWidth * 0.94 - 24, (window.innerHeight - 150) * 0.97));
       const c = document.createElement('canvas');
-      c.width = c.height = S;
-      c.style.cssText = 'width:min(78vw,62vh);height:min(78vw,62vh);display:block;margin:0 auto;border-radius:12px';
+      c.width = c.height = Math.round(css * dpr);
+      c.style.cssText = `width:${css}px;height:${css}px;display:block;margin:0 auto;border-radius:12px;touch-action:none`;
       b.append(c);
       const g = c.getContext('2d');
-      const btn = el('button', { className: 'pbtn', style: 'display:block;margin:8px auto 0' }, '');
-      const legend = el('div', { style: 'text-align:center;font-size:13px;margin-top:6px;opacity:0.75' }, '');
+      const row = el('div', { style: 'display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px' });
+      const btn = el('button', { className: 'pbtn' }, '');
+      const back = el('button', { className: 'pbtn', style: 'background:#7a8a6a' }, '');
+      row.append(btn, back);
+      const legend = el('div', { style: 'text-align:center;font-size:13px;margin-top:6px;opacity:0.8' }, '');
+      let toPxNow = null;
       const draw = () => {
+        const S = css;
+        g.setTransform(dpr, 0, 0, dpr, 0, 0);
         let toPx;
-        if (this.bigMapAll) {
+        if (view.all) {
           const E = ZONE_HALF * 3; // visas 5 zemes krusta formā
           toPx = (x, z) => [(x + E) / (2 * E) * S, (z + E) / (2 * E) * S];
         } else {
-          const [ox, oz] = zoneOffset(this.zone), R = this.mapR;
+          const [ox, oz] = zoneOffset(view.zone), R = this.mapR;
           toPx = (x, z) => [(x - ox + R) / (2 * R) * S, (z - oz + R) / (2 * R) * S];
         }
+        toPxNow = toPx;
         g.fillStyle = '#2e3a2a'; g.fillRect(0, 0, S, S);
-        this.drawLands(g, toPx, true);
-        this.mapMarkers(g, toPx, true);
-        const Z = ZONES[this.zone];
-        btn.textContent = this.bigMapAll ? `🔍 Tuvāk: ${Z.icon} ${Z.name}` : '🧭 Visas zemes';
-        legend.textContent = this.bigMapAll
-          ? `Tu esi: ${Z.icon} ${Z.name} · pār robežu var pāriet jebkurā vietā`
-          : (this.save.revealed ? '⭐ zvaigznes' : '⭐ — uzkāp 🗼 tornī') + ' · 🏡 sēta · 🛒 tirgus · 🏎️ trase · ⛺🗼🐸🏰🎣 īpašās vietas';
+        g.imageSmoothingEnabled = true;
+        this.drawLands(g, toPx, view.all ? 'all' : false, view.all ? null : view.zone);
+        this.mapMarkers(g, toPx, view.all ? 2 : 1, 0);
+        // ziemeļi
+        this.mapLabel(g, '⬆ N', S - 26, 16, 13);
+        const Z = ZONES[view.zone], ZH = ZONES[this.zone];
+        $('panel-title').textContent = view.all ? '🗺️ Visas zemes' : `🗺️ ${Z.icon} ${Z.name}`;
+        btn.textContent = view.all ? `🔍 Tuvāk: ${ZH.icon} ${ZH.name}` : '🧭 Visas zemes';
+        back.style.display = !view.all && view.zone !== this.zone ? '' : 'none';
+        back.textContent = `📍 Kur esmu: ${ZH.icon} ${ZH.name}`;
+        legend.textContent = view.all
+          ? 'Pieskaries zemei, lai to redzētu tuvāk · bultas — spēlētāji · 🚙🚲🛷 — transports'
+          : `${view.zone === FOREST ? '🌱🧺🎩🐾🏡 tirgotāji · 🪙 vēlēšanās aka · ' : ''}${this.save.revealed ? '⭐ zvaigznes · ' : ''}bultas — spēlētāji · 🚙🚲🛷 — transports`;
       };
-      btn.addEventListener('click', () => { this.bigMapAll = !this.bigMapAll; draw(); });
-      b.append(btn, legend);
+      btn.addEventListener('click', () => { view.all = !view.all; if (!view.all) view.zone = this.zone; ensureHi(); draw(); });
+      back.addEventListener('click', () => { view.all = false; view.zone = this.zone; ensureHi(); draw(); });
+      c.addEventListener('click', (e) => {
+        if (!view.all || !toPxNow) return;
+        const rc = c.getBoundingClientRect(), px = e.clientX - rc.left, py = e.clientY - rc.top;
+        for (const id of ZONE_IDS) {
+          const [ox, oz] = zoneOffset(id), [x0, y0] = toPxNow(ox - ZONE_HALF, oz - ZONE_HALF), [x1, y1] = toPxNow(ox + ZONE_HALF, oz + ZONE_HALF);
+          if (px >= x0 && px <= x1 && py >= y0 && py <= y1) { view.all = false; view.zone = id; ensureHi(); draw(); return; }
+        }
+      });
+      // detalizētāks zemes attēls (uzzīmē vienreiz, kad pirmoreiz atver tuvāk)
+      const ensureHi = () => {
+        const id = view.zone, W = this.landWorld(id);
+        if (view.all || !W || this.mapHi[id] || this.mapHiBusy) return;
+        this.mapHiBusy = true;
+        setTimeout(() => { try { this.mapHi[id] = this.mapBase(W, 560); } catch (e) { console.warn(e); } this.mapHiBusy = false; if (panelOpen()) draw(); }, 30);
+      };
+      b.append(row, legend);
       draw();
-    });
+      ensureHi();
+      timer = setInterval(() => { if (!c.isConnected) clearInterval(timer); else if (panelOpen()) draw(); }, 300);
+    }, () => { clearInterval(timer); box.classList.remove('wide'); });
+    box.classList.add('wide');
   }
 
   // ======================= Zemes (pāreja uz blakus kartēm) =======================
@@ -546,6 +627,7 @@ export class Game {
     const prev = this.zone;
     let ready = Promise.resolve();
     if (this.fishing) this.stopFishing();
+    if (this.me && this.me.carry && (id !== FARM || prev !== FARM)) this.stowCarry();
     if (prev !== id) {
       if (prev === 'n') this.leaveWinter();
       if (prev === FOREST) this.unloadForest();
@@ -664,8 +746,10 @@ export class Game {
   // ======================= Tīkls =======================
   myProf() {
     const s = this.save;
-    return { name: s.name, animal: s.animal, fur: s.fur, shirt: s.shirt, hat: s.hat, kartColor: s.kartColor, farm: this.farmView(), pet: s.pet || null, decor: s.decor || [] };
+    return { name: s.name, animal: s.animal, fur: s.fur, shirt: s.shirt, hat: s.hat, wear: { ...(s.wear || {}) }, kartColor: s.kartColor, farm: this.farmView(), pet: s.pet || null, decor: this.decorView(), carry: this.me && this.me.carry ? this.me.carry.k : null };
   }
+  // tēla izskats (buildAnimal)
+  avatarProf() { const s = this.save; return { animal: s.animal, fur: s.fur, shirt: s.shirt, hat: s.hat, wear: s.wear || {} }; }
 
   setupNet() {
     const net = this.net;
@@ -678,6 +762,7 @@ export class Game {
   start() {
     if (this.net.isHost) {
       this.hs = { profiles: new Map(), positions: new Map(), picked: {}, pickedB: {}, team: makeTeam(Date.now(), this.save.weekly), race: { phase: 'none', id: 0 }, mg: { kind: null, phase: 'none' } };
+      this.hostInitVehs();
       this.hostTimer = setInterval(() => this.hostTick(), 100);
     }
     this.net.toHost({ t: 'hello', prof: this.myProf(), weekly: this.save.weekly });
@@ -729,12 +814,29 @@ export class Game {
         const prof = { ...m.prof, slot };
         hs.profiles.set(from, prof);
         this.hostMergeWeekly(m.weekly);
-        net.sendTo(from, { t: 'welcome', id: from, now, profiles: [...hs.profiles.entries()], picked: hs.picked, pickedB: hs.pickedB, team: hs.team, race: hs.race, mg: hs.mg });
+        net.sendTo(from, { t: 'welcome', id: from, now, profiles: [...hs.profiles.entries()], picked: hs.picked, pickedB: hs.pickedB, team: hs.team, race: hs.race, mg: hs.mg, vehs: this.hostVehList() });
         net.broadcast({ t: 'join', id: from, prof });
         net.broadcast({ t: 'team', team: hs.team });
         break;
       }
-      case 'pos': hs.positions.set(from, m.p); break;
+      case 'pos': {
+        if (!Array.isArray(m.p)) return;
+        hs.positions.set(from, m.p);
+        this.hostVehPos(from, m.p);
+        // uzreiz pārsūtām pārējiem (bez gaidīšanas uz kopējo sūtījumu) — mazāka aizture, gludāka kustība
+        const msg = { t: 's', l: [[from, ...m.p]] };
+        for (const [id, c] of net.conns) if (id !== from && c.open) c.send(msg);
+        if (from !== 0) this.onMessage(msg);
+        break;
+      }
+      case 'vehTake': case 'vehDrop': this.hostVeh(from, m); break;
+      case 'gift': {
+        // dāvana citam spēlētājam: saimnieks nodod tālāk; ja saņēmēja vairs nav — atpakaļ sūtītājam
+        if (m.to === from || !hs.profiles.has(m.to)) { net.sendTo(from, { t: 'giftBack', g: m.g }); return; }
+        const p = hs.profiles.get(from);
+        net.sendTo(m.to, { t: 'gift', from, name: p ? p.name : '?', g: m.g });
+        break;
+      }
       case 'prof': {
         const old = hs.profiles.get(from);
         if (!old) return;
@@ -789,6 +891,7 @@ export class Game {
     const hs = this.hs;
     hs.profiles.delete(id);
     hs.positions.delete(id);
+    this.hostVehLeave(id);
     if (hs.race.racers && hs.race.racers.includes(id)) {
       hs.race.racers = hs.race.racers.filter((x) => x !== id);
       if (hs.race.phase === 'lobby' && hs.race.racers.length === 0) hs.race = { phase: 'none', id: hs.race.id };
@@ -810,9 +913,7 @@ export class Game {
       const nt = makeTeam(now, null);
       if (nt.w !== hs.team.w) { hs.team = nt; net.broadcast({ t: 'team', team: hs.team }); }
     }
-    const list = [];
-    for (const [id, p] of hs.positions) list.push([id, ...p]);
-    net.broadcast({ t: 's', l: list });
+    this.hostVehSave();
     const r = hs.race;
     if (r.phase === 'lobby' && now >= r.startAt - 4000) {
       r.phase = 'run';
@@ -852,7 +953,11 @@ export class Game {
         this.onTeam(m.team);
         this.onRace(m.race);
         if (m.mg) this.onMg(m.mg);
+        this.applyVehs(m.vehs);
         break;
+      case 'veh': this.applyVeh(m.v); break;
+      case 'gift': this.onGift(m); break;
+      case 'giftBack': this.onGift({ g: m.g, back: true }); break;
       case 'join':
         if (m.id === this.myId) return;
         this.applyProfile(m.id, m.prof);
@@ -868,33 +973,47 @@ export class Game {
         break;
       }
       case 'prof': this.applyProfile(m.id, m.prof); break;
-      case 's':
+      case 's': {
+        const nowL = this.now();
         for (const e of m.l) {
           if (e[0] === this.myId) continue;
           const r = this.remotes.get(e[0]);
           if (!r) continue;
-          // ātrums no secīgām pozīcijām — braucošas mašīnas kustību prognozējam starp ziņām (gludi, bez raustīšanās)
-          const nowT = performance.now();
-          if (r.netT && nowT - r.netT > 30) {
-            const it = (nowT - r.netT) / 1000;
-            const vx = (e[1] - r.target.x) / it, vy = (e[2] - r.target.y) / it, vz = (e[3] - r.target.z) / it;
-            r.netVel = r.netVel || new THREE.Vector3();
-            if (Math.hypot(vx, vz) > 60) r.netVel.set(0, 0, 0); else r.netVel.lerp(new THREE.Vector3(vx, vy, vz), 0.6);
+          // e: [id, x, y, z, ry, anim, transports, progress, zeme, vadītājs, sēdvieta, transporta id, sūtīšanas laiks]
+          const z = ZONE_IDS[e[8] || 0] || 'c';
+          const zoneChanged = r.seen && r.zone !== z;
+          if (zoneChanged) toast(`🧭 ${r.prof.name} devās uz: ${ZONES[z].icon} ${ZONES[z].name}`);
+          r.zone = z;
+          const st = e[12];
+          if (!r.buf || zoneChanged || !r.seen) { r.buf = []; r.gap = null; r.jit = null; }
+          if (typeof st === 'number') {
+            // sūtītāja pulkstenis → mans (mazākā novērotā aizture; lēnām pielāgojas)
+            const off = nowL - st;
+            if (r.off == null || off < r.off) r.off = off; else r.off += (off - r.off) * 0.02;
+            // tīkla svārstības (cik vēlāk par ātrāko ziņu pienāk šī): aizturi pielāgo tām — ātri pieaug, lēni samazinās
+            const late = off - r.off;
+            r.jit = r.jit == null ? late : lerp(r.jit, late, late > r.jit ? 0.25 : 0.01);
+            const last = r.buf[r.buf.length - 1];
+            if (!last || st > last.t) {
+              if (last) r.gap = r.gap == null ? st - last.t : lerp(r.gap, Math.min(400, st - last.t), 0.15);
+              r.buf.push({ t: st, x: e[1], y: e[2], z: e[3], ry: e[4] });
+              if (r.buf.length > 60) r.buf.splice(0, r.buf.length - 60);
+              // ātrums (kamerai, iekāpšanai līdzi)
+              const b = r.buf, n = b.length;
+              if (n >= 2) {
+                const a = b[n - 2], c = b[n - 1], it = Math.max(0.02, (c.t - a.t) / 1000);
+                r.netVel = r.netVel || new THREE.Vector3();
+                if (Math.hypot(c.x - a.x, c.z - a.z) / it > 60) r.netVel.set(0, 0, 0); else r.netVel.set((c.x - a.x) / it, (c.y - a.y) / it, (c.z - a.z) / it);
+              }
+            }
           }
-          r.netT = nowT;
           r.target.set(e[1], e[2], e[3]);
           r.tRy = e[4]; r.anim = ANIM[e[5]] || 'idle'; r.inKart = e[6] === 1; r.vehCode = e[6] | 0; r.rideDriver = e[9] == null ? -1 : e[9]; r.rideSeat = e[10] | 0; r.progress = e[7] || 0;
-          const z = ZONE_IDS[e[8] || 0] || 'c';
-          if (r.seen && r.zone !== z) {
-            r.pos.copy(r.target);
-            toast(`🧭 ${r.prof.name} devās uz: ${ZONES[z].icon} ${ZONES[z].name}`);
-          }
-          r.zone = z;
-          if (!r.seen) { r.pos.copy(r.target); r.seen = true; }
-          r.parkE = e;
-          this.remoteParked(r, e);
+          r.vehId = typeof e[11] === 'string' ? e[11] : '';
+          if (!r.seen || zoneChanged) { r.pos.copy(r.target); r.ry = r.tRy; r.seen = true; }
         }
         break;
+      }
       case 'picked': {
         this.picked[m.id] = m.until;
         if (m.by === this.myId) {
@@ -934,7 +1053,7 @@ export class Game {
       return;
     }
     let r = this.remotes.get(id);
-    const appearance = `${prof.animal}|${prof.fur}|${prof.shirt}`;
+    const appearance = `${prof.animal}|${prof.fur}|${prof.shirt}|${(prof.wear && prof.wear.top) || ''}`;
     if (!r) {
       r = { id, prof, pos: new THREE.Vector3(SPAWN.x, VILLAGE_Y, SPAWN.z), target: new THREE.Vector3(SPAWN.x, VILLAGE_Y, SPAWN.z), ry: 0, tRy: 0, anim: 'idle', inKart: false, kart: null, progress: 0, seen: false };
       this.remotes.set(id, r);
@@ -947,6 +1066,7 @@ export class Game {
     if (r.appearance !== appearance) {
       if (r.avatar) { r.avatar.root.parent && r.avatar.root.parent.remove(r.avatar.root); }
       r.avatar = buildAnimal(prof);
+      r.carryK = undefined;
       const ns = makeTextSprite(prof.name, { bg: 'rgba(30,60,140,0.7)' });
       ns.position.y = 2.25;
       r.avatar.root.add(ns);
@@ -956,6 +1076,8 @@ export class Game {
       r.appearance = appearance;
     } else if (r.prof.hat !== prof.hat) r.avatar.setHat(prof.hat);
     if (r.kart && r.prof.kartColor !== prof.kartColor) r.kart.setColor(this.kartColorHex(prof.kartColor));
+    r.avatar.setWear(prof.wear || null);
+    if (r.carryK !== (prof.carry || null)) { r.carryK = prof.carry || null; r.avatar.setCarry(r.carryK ? buildDecor(r.carryK) : null); }
     r.prof = prof;
     this.setGardenSign(prof.slot, prof.name);
     this.renderFarm(prof.slot, prof.farm || null);
@@ -1062,11 +1184,12 @@ export class Game {
 
     this.timers.send -= dt;
     if (this.timers.send <= 0 && this.myId >= 0) {
-      this.timers.send = 0.1;
+      // braucot sūtām 20× sekundē (ātra kustība), ejot — 10×
+      this.timers.send = this.me.inKart || this.me.veh ? 0.05 : 0.1;
       const p = this.me.pos;
       const ry = this.me.inKart ? this.me.kart.heading : this.me.veh ? this.me.veh.heading : this.me.heading;
       const r2 = (v) => Math.round(v * 100) / 100;
-      this.net.toHost({ t: 'pos', p: [r2(p.x), r2(p.y), r2(p.z), r2(ry), ANIM.indexOf(this.me.state), this.me.inKart ? 1 : this.vehCode(), r2(this.me.progress || 0), ZONE_IDS.indexOf(this.zone), ...this.rideInfo(), ...this.parkInfo()] });
+      this.net.toHost({ t: 'pos', p: [r2(p.x), r2(p.y), r2(p.z), r2(ry), ANIM.indexOf(this.me.state), this.me.inKart ? 1 : this.vehCode(), r2(this.me.progress || 0), ZONE_IDS.indexOf(this.zone), ...this.rideInfo(), this.vehIdInfo(), Math.round(this.now())] });
     }
 
     this.timers.map -= dt;
@@ -1292,15 +1415,19 @@ export class Game {
       const here = (r.zone || 'c') === this.zone; // citā zemē esošos rāda tikai kartē
       if (r.kart) r.kart.root.visible = here;
       const prev = r.pos.clone();
-      if (this.remoteMoving(r) && r.netVel) {
-        // prognozētā vieta: pēdējā zināmā + ātrums × laiks kopš ziņas
-        const age = Math.min(0.25, (performance.now() - r.netT) / 1000);
-        const pred = this._pred || (this._pred = new THREE.Vector3());
-        pred.copy(r.target).addScaledVector(r.netVel, age);
-        r.pos.lerp(pred, 1 - Math.exp(-dt * 9));
-      } else r.pos.lerp(r.target, k);
-      if (r.pos.distanceTo(r.target) > 25) r.pos.copy(r.target);
-      r.ry = angleLerp(r.ry, r.tRy, k);
+      if (r.buf && r.buf.length && r.off != null) {
+        // Interpolācija starp saņemtajām pozīcijām: rādām draugu nedaudz pagātnē (≈1,5 sūtīšanas intervāli),
+        // tāpēc vienmēr ir divi punkti, starp kuriem vienmērīgi pārvietoties — bez raustīšanās un lēcieniem.
+        const delay = clamp((r.gap || 100) * 1.1 + (r.jit || 0) * 1.3 + 20, 80, 380);
+        const q = this.sampleRemote(r, this.now() - r.off - delay);
+        const ks = 1 - Math.exp(-dt * 20); // viegla izlīdzināšana (ja pozīcija tika nedaudz prognozēta)
+        if (r.pos.distanceToSquared(q) > 100) r.pos.set(q.x, q.y, q.z); else r.pos.lerp(q, ks);
+        r.ry = angleLerp(r.ry, q.ry, ks);
+      } else {
+        r.pos.lerp(r.target, k);
+        r.ry = angleLerp(r.ry, r.tRy, k);
+      }
+      if (r.pos.distanceTo(r.target) > 40) r.pos.copy(r.target);
       if (r.inKart && !r.kart && here) {
         r.kart = buildKart(this.kartColorHex(r.prof.kartColor));
         this.stage.add(r.kart.root);
@@ -1333,6 +1460,32 @@ export class Game {
         r.avatar.root.visible = here && (!this.mgHidden(r.id) || r.pos.distanceTo(this.me.pos) < 30);
       }
     }
+  }
+
+  // drauga pozīcija laikā rt (viņa pulkstenī) no saņemto pozīciju bufera; aiz pēdējās — īsi turpina ar ātrumu
+  sampleRemote(r, rt) {
+    const b = r.buf, n = b.length, out = this._smp || (this._smp = { x: 0, y: 0, z: 0, ry: 0 });
+    let i = n - 1;
+    while (i > 0 && b[i].t > rt) i--;
+    // vecos punktus izmetam (paturam vismaz 2)
+    if (i > 2) { b.splice(0, i - 2); i = 2; }
+    const a = b[i];
+    if (rt <= a.t || i === b.length - 1) {
+      if (rt > a.t && i > 0) {
+        const p = b[i - 1], span = a.t - p.t;
+        const ex = Math.min(rt - a.t, 220);
+        if (span > 0 && span < 500) {
+          const f = ex / span;
+          out.x = a.x + (a.x - p.x) * f; out.y = a.y + (a.y - p.y) * f; out.z = a.z + (a.z - p.z) * f; out.ry = a.ry;
+          return out;
+        }
+      }
+      out.x = a.x; out.y = a.y; out.z = a.z; out.ry = a.ry;
+      return out;
+    }
+    const c = b[i + 1], f = clamp((rt - a.t) / Math.max(1, c.t - a.t), 0, 1);
+    out.x = lerp(a.x, c.x, f); out.y = lerp(a.y, c.y, f); out.z = lerp(a.z, c.z, f); out.ry = angleLerp(a.ry, c.ry, f);
+    return out;
   }
 
   npcPos(h, t) {
@@ -1463,14 +1616,20 @@ export class Game {
     this.timers.action = 0;
   }
 
+  // ko stādīt uz tukša lauciņa: kultūras id vai 'sap:<koks>' (augļu koka stāds)
   currentSeed() {
-    const inv = this.save.inv;
-    if (this.selectedSeed && inv[this.selectedSeed + '_seed'] > 0) return this.selectedSeed;
-    return Object.keys(CROPS).find((c) => inv[c + '_seed'] > 0) || null;
+    const inv = this.save.inv, sel = this.selectedSeed;
+    if (sel && sel.startsWith('sap:') && inv[sel.slice(4) + '_sap'] > 0) return sel;
+    if (sel && inv[sel + '_seed'] > 0) return sel;
+    const c = Object.keys(CROPS).find((k) => inv[k + '_seed'] > 0);
+    if (c) return c;
+    const t = Object.keys(TREES).find((k) => inv[k + '_sap'] > 0);
+    return t ? 'sap:' + t : null;
   }
 
   findAction() {
     if (this.me.inKart || this.me.veh || this.me.ride) return null;
+    if (this.me.carry) return this.carryAction();
     if (this.zone !== FOREST) return this.findZoneAction();
     const p = this.me.pos, t = this.now();
     let best = null, bd = 1e9;
@@ -1734,7 +1893,7 @@ export class Game {
 
   shopSeeds() {
     const build = (b) => {
-      b.append(el('p', {}, 'Sveiks! Man ir labākās sēklas visā Mežvidu ciemā — un makšķeres. Viena sēkla apsēj vienu lauciņu tavā sētā. Dārgākās aug ilgāk, bet nes vairāk! 🌱🎣'));
+      b.append(el('p', {}, 'Sveiks! Man ir labākās sēklas visā Mežvidu ciemā, augļu koku stādi un makšķeres. Viena sēkla apsēj vienu lauciņu. Dārgākās aug ilgāk, bet nes vairāk! 🌱🎣'));
       this.coinLine(b);
       this.rodRow(b, build);
       for (const [k, c] of Object.entries(CROPS)) {
@@ -1744,28 +1903,47 @@ export class Game {
           this.addCoins(-c.seedPrice * n, true); this.addItem(k + '_seed', n); sfx('coin');
           refreshPanel(build);
         };
-        b.append(itemRow(c.icon, `${c.name} — sēkla`, `${c.seedPrice}🪙 · aug ${fmtLeft(c.grow)} · raža ×${c.yield} no lauciņa (${c.yield * c.sell}🪙) · tev: ${have}`, [
+        b.append(itemRow(iconEl(k + '_seed', 40), `${c.name} — sēkla`, `${c.seedPrice}🪙 · aug ${fmtLeft(c.grow)} · raža ×${c.yield} (${c.yield * c.sell}🪙) · tev: ${have}`, [
           { label: 'Pirkt', onclick: buy(1), disabled: this.save.coins < c.seedPrice },
           { label: '×5', onclick: buy(5), disabled: this.save.coins < c.seedPrice * 5 },
         ]));
       }
+      b.append(el('div', { className: 'sect' }, '🌳 Augļu koki (stādi)'));
+      b.append(el('p', { style: 'font-size:13px;opacity:.8;margin:2px 0' }, 'Iestādi uz uzarta lauciņa. Kad koks izaug, tas atkal un atkal dod augļus!'));
+      for (const [k, t] of Object.entries(TREES)) {
+        const have = this.save.inv[k + '_sap'] || 0, f = FRUITS[t.fruit];
+        b.append(itemRow(iconEl(k + '_sap', 40), `${t.name} — stāds`, `${t.price}🪙 · izaug ${fmtLeft(t.grow)} · ${f.name.toLowerCase()} ×${t.yield} ik pa ${fmtLeft(t.every)} (${t.yield * f.sell}🪙) · tev: ${have}`, [
+          { label: 'Pirkt', disabled: this.save.coins < t.price, onclick: () => {
+            if (this.save.coins < t.price) return;
+            this.addCoins(-t.price, true); this.addItem(k + '_sap'); sfx('coin'); refreshPanel(build);
+          } },
+        ]));
+      }
     };
-    showPanel('🌱 Ūdrs Ojārs — sēklas un makšķeres', build);
+    showPanel('🌱 Ūdrs Ojārs — sēklas un stādi', build);
   }
 
+  // pārdodamās lietas somā (zivis — atsevišķi, katrai savs izmērs un cena)
   sellables() {
     const out = [];
-    for (const [k, m] of Object.entries(MUSHROOMS)) if (!m.poison) out.push({ k, name: m.name, icon: MUSH_ICON[k], price: m.sell });
-    for (const [k, c] of Object.entries(CROPS)) out.push({ k, name: c.name, icon: c.icon, price: c.sell });
-    for (const [k, f] of Object.entries(FISH)) if (!f.junk) out.push({ k, name: f.name, icon: f.icon, price: f.sell });
-    for (const [k, b] of Object.entries(BERRIES)) out.push({ k, name: b.name, icon: b.icon, price: b.sell });
-    out.push({ k: 'cepta', name: COOKED.name, icon: COOKED.icon, price: COOKED.sell });
+    for (const [k, m] of Object.entries(MUSHROOMS)) if (!m.poison) out.push({ k, name: m.name, price: m.sell });
+    for (const [k, c] of Object.entries(CROPS)) out.push({ k, name: c.name, price: c.sell });
+    for (const [k, f] of Object.entries(FRUITS)) out.push({ k, name: f.name, price: f.sell });
+    for (const [k, b] of Object.entries(BERRIES)) out.push({ k, name: b.name, price: b.sell });
+    out.push({ k: 'cepta', name: COOKED.name, price: COOKED.sell });
     return out;
+  }
+
+  // zivis somā pa veidiem: [{k, list, sum}]
+  fishGroups() {
+    const g = {};
+    for (const f of this.save.fishBag || []) (g[f.k] = g[f.k] || []).push(f);
+    return Object.entries(g).map(([k, list]) => ({ k, list: list.sort((a, b) => b.kg - a.kg), sum: list.reduce((s, f) => s + f.v, 0) }));
   }
 
   shopBuyer() {
     const build = (b) => {
-      b.append(el('p', {}, 'Es uzpērku sēnes, dārzeņus, zivis un ogas. Godīga cena! 🧺'));
+      b.append(el('p', {}, 'Es uzpērku sēnes, dārzeņus, augļus, zivis un ogas. Par lielu zivi maksāju vairāk! 🧺'));
       this.coinLine(b);
       let any = false, totalAll = 0;
       for (const it of this.sellables()) {
@@ -1780,37 +1958,64 @@ export class Game {
           this.stat('sold', c);
           refreshPanel(build);
         };
-        b.append(itemRow(it.icon, `${it.name} ×${n}`, `${it.price}🪙 gabalā`, [
+        b.append(itemRow(iconEl(it.k, 40), `${it.name} ×${n}`, `${it.price}🪙 gabalā`, [
           { label: 'Pārdot 1', onclick: sell(1) },
           { label: 'Visu', onclick: sell(n), alt: true },
         ]));
       }
-      if (!any) b.append(el('p', {}, 'Tev pagaidām nav ko pārdot. Salasi sēnes mežā vai izaudzē dārzeņus!'));
+      for (const fg of this.fishGroups()) {
+        any = true; totalAll += fg.sum;
+        const sellFish = (all) => () => {
+          const bag = this.save.fishBag;
+          const mine = bag.filter((f) => f.k === fg.k).sort((a, c) => c.v - a.v);
+          const go = all ? mine : mine.slice(0, 1);
+          let sum = 0;
+          for (const f of go) { sum += f.v; bag.splice(bag.indexOf(f), 1); }
+          this.addCoins(sum); this.stat('sold', go.length); refreshPanel(build);
+        };
+        const big = fg.list[0];
+        b.append(itemRow(iconEl('fish:' + fg.k, 52), `${FISH[fg.k].name} ×${fg.list.length}`, `kopā ${fg.sum}🪙 · lielākā ${big.cm} cm, ${big.kg} kg (${big.v}🪙)`, [
+          { label: 'Lielāko', onclick: sellFish(false) },
+          { label: 'Visas', onclick: sellFish(true), alt: true },
+        ]));
+      }
+      if (!any) b.append(el('p', {}, 'Tev pagaidām nav ko pārdot. Salasi sēnes mežā, izaudzē dārzeņus vai noķer zivis!'));
       else b.append(el('button', { className: 'pbtn', onclick: () => {
         let sum = 0, cnt = 0;
         for (const it of this.sellables()) { const n = this.save.inv[it.k] || 0; sum += n * it.price; cnt += n; this.save.inv[it.k] = 0; }
+        for (const f of this.save.fishBag) { sum += f.v; cnt++; }
+        this.save.fishBag = [];
         this.addCoins(sum); this.stat('sold', cnt); refreshPanel(build);
       } }, `💰 Pārdot visu (${totalAll}🪙)`));
     };
     showPanel('🧺 Āpsis Arnolds — uzpircējs', build);
   }
 
+  // drēbju un cepuru veikals
   shopHats() {
     const build = (b) => {
-      b.append(el('p', {}, 'Ū-hū! Cepures un kartinga krāsas. Esi stilīgs! 🎩'));
+      b.append(el('p', {}, 'Ū-hū! Cepures, krekli, brilles, apavi un vēl! Nopirkto uzvelc somā 🎒 (tur redzams tavs tēls). Esi stilīgs! 🎩'));
       this.coinLine(b);
+      const row = (key, name, price, owned, worn, onBuy, onWear) => {
+        const btns = owned
+          ? [{ label: worn ? 'Novilkt' : 'Uzvilkt', alt: worn, onclick: () => { onWear(!worn); refreshPanel(build); } }]
+          : [{ label: `Pirkt ${price}🪙`, disabled: this.save.coins < price, onclick: () => { if (this.save.coins < price) return; this.addCoins(-price); onBuy(); refreshPanel(build); } }];
+        b.append(itemRow(iconEl(key, 44), name, owned ? (worn ? '✔ Uzvilkts' : 'Tev pieder') : `${price}🪙`, btns, worn ? 'sel' : ''));
+      };
       b.append(el('div', { className: 'sect' }, 'Cepures'));
       for (const [k, h] of Object.entries(HATS)) {
         if (h.hidden && !this.save.ownedHats.includes(k)) continue;
-        const owned = this.save.ownedHats.includes(k);
-        const worn = this.save.hat === k;
-        const btns = owned
-          ? [{ label: worn ? 'Noņemt' : 'Uzlikt', alt: worn, onclick: () => { this.setHat(worn ? null : k); refreshPanel(build); } }]
-          : [{ label: `Pirkt ${h.price}🪙`, disabled: this.save.coins < h.price, onclick: () => {
-              if (this.save.coins < h.price) return;
-              this.addCoins(-h.price); this.save.ownedHats.push(k); this.setHat(k); refreshPanel(build);
-            } }];
-        b.append(itemRow('🎩', h.name, owned ? (worn ? 'Uzlikta' : 'Tev pieder') : '', btns));
+        row('hat:' + k, h.name, h.price, this.save.ownedHats.includes(k), this.save.hat === k,
+          () => { this.save.ownedHats.push(k); this.setHat(k); }, (on) => this.setHat(on ? k : null));
+      }
+      for (const sl of SLOTS) {
+        if (sl.id === 'hat') continue;
+        b.append(el('div', { className: 'sect' }, sl.name));
+        for (const [k, c] of Object.entries(CLOTHES)) {
+          if (c.slot !== sl.id) continue;
+          row('cl:' + k, c.name, c.price, this.save.ownedClothes.includes(k), this.save.wear[c.slot] === k,
+            () => { this.save.ownedClothes.push(k); this.setWearItem(c.slot, k); toast(`👕 ${c.name} — uzvilkts!`, 'good'); }, (on) => this.setWearItem(c.slot, on ? k : null));
+        }
       }
       b.append(el('div', { className: 'sect' }, 'Kartinga krāsa'));
       for (const kc of KART_COLORS) {
@@ -1822,11 +2027,11 @@ export class Game {
               if (this.save.coins < kc.price) return;
               this.addCoins(-kc.price); this.save.ownedKarts.push(kc.id); this.setKartColor(kc.id); refreshPanel(build);
             } }];
-        const sw = el('span', { html: `<span style="display:inline-block;width:22px;height:22px;border-radius:6px;background:${kc.color}"></span>` });
+        const sw = el('span', { html: `<span style="display:inline-block;width:30px;height:30px;border-radius:8px;background:${kc.color}"></span>` });
         b.append(itemRow(sw, kc.name, '', btns));
       }
     };
-    showPanel('🎩 Pūce Paula — cepures', build);
+    showPanel('🎩 Pūce Paula — drēbes un cepures', build);
   }
 
   setHat(k) {
@@ -1835,52 +2040,302 @@ export class Game {
     this.sendProfile();
   }
 
+  // uzvilkt / novilkt drēbi (krekls — tēls jāpārbūvē, pārējais tiek pielikts klāt)
+  setWearItem(slot, id) {
+    if (slot === 'hat') { this.setHat(id); return; }
+    const w = this.save.wear = { ...(this.save.wear || {}) };
+    if (id) w[slot] = id; else delete w[slot];
+    if (slot === 'top') this.rebuildMyAvatar(); else this.avatar.setWear(w);
+    sfx('pick');
+    this.sendProfile();
+  }
+
+  rebuildMyAvatar() {
+    const old = this.avatar, parent = old.root.parent;
+    const av = buildAnimal(this.avatarProf());
+    av.root.position.copy(old.root.position); av.root.rotation.copy(old.root.rotation);
+    av.root.visible = old.root.visible;
+    av.shadow.visible = old.shadow.visible;
+    if (parent) { parent.add(av.root); old.root.removeFromParent(); }
+    av.root.add(this.myName);
+    if (this.rod) av.root.add(this.rod);
+    if (old.emoteSprite) { av.root.add(old.emoteSprite); av.emoteSprite = old.emoteSprite; }
+    if (old.winter) av.setWinter(true);
+    if (old.skis) av.setSkis(true);
+    if (this.me.carry) av.setCarry(buildDecor(this.me.carry.k));
+    this.avatar = av;
+  }
+
   setKartColor(id) {
     this.save.kartColor = id;
     if (this.me.kart) this.me.kart.obj.setColor(this.kartColorHex(id));
     this.sendProfile();
   }
 
-  openBag() {
+  // ---------- tēla attēls somā (uzzīmē ar spēles zīmētāju atsevišķā mērķī) ----------
+  dollImage(angle) {
+    const W = 360, H = 480;
+    const r = this.renderer;
+    if (!this.doll) {
+      const scene = new THREE.Scene();
+      scene.add(new THREE.HemisphereLight('#ffffff', '#8a9a7a', 1.6));
+      const d = new THREE.DirectionalLight('#ffffff', 2.2); d.position.set(2, 4, 4); scene.add(d);
+      const cam = new THREE.PerspectiveCamera(26, W / H, 0.1, 30);
+      this.doll = { scene, cam, rt: new THREE.WebGLRenderTarget(W, H), key: null, av: null, px: new Uint8Array(W * H * 4) };
+    }
+    const D = this.doll;
+    D.scene.environment = this.stage.environment;
+    const key = JSON.stringify(this.avatarProf());
+    if (D.key !== key) {
+      if (D.av) { D.scene.remove(D.av.root); D.av.root.traverse((o) => { if (o.geometry) o.geometry.dispose(); }); }
+      D.av = buildAnimal(this.avatarProf());
+      D.av.shadow.visible = false;
+      for (let i = 0; i < 40; i++) D.av.animate(0.05, 'idle', 0);
+      D.scene.add(D.av.root);
+      D.key = key;
+    }
+    D.av.root.rotation.y = angle;
+    D.cam.position.set(0, 0.95, 4.4); D.cam.lookAt(0, 0.82, 0);
+    const prevT = r.getRenderTarget(), cc = r.getClearColor(new THREE.Color()), ca = r.getClearAlpha();
+    r.setRenderTarget(D.rt); r.setClearColor(0x000000, 0); r.clear();
+    r.render(D.scene, D.cam);
+    r.readRenderTargetPixels(D.rt, 0, 0, W, H, D.px);
+    r.setRenderTarget(prevT); r.setClearColor(cc, ca);
+    // lineāras krāsas → ekrāna (ACES + sRGB), apgriezts pa vertikāli
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const g = c.getContext('2d'), img = g.createImageData(W, H), px = D.px;
+    const tm = (v) => { v *= 1.25; const x = (v * (2.51 * v + 0.03)) / (v * (2.43 * v + 0.59) + 0.14); const y = Math.min(1, Math.max(0, x)); return y <= 0.0031308 ? y * 12.92 : 1.055 * Math.pow(y, 1 / 2.4) - 0.055; };
+    const lut = new Uint8Array(256); for (let i = 0; i < 256; i++) lut[i] = Math.round(tm(i / 255) * 255);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const si = ((H - 1 - y) * W + x) * 4, di = (y * W + x) * 4;
+      img.data[di] = lut[px[si]]; img.data[di + 1] = lut[px[si + 1]]; img.data[di + 2] = lut[px[si + 2]]; img.data[di + 3] = px[si + 3];
+    }
+    g.putImageData(img, 0, 0);
+    return c;
+  }
+
+  // ---------- 🎒 soma: tēls ar uzvilktajām drēbēm + visas lietas režģī ----------
+  bagItems() {
+    const inv = this.save.inv, out = [];
+    const add = (key, n, name, kind, extra = {}) => { if (n > 0) out.push({ key, n, name, kind, ...extra }); };
+    for (const [k, c] of Object.entries(CROPS)) add(k + '_seed', inv[k + '_seed'] | 0, `${c.name} sēkla`, 'seed', { crop: k });
+    for (const [k, t] of Object.entries(TREES)) add(k + '_sap', inv[k + '_sap'] | 0, `${t.name} — stāds`, 'sap', { tree: k });
+    for (const [k, d] of Object.entries(DECOR)) add('d_' + k, inv['d_' + k] | 0, d.name, 'decor', { decor: k });
+    for (const it of this.sellables()) add(it.k, inv[it.k] | 0, it.name, 'goods', { price: it.price });
+    for (const fg of this.fishGroups()) add('fish:' + fg.k, fg.list.length, FISH[fg.k].name, 'fish', { fish: fg });
+    for (const k of this.save.ownedHats) add('hat:' + k, 1, HATS[k] ? HATS[k].name : k, 'hat', { id: k, worn: this.save.hat === k });
+    for (const k of this.save.ownedClothes) if (CLOTHES[k]) add('cl:' + k, 1, CLOTHES[k].name, 'cloth', { id: k, worn: this.save.wear[CLOTHES[k].slot] === k });
+    if (this.save.rod) add('rod', 1, 'Makšķere', 'tool');
+    return out;
+  }
+
+  openBag(sel = null) {
+    this.bagSel = sel;
+    this.giftN = 1;
+    let angle = 0.35;
     const build = (b) => {
-      this.coinLine(b);
-      b.append(el('div', { className: 'sect' }, 'Sēklas (pieskaries, lai izvēlētos, ko stādīt)'));
-      const cur = this.currentSeed();
-      let anySeed = false;
-      for (const [k, c] of Object.entries(CROPS)) {
-        const n = this.save.inv[k + '_seed'] || 0;
-        if (!n) continue;
-        anySeed = true;
-        const row = itemRow(SEED_ICON, `${c.name} sēkla ×${n}`, cur === k ? '✔ Izvēlēta stādīšanai' : '', [
-          { label: cur === k ? '✔' : 'Izvēlēties', disabled: cur === k, onclick: () => { this.selectedSeed = k; refreshPanel(build); } },
-        ], cur === k ? 'sel' : '');
-        b.append(row);
+      // tēls un drēbju vietas
+      const doll = el('div', { className: 'doll' });
+      const slotEl = (sl) => {
+        const id = sl.id === 'hat' ? this.save.hat : this.save.wear[sl.id];
+        const d = el('button', { className: 'slot' + (this.bagSel === 'slot:' + sl.id ? ' on' : '') + (id ? ' full' : ''), onclick: () => { this.bagSel = 'slot:' + sl.id; refreshPanel(build); } });
+        if (id) d.append(iconEl(sl.id === 'hat' ? 'hat:' + id : 'cl:' + id, 40)); else d.append(el('span', { className: 'slot-empty' }, '＋'));
+        d.append(el('small', {}, sl.name));
+        return d;
+      };
+      const colL = el('div', { className: 'doll-col' }), colR = el('div', { className: 'doll-col' });
+      SLOTS.slice(0, 3).forEach((sl) => colL.append(slotEl(sl)));
+      SLOTS.slice(3).forEach((sl) => colR.append(slotEl(sl)));
+      const mid = el('div', { className: 'doll-mid' });
+      try { const c = this.dollImage(angle); c.className = 'doll-img'; mid.append(c); } catch (e) { console.warn(e); mid.append(el('div', { style: 'font-size:60px' }, '🧸')); }
+      const rot = el('div', { className: 'doll-rot' });
+      rot.append(el('button', { onclick: () => { angle -= 0.8; refreshPanel(build); } }, '↺'), el('button', { onclick: () => { angle += 0.8; refreshPanel(build); } }, '↻'));
+      mid.append(rot);
+      doll.append(colL, mid, colR);
+      b.append(doll);
+      // nauda
+      const coinRow = el('button', { className: 'coin-row' + (this.bagSel === 'coins' ? ' on' : ''), onclick: () => { this.bagSel = 'coins'; refreshPanel(build); } });
+      coinRow.append(iconEl('coin', 26), ` ${this.save.coins} monētas`, this.remotes.size ? el('small', {}, ' · 🎁 dāvināt') : '');
+      b.append(coinRow);
+      if (this.me.carry) b.append(itemRow(iconEl('decor:' + this.me.carry.k, 40), `Nes rokās: ${DECOR[this.me.carry.k].name}`, 'Novieto savā sētā vai ieliec somā', [{ label: '🎒 Ielikt somā', onclick: () => { this.stowCarry(); refreshPanel(build); } }], 'sel'));
+      // izvēlētās lietas apraksts un darbības
+      const det = this.bagDetail(build);
+      if (det) b.append(det);
+      // režģis
+      const items = this.bagItems();
+      b.append(el('div', { className: 'sect' }, `Somā (${items.length})`));
+      const grid = el('div', { className: 'inv-grid' });
+      for (const it of items) {
+        const cell = el('button', { className: 'inv-cell' + (this.bagSel === it.key ? ' on' : '') + (it.worn ? ' worn' : ''), title: it.name, onclick: () => { this.bagSel = it.key; this.giftN = 1; refreshPanel(build); } });
+        cell.append(iconEl(it.key, it.kind === 'fish' ? 48 : 40));
+        if (it.n > 1) cell.append(el('span', { className: 'cnt' }, String(it.n)));
+        if (it.worn) cell.append(el('span', { className: 'cnt wornb' }, '✔'));
+        if (it.kind === 'seed' && this.currentSeed() === it.crop) cell.append(el('span', { className: 'cnt selb' }, '🌱'));
+        if (it.kind === 'sap' && this.currentSeed() === 'sap:' + it.tree) cell.append(el('span', { className: 'cnt selb' }, '🌳'));
+        grid.append(cell);
       }
-      if (!anySeed) b.append(el('p', {}, 'Nav sēklu. Nopērc pie Ūdra Ojāra 🌱'));
-      b.append(el('div', { className: 'sect' }, 'Raža un sēnes'));
-      let any = false;
-      for (const it of this.sellables()) {
-        const n = this.save.inv[it.k] || 0;
-        if (!n) continue;
-        any = true;
-        b.append(itemRow(it.icon, `${it.name} ×${n}`, `Vērtība: ${it.price}🪙 gab.`));
-      }
-      if (!any) b.append(el('p', {}, 'Soma ir tukša.'));
-      b.append(el('div', { className: 'sect' }, 'Mani sasniegumi'));
+      if (!items.length) grid.append(el('p', {}, 'Soma ir tukša.'));
+      b.append(grid);
+      // sasniegumi
+      const ach = el('details', { className: 'ach' });
+      ach.append(el('summary', {}, '🏆 Mani sasniegumi'));
       const st = this.save.stats;
-      b.append(itemRow('⭐', `Zelta zvaigznes: ${this.save.stars.length}/15`, this.save.revealed ? 'Visas redzamas kartē' : 'Uzkāp 🗼 skatu tornī — no turienes redz visas!'));
-      b.append(itemRow('🗺️', `Īpašās vietas: ${this.save.places.length}/${this.world.places.length}`, this.save.places.map((id) => PLACES[id].icon).join(' ')));
-      b.append(itemRow('📜', `Kartes gabali: ${this.save.pieces.length}/${MAP_PIECES.length}`, this.save.treasure ? 'Dārgums atrasts! 🏰' : 'Ar visiem gabaliem atver lādi 🏰 Pilsdrupās'));
-      b.append(itemRow('🎣', this.save.rod ? `Noķertas zivis: ${st.fish || 0}` : 'Makšķere — pie Ūdra Ojāra', this.save.rod ? `Zelta zivtiņas: ${st.goldfish || 0}` : ''));
-      b.append(itemRow('🫐', `Salasītas ogas: ${st.berries || 0}`));
-      b.append(itemRow('🐾', this.save.pet ? `Mājdzīvnieks: ${PETS[this.save.pet].name}` : 'Mājdzīvnieka vēl nav', 'Suns Sprīdis ciematā'));
-      b.append(itemRow('🏆', `Nedēļas mērķi sasniegti: ${this.save.trophies || 0}`));
-      b.append(itemRow('🍄', `Salasītas sēnes: ${st.mushrooms || 0}`));
-      b.append(itemRow('🥕', `Novākti dārzeņi: ${st.harvested || 0}`));
-      b.append(itemRow('🏎️', `Sacīkstes: ${st.races || 0} · uzvaras: ${st.wins || 0}`, this.save.bestLap ? `Labākais aplis: ${fmtTime(this.save.bestLap)}` : ''));
-      b.append(itemRow('⏱️', `Spēlēts: ${Math.round(this.save.playTime / 60)} min`));
+      ach.append(itemRow('⭐', `Zelta zvaigznes: ${this.save.stars.length}/15`, this.save.revealed ? 'Visas redzamas kartē' : 'Uzkāp 🗼 skatu tornī — no turienes redz visas!'));
+      ach.append(itemRow('🗺️', `Īpašās vietas: ${this.save.places.length}/${this.world.places.length}`, this.save.places.map((id) => PLACES[id].icon).join(' ')));
+      ach.append(itemRow('📜', `Kartes gabali: ${this.save.pieces.length}/${MAP_PIECES.length}`, this.save.treasure ? 'Dārgums atrasts! 🏰' : 'Ar visiem gabaliem atver lādi 🏰 Pilsdrupās'));
+      const fb = this.save.fishBest || {};
+      ach.append(itemRow('🎣', this.save.rod ? `Noķertas zivis: ${st.fish || 0}` : 'Makšķere — pie Ūdra Ojāra', Object.keys(fb).length ? 'Rekordi: ' + Object.entries(fb).map(([k, kg]) => `${FISH[k].name} ${kg} kg`).join(', ') : ''));
+      ach.append(itemRow('🫐', `Salasītas ogas: ${st.berries || 0}`));
+      ach.append(itemRow('🐾', this.save.pet ? `Mājdzīvnieks: ${PETS[this.save.pet].name}` : 'Mājdzīvnieka vēl nav', 'Suns Sprīdis ciematā'));
+      ach.append(itemRow('🏆', `Nedēļas mērķi sasniegti: ${this.save.trophies || 0}`));
+      ach.append(itemRow('🍄', `Salasītas sēnes: ${st.mushrooms || 0}`));
+      ach.append(itemRow('🥕', `Novākti dārzeņi: ${st.harvested || 0} · augļi: ${st.fruits || 0}`));
+      ach.append(itemRow('🏎️', `Sacīkstes: ${st.races || 0} · uzvaras: ${st.wins || 0}`, this.save.bestLap ? `Labākais aplis: ${fmtTime(this.save.bestLap)}` : ''));
+      ach.append(itemRow('⏱️', `Spēlēts: ${Math.round(this.save.playTime / 60)} min`));
+      b.append(ach);
     };
+    this.bagBuild = build;
     showPanel('🎒 Mana soma', build);
+  }
+
+  // izvēlētās lietas kartiņa somā
+  bagDetail(build) {
+    const sel = this.bagSel;
+    if (!sel) return el('p', { className: 'bag-hint' }, '👆 Pieskaries lietai, lai to izmantotu, uzvilktu vai uzdāvinātu draugam.');
+    const box = el('div', { className: 'bag-detail' });
+    const head = (key, title, sub) => {
+      const h = el('div', { className: 'bd-head' });
+      h.append(iconEl(key, key.startsWith('fish:') ? 90 : 64));
+      const t = el('div', {}, el('b', {}, title));
+      if (sub) t.append(el('div', { className: 'bd-sub', html: sub }));
+      h.append(t);
+      box.append(h);
+    };
+    const btns = el('div', { className: 'bd-btns' });
+    const btn = (label, fn, alt = false) => btns.append(el('button', { className: 'pbtn' + (alt ? ' alt' : ''), onclick: () => { fn(); refreshPanel(build); } }, label));
+    const redraw = () => refreshPanel(build);
+    // drēbju vieta: izvēle no nopirktajām
+    if (sel.startsWith('slot:')) {
+      const slot = sel.slice(5), sl = SLOTS.find((x) => x.id === slot);
+      box.append(el('b', {}, `${sl.name}: izvēlies, ko uzvilkt`));
+      const opts = slot === 'hat' ? this.save.ownedHats.map((k) => ['hat:' + k, k, HATS[k] ? HATS[k].name : k])
+        : this.save.ownedClothes.filter((k) => CLOTHES[k] && CLOTHES[k].slot === slot).map((k) => ['cl:' + k, k, CLOTHES[k].name]);
+      const cur = slot === 'hat' ? this.save.hat : this.save.wear[slot];
+      const row = el('div', { className: 'inv-grid small' });
+      for (const [key, id, name] of opts) {
+        const c = el('button', { className: 'inv-cell' + (cur === id ? ' on worn' : ''), title: name, onclick: () => { this.setWearItem(slot, cur === id ? null : id); redraw(); } });
+        c.append(iconEl(key, 40)); row.append(c);
+      }
+      if (!opts.length) box.append(el('p', {}, `Tev vēl nav — nopērc pie 🎩 Pūces Paulas tirgū!`));
+      else box.append(row);
+      if (cur) btn('🚫 Novilkt', () => this.setWearItem(slot, null), true);
+      box.append(btns);
+      return box;
+    }
+    if (sel === 'coins') {
+      head('coin', `${this.save.coins} monētas`, 'Vari uzdāvināt monētas draugam.');
+      this.giftRow(box, [5, 10, 25, 50, 100].filter((n) => n <= this.save.coins), (n) => ({ coins: n }), build);
+      return box;
+    }
+    const it = this.bagItems().find((x) => x.key === sel);
+    if (!it) { this.bagSel = null; return null; }
+    if (it.kind === 'seed') {
+      const c = CROPS[it.crop];
+      head(it.key, `${it.name} ×${it.n}`, `Aug ${fmtLeft(c.grow)} (aplaistīts — ātrāk) · raža ×${c.yield} · ${c.sell}🪙 gab.`);
+      if (this.currentSeed() !== it.crop) btn('🌱 Sēt šo', () => { this.selectedSeed = it.crop; toast(`🌱 Sēsi: ${c.name}`); });
+      else btns.append(el('span', { className: 'bd-note' }, '✔ Izvēlēta sēšanai'));
+    } else if (it.kind === 'sap') {
+      const t = TREES[it.tree];
+      head(it.key, `${it.name} ×${it.n}`, `Iestādi uz uzarta lauciņa savā dārzā. Izaug ${fmtLeft(t.grow)}, tad ik pa ${fmtLeft(t.every)} — ${FRUITS[t.fruit].name.toLowerCase()} ×${t.yield}.`);
+      if (this.currentSeed() !== 'sap:' + it.tree) btn('🌳 Stādīt šo', () => { this.selectedSeed = 'sap:' + it.tree; toast(`🌳 Stādīsi: ${t.name}. Ej uz uzartu lauciņu!`); });
+      else btns.append(el('span', { className: 'bd-note' }, '✔ Izvēlēts stādīšanai'));
+    } else if (it.kind === 'decor') {
+      head(it.key, `${it.name}${it.n > 1 ? ' ×' + it.n : ''}`, 'Dārza rotājums. Izņem to savā sētā un novieto, kur patīk!');
+      btn('📍 Novietot sētā', () => {
+        if (this.zone !== FARM || plotOf(this.me.pos.x, this.me.pos.z) !== this.mySlot) { toast('🏡 Vispirms ej uz savu sētu (poga 👥 → Uz manu sētu)'); return; }
+        if (this.me.carry || this.me.veh || this.me.ride) { toast('Rokas jau aizņemtas!'); return; }
+        this.save.inv[it.key]--;
+        closePanel();
+        this.startCarry(it.decor);
+        toast('🤲 Nes rokās. Pagriezies, kur likt, un spied „📍 Novietot”.', '', 4000);
+      });
+    } else if (it.kind === 'goods') {
+      head(it.key, `${it.name} ×${it.n}`, `Vērtība: ${it.price}🪙 gab. · kopā ${it.price * it.n}🪙 · pārdod 🧺 Āpsim Arnoldam tirgū`);
+    } else if (it.kind === 'fish') {
+      const fg = it.fish;
+      head(it.key, `${it.name} ×${it.n}`, fg.list.slice(0, 6).map((f) => `${f.cm} cm · ${f.kg} kg · ${f.v}🪙`).join('<br>') + (fg.list.length > 6 ? '<br>…' : '') + `<br>Kopā ${fg.sum}🪙`);
+    } else if (it.kind === 'hat' || it.kind === 'cloth') {
+      const slot = it.kind === 'hat' ? 'hat' : CLOTHES[it.id].slot;
+      head(it.key, it.name, it.worn ? '✔ Uzvilkts' : 'Tev pieder');
+      btn(it.worn ? '🚫 Novilkt' : '👕 Uzvilkt', () => this.setWearItem(slot, it.worn ? null : it.id), it.worn);
+    } else {
+      head(it.key, it.name, 'Ej pie ezera un spied „🎣 Makšķerēt”.');
+    }
+    box.append(btns);
+    // dāvināšana
+    if (it.kind !== 'tool' && !it.worn) {
+      if (it.kind === 'hat' || it.kind === 'cloth') this.giftRow(box, [1], () => (it.kind === 'hat' ? { hat: it.id } : { cloth: it.id }), build);
+      else if (it.kind === 'fish') this.giftRow(box, [1, it.n].filter((v, i, a) => a.indexOf(v) === i), (n) => ({ fish: it.fish.list.slice(0, n).map((f) => ({ ...f })) }), build);
+      else this.giftRow(box, [1, 5, it.n].filter((v, i, a) => v <= it.n && a.indexOf(v) === i), (n) => ({ k: it.key, n }), build);
+    }
+    return box;
+  }
+
+  // dāvināšanas rinda: daudzums un draugi
+  giftRow(box, amounts, mk, build) {
+    if (!this.remotes.size) { box.append(el('div', { className: 'bd-note' }, '🎁 Dāvināt var, kad istabā ir draugi.')); return; }
+    if (!amounts.length) return;
+    if (!amounts.includes(this.giftN)) this.giftN = amounts[0];
+    const w = el('div', { className: 'gift' });
+    w.append(el('b', {}, '🎁 Uzdāvināt: '));
+    if (amounts.length > 1) for (const n of amounts) w.append(el('button', { className: 'gn' + (this.giftN === n ? ' on' : ''), onclick: () => { this.giftN = n; refreshPanel(build); } }, `×${n}`));
+    const pl = el('div', { className: 'bd-btns' });
+    for (const r of this.remotes.values()) {
+      pl.append(el('button', { className: 'pbtn gift-to', onclick: () => { this.sendGift(r.id, mk(this.giftN)); refreshPanel(build); } }, `🎁 ${r.prof.name}`));
+    }
+    w.append(pl);
+    box.append(w);
+  }
+
+  // dāvana: no manis atņem uzreiz, saimnieks nodod saņēmējam (ja viņa vairs nav — atdod atpakaļ)
+  giftText(g) {
+    if (g.coins) return `${g.coins}🪙`;
+    if (g.hat) return HATS[g.hat] ? HATS[g.hat].name : g.hat;
+    if (g.cloth) return CLOTHES[g.cloth] ? CLOTHES[g.cloth].name : g.cloth;
+    if (g.fish) return `${FISH[g.fish[0].k].name} ×${g.fish.length}`;
+    const it = this.bagItems().find((x) => x.key === g.k);
+    const name = it ? it.name : g.k.endsWith('_seed') ? `${(CROPS[g.k.slice(0, -5)] || {}).name} sēkla` : g.k.endsWith('_sap') ? `${(TREES[g.k.slice(0, -4)] || {}).name} — stāds` : g.k.startsWith('d_') ? (DECOR[g.k.slice(2)] || {}).name : ((this.sellables().find((x) => x.k === g.k) || {}).name || g.k);
+    return `${name}${g.n > 1 ? ' ×' + g.n : ''}`;
+  }
+  sendGift(to, g) {
+    const s = this.save;
+    if (g.coins) { if (s.coins < g.coins) return; this.addCoins(-g.coins, true); }
+    else if (g.hat) { if (!s.ownedHats.includes(g.hat) || s.hat === g.hat) return; s.ownedHats = s.ownedHats.filter((x) => x !== g.hat); }
+    else if (g.cloth) { if (!s.ownedClothes.includes(g.cloth) || Object.values(s.wear).includes(g.cloth)) return; s.ownedClothes.splice(s.ownedClothes.indexOf(g.cloth), 1); }
+    else if (g.fish) { for (const f of g.fish) { const i = s.fishBag.findIndex((x) => x.k === f.k && x.kg === f.kg && x.cm === f.cm); if (i >= 0) s.fishBag.splice(i, 1); } }
+    else { const n = Math.min(g.n, s.inv[g.k] | 0); if (!n) return; g.n = n; s.inv[g.k] -= n; }
+    const r = this.remotes.get(to);
+    this.net.toHost({ t: 'gift', to, g });
+    sfx('coin');
+    toast(`🎁 Uzdāvināji ${r ? r.prof.name : 'draugam'}: ${this.giftText(g)}`, 'good');
+    this.persist();
+  }
+  onGift(m) {
+    const s = this.save, g = m.g;
+    if (!g) return;
+    if (g.coins) this.addCoins(Math.max(0, Math.min(100000, g.coins | 0)), true);
+    else if (g.hat) { if (HATS[g.hat] && !s.ownedHats.includes(g.hat)) s.ownedHats.push(g.hat); }
+    else if (g.cloth) { if (CLOTHES[g.cloth] && !s.ownedClothes.includes(g.cloth)) s.ownedClothes.push(g.cloth); }
+    else if (Array.isArray(g.fish)) { for (const f of g.fish.slice(0, 200)) if (FISH[f.k] && !FISH[f.k].junk) s.fishBag.push({ k: f.k, cm: +f.cm || 0, kg: +f.kg || 0, v: Math.max(0, f.v | 0) }); }
+    else if (typeof g.k === 'string' && /^[a-z_]+$/.test(g.k)) this.addItem(g.k, Math.max(0, Math.min(999, g.n | 0)));
+    if (m.back) toast(`🎁 Dāvanu nevarēja nodot — ${this.giftText(g)} atpakaļ tavā somā`);
+    else {
+      sfx('win');
+      const key = g.coins ? 'coin' : g.hat ? 'hat:' + g.hat : g.cloth ? 'cl:' + g.cloth : g.fish ? 'fish:' + g.fish[0].k : g.k;
+      this.showPrize(`🎁 Dāvana no ${m.name}!`, key, this.giftText(g), 'Tā ir tavā somā 🎒');
+    }
+    this.persist();
+    if (panelOpen() && this.bagBuild && $('panel-title').textContent === '🎒 Mana soma') refreshPanel(this.bagBuild);
   }
 
   openQuests() {
@@ -1908,6 +2363,7 @@ export class Game {
       } else {
         b.append(el('div', { className: 'sect' }, `Istabas kods: ${this.roomCode}`));
         b.append(el('p', {}, this.net.isHost ? 'Tu esi saimnieks 🏠. Draugi var pievienoties ar šo kodu vai saiti. Ja tu aizvērsi spēli, istaba beigsies.' : 'Tu esi pievienojies drauga istabai.'));
+        b.append(el('p', { style: 'font-size:13px;opacity:.75' }, '💾 Katra spēlētāja progress (monētas, dārzs, soma, drēbes) glabājas viņa paša telefonā. Saimnieka telefonā glabājas arī tas, kur stāv kopīgās mašīnas.'));
         const link = location.origin + location.pathname + '?istaba=' + this.roomCode;
         b.append(el('button', { className: 'pbtn', onclick: async () => {
           try {
@@ -1930,7 +2386,7 @@ export class Game {
   openMenu() {
     showPanel('☰ Izvēlne', (b) => {
       b.append(el('div', { className: 'sect' }, 'Kā spēlēt'));
-      b.append(el('p', { html: '🕹️ <b>Kreisā puse</b> — velc pirkstu, lai staigātu.<br>🚙 Braucot: kreisajā pusē ⛽ gāze un 🛑 bremze (atpakaļgaita), labajā ◀ ▶ stūre.<br>👆 <b>Labā puse</b> — velc, lai grozītu kameru (2 pirksti — tuvināt).<br>⤒ — lēkt. Dzeltenā poga parādās, kad vari kaut ko darīt.<br>🏡 Centrā ir sēta: katram draugam savs lauks. Nocērt kokus 🪓, novāc akmeņus ⛏️, uzar lauciņus, sēj, aplaisti 💧 un novāc ražu 🧺. Blakus lauciņi ar to pašu kultūru saaug vienā laukā. Augi aug arī tad, kad spēle aizvērta!<br>👥 Draugu sētās var aiziet ciemos (poga 👥 augšā) un aplaistīt viņu laukus.<br>🌲 Austrumos ir Mežvidu mežs: ciems ar tirgu, sēnes, ogas, dzīvnieki.<br>🍄 Mežā lasi sēnes (bet ne sarkanās mušmires!).<br>🧺 Pārdod ražu tirgū un pērc sēklas un cepures.<br>🏎️ Rietumos ir sacīkšu trase ar tuneļiem — sēdies kartā un sacenties!<br>⭐ Kalnu virsotnēs paslēptas 15 zelta zvaigznes — no 🗼 skatu torņa tās redz kartē.<br>🎣 Nopērc makšķeri pie Ūdra Ojāra un makšķerē ezeros; kad pludiņš raustās — spied „VILKT!”.<br>🫐 Mežā lasi mellenes un avenes, purvā — dzērvenes.<br>⛺ Pie ugunskura var izcept sēnes (dārgāk pārdot).<br>🗺️ Atrodi 3 kartes gabalus (ugunskurs, tornis, purvs) un atver dārguma lādi 🏰 Pilsdrupās!<br>🐾 Suns Sprīdis pārdod mājdzīvniekus, Lapsa Liene — dārza rotājumus.<br>🎲 Ar draugiem spēlē ķeramo un paslēpes.<br>🤝 Katru nedēļu jauns kopīgais mērķis visiem draugiem.<br>🧭 Katras malas vidū taka ar vārtiem ved uz citu zemi — kartē redzamas visas zemes un draugi.' }));
+      b.append(el('p', { html: '🕹️ <b>Kreisā puse</b> — velc pirkstu, lai staigātu.<br>🚙 Braucot: kreisajā pusē ⛽ gāze un 🛑 bremze (atpakaļgaita), labajā ◀ ▶ stūre.<br>👆 <b>Labā puse</b> — velc, lai grozītu kameru (2 pirksti — tuvināt).<br>⤒ — lēkt. Dzeltenā poga parādās, kad vari kaut ko darīt.<br>🏡 Centrā ir sēta: katram draugam savs lauks. Nocērt kokus 🪓, novāc akmeņus ⛏️, uzar lauciņus, sēj, aplaisti 💧 un novāc ražu 🧺. Blakus lauciņi ar to pašu kultūru saaug vienā laukā. Augi aug arī tad, kad spēle aizvērta!<br>👥 Draugu sētās var aiziet ciemos (poga 👥 augšā) un aplaistīt viņu laukus.<br>🌲 Austrumos ir Mežvidu mežs: ciems ar tirgu, sēnes, ogas, dzīvnieki.<br>🍄 Mežā lasi sēnes (bet ne sarkanās mušmires!).<br>🧺 Pārdod ražu tirgū un pērc sēklas un cepures.<br>🏎️ Rietumos ir sacīkšu trase ar tuneļiem — sēdies kartā un sacenties!<br>⭐ Kalnu virsotnēs paslēptas 15 zelta zvaigznes — no 🗼 skatu torņa tās redz kartē.<br>🎣 Nopērc makšķeri pie Ūdra Ojāra un makšķerē ezeros; kad pludiņš raustās — spied „VILKT!”.<br>🫐 Mežā lasi mellenes un avenes, purvā — dzērvenes.<br>⛺ Pie ugunskura var izcept sēnes (dārgāk pārdot).<br>🗺️ Atrodi 3 kartes gabalus (ugunskurs, tornis, purvs) un atver dārguma lādi 🏰 Pilsdrupās!<br>🐾 Suns Sprīdis pārdod mājdzīvniekus, Lapsa Liene — dārza rotājumus.<br>🎲 Ar draugiem spēlē ķeramo un paslēpes.<br>🤝 Katru nedēļu jauns kopīgais mērķis visiem draugiem.<br>🧭 Pār robežu var pāriet jebkurā vietā. Minikarte griežas līdzi tev (bulta vienmēr uz augšu, sarkanais N — ziemeļi); pieskaries tai — liela karte ar draugiem un transportu.<br>🚙🚙🚲 Sētas krustojumā stāv 2 mašīnas un velosipēds — ar tiem var braukt ikviens. Kur atstāsi, tur tie paliks (arī citā zemē)!<br>👕 Pūce Paula pārdod drēbes: krekli, brilles, apavi, mugursomas, spārni. Uzvelc tās somā 🎒.<br>🌳 Ūdrs Ojārs pārdod arī augļu koku stādus — tie atkal un atkal dod augļus.<br>🤲 Rotājumus savā sētā var pacelt un pārnest uz citu vietu.<br>🎁 Somā lietas un monētas var uzdāvināt draugiem.<br>🪙 Meža ciemata akā iemet 5🪙 — dažreiz izkrīt kaut kas jauks!' }));
       b.append(el('div', { className: 'sect' }, 'Iestatījumi'));
       b.append(el('button', { className: 'pbtn', onclick: () => {
         try { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); } catch (e) { /* */ }

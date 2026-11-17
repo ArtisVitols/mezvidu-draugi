@@ -4,15 +4,17 @@
 // dažādām kultūrām starp lauciņiem paliek neliela sprauga. Augšana iet pēc pulksteņa (arī tad, kad spēle aizvērta).
 // Farm — Game papildinājums (mixin).
 import * as THREE from 'three';
-import { World, TILE, plotOf, tileToSlot, tileToCanon, gardenTile, gateSpots, rotPlot, YARD } from './world.js?v=1.20.0';
-import { buildCrop, flattenStatic } from './characters.js?v=1.20.0';
-import { WORLD_SEED, CROPS, PETS } from './data.js?v=1.20.0';
-import { InstanceField } from './instancing.js?v=1.20.0';
-import { canvasTexture, makeSignBoard } from './util.js?v=1.20.0';
-import { $, toast, sfx, fmtTime } from './ui.js?v=1.20.0';
-import { ZONES, FARM, freeGpu } from './zones.js?v=1.20.0';
+import { World, TILE, plotOf, tileToSlot, tileToCanon, gardenTile, gateSpots, rotPlot, rotPlotY, yardPart, YARD } from './world.js?v=1.21.0';
+import { buildCrop, flattenStatic } from './characters.js?v=1.21.0';
+import { buildFruitTree, buildDecor } from './props.js?v=1.21.0';
+import { WORLD_SEED, CROPS, TREES, FRUITS, DECOR } from './data.js?v=1.21.0';
+import { InstanceField } from './instancing.js?v=1.21.0';
+import { canvasTexture, makeSignBoard } from './util.js?v=1.21.0';
+import { $, toast, sfx, fmtTime } from './ui.js?v=1.21.0';
+import { ZONES, FARM, freeGpu } from './zones.js?v=1.21.0';
 
 const CROP_IDS = Object.keys(CROPS);
+const TREE_IDS = Object.keys(TREES); // skatā koks ir kods 100 + nr.
 const MAX_TILES = 400;
 const GRAINS = new Set(['auzas', 'kviesi']);
 const HITS = { tree: 3, rock: 2, bush: 1 };
@@ -20,6 +22,8 @@ const OBJ_NAME = { ozols: 'ozolu', berzs: 'bērzu', egle: 'egli', priede: 'pried
 const tkey = (ix, iz) => ix + ',' + iz;
 // deterministisks "nejaušais" skaitlis augu nobīdei (visiem vienāds)
 const hash = (a, b) => { const h = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return h - Math.floor(h); };
+// punkts sētā slot → 0. sētas (kanoniskās) koordinātes (pretēji rotPlot)
+export function canonPt(x, z, slot) { for (let k = [0, 1, 3, 2][slot]; k > 0; k--) [x, z] = [z, -x]; return [x, z]; }
 
 export const Farm = {
   // ---------- uzbūve / ielāde ----------
@@ -88,7 +92,8 @@ export const Farm = {
       const [ix, iz] = parse(k);
       if (this.tileOk(ix, iz, 0)) continue;
       const v = f.t[k];
-      if (v.c && CROPS[v.c]) {
+      if (v.tr && TREES[v.tr]) { this.addItem(v.tr + '_sap'); items++; }
+      else if (v.c && CROPS[v.c]) {
         if (this.cropProgress(v) >= 1) { this.addItem(v.c, CROPS[v.c].yield); items += CROPS[v.c].yield; } else { this.addItem(v.c + '_seed'); items++; }
       }
       delete f.t[k]; lost++;
@@ -136,7 +141,8 @@ export const Farm = {
     const f = this.save.farm, t = [];
     for (const k in f.t) {
       const [ix, iz] = k.split(',').map(Number), v = f.t[k];
-      t.push(v.c ? [ix, iz, CROP_IDS.indexOf(v.c), v.at, v.w ? 1 : 0] : [ix, iz]);
+      if (v.tr) t.push([ix, iz, 100 + TREE_IDS.indexOf(v.tr), v.at, v.w ? 1 : 0, v.pk || 0]);
+      else t.push(v.c ? [ix, iz, CROP_IDS.indexOf(v.c), v.at, v.w ? 1 : 0] : [ix, iz]);
     }
     return { t, cl: f.cl.slice() };
   },
@@ -235,16 +241,21 @@ export const Farm = {
     if (slot === this.mySlot) return this.save.farm.t[this.ckey(key)] || null;
     const v = this.farmViews[slot];
     if (!v) return null;
-    for (const e of v.t) if (tkey(e[0], e[1]) === key) return e.length > 2 ? { c: CROP_IDS[e[2]], at: e[3], w: !!e[4] } : {};
+    for (const e of v.t) if (tkey(e[0], e[1]) === key) return e.length > 2 ? (e[2] >= 100 ? { tr: TREE_IDS[e[2] - 100], at: e[3], w: !!e[4], pk: e[5] || 0 } : { c: CROP_IDS[e[2]], at: e[3], w: !!e[4] }) : {};
     return null;
   },
 
   cropProgress(v, t = this.now()) {
+    if (v.tr) return this.treeProgress(v, t);
     const def = CROPS[v.c];
     const dur = def.grow * (v.w ? 0.6 : 1);
     return Math.min(1, Math.max(0, (t / 1000 - v.at) / dur));
   },
-  cropLeft(v, t = this.now()) { const def = CROPS[v.c]; return Math.max(0, v.at + def.grow * (v.w ? 0.6 : 1) - t / 1000); },
+  cropLeft(v, t = this.now()) { const def = v.tr ? TREES[v.tr] : CROPS[v.c]; return Math.max(0, v.at + def.grow * (v.w ? 0.6 : 1) - t / 1000); },
+  // augļu koks: augšana līdz pieaugušam, tad augļi ik pēc `every` sekundēm
+  treeProgress(v, t = this.now()) { const d = TREES[v.tr]; return Math.min(1, Math.max(0, (t / 1000 - v.at) / (d.grow * (v.w ? 0.6 : 1)))); },
+  fruitAt(v) { const d = TREES[v.tr]; return v.pk ? v.pk + d.every : v.at + d.grow * (v.w ? 0.6 : 1); },
+  fruitReady(v, t = this.now()) { return this.treeProgress(v, t) >= 1 && t / 1000 >= this.fruitAt(v); },
 
   // ---------- zīmēšana ----------
   buildSoil(slot, v) {
@@ -284,6 +295,17 @@ export const Farm = {
     return out;
   },
 
+  treeParts(tr, stage, fruit) {
+    const k = 'T' + tr + stage + (fruit ? 'f' : '');
+    if (this.cropTpl[k]) return this.cropTpl[k];
+    const tpl = buildFruitTree(tr, stage, fruit);
+    tpl.updateMatrixWorld(true);
+    const out = [];
+    tpl.traverse((o) => { if (o.isMesh) out.push({ geo: o.geometry, mat: o.material, local: o.matrixWorld.clone() }); });
+    this.cropTpl[k] = out;
+    return out;
+  },
+
   // augi: katrai kultūrai un stadijai instancēti meši (katram laukam savi — redzamības pārbaudei)
   buildPlants(slot, v, t) {
     const R = this.farmRen[slot];
@@ -291,10 +313,26 @@ export const Farm = {
     const lists = new Map();
     if (v) {
       const map = new Map();
-      for (const e of v.t) if (e.length > 2) map.set(tkey(e[0], e[1]), CROP_IDS[e[2]]);
+      for (const e of v.t) if (e.length > 2 && e[2] < 100) map.set(tkey(e[0], e[1]), CROP_IDS[e[2]]);
       const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), S = new THREE.Vector3(), P = new THREE.Vector3(), UP = new THREE.Vector3(0, 1, 0);
       for (const e of v.t) {
         if (e.length < 3) continue;
+        if (e[2] >= 100) {
+          // augļu koks lauciņa vidū
+          const tr = TREE_IDS[e[2] - 100];
+          if (!tr) continue;
+          const tv = { tr, at: e[3], w: !!e[4], pk: e[5] || 0 };
+          const p = this.treeProgress(tv, t), fr = this.fruitReady(tv, t);
+          R.growing = true; // augļi nogatavojas ar laiku
+          const stage = p < 0.35 ? 0 : p < 1 ? 1 : 2;
+          const sc = stage === 0 ? 0.8 + p * 0.6 : stage === 1 ? 0.75 + 0.25 * p : 1;
+          const key = 'T' + tr + stage + (fr ? 'f' : '');
+          if (!lists.has(key)) lists.set(key, { crop: tr, stage, tree: true, fruit: fr, m: [] });
+          const x = (e[0] + 0.5) * TILE, z = (e[1] + 0.5) * TILE;
+          M.compose(P.set(x, this.farmW.getHeight(x, z) + 0.02, z), Q.setFromAxisAngle(UP, hash(x, z) * 6.28), S.set(sc, sc, sc));
+          lists.get(key).m.push(M.clone());
+          continue;
+        }
         const crop = CROP_IDS[e[2]], def = CROPS[crop];
         if (!def) continue;
         const p = this.cropProgress({ c: crop, at: e[3], w: !!e[4] }, t);
@@ -327,10 +365,10 @@ export const Farm = {
     for (const [key, L] of lists) {
       if (!L.m.length) continue;
       const ms = [];
-      for (const part of this.cropParts(L.crop, L.stage)) {
+      for (const part of (L.tree ? this.treeParts(L.crop, L.stage, L.fruit) : this.cropParts(L.crop, L.stage))) {
         const im = new THREE.InstancedMesh(part.geo, part.mat, L.m.length);
         L.m.forEach((mm, i) => im.setMatrixAt(i, tmp.multiplyMatrices(mm, part.local)));
-        im.castShadow = !GRAINS.has(L.crop);
+        im.castShadow = !GRAINS.has(L.crop) && !(L.tree && part.noShadow);
         im.receiveShadow = true;
         im.computeBoundingSphere();
         this.farmScene.add(im);
@@ -386,7 +424,14 @@ export const Farm = {
   // ---------- darbības (dzeltenā poga) ----------
   farmActions(consider, d2) {
     const me = this.me, slot = this.mySlot;
-    if (me.ski || me.lift) return;
+    if (me.ski || me.lift || me.carry) return;
+    // savi rotājumi — var pacelt un pārnest
+    (this.save.decor || []).forEach((d, i) => {
+      if (typeof d !== 'object') return;
+      const [x, z] = rotPlot(d.x, d.z, slot);
+      if (Math.abs(x - me.pos.x) > 4 || Math.abs(z - me.pos.z) > 4) return;
+      consider(d2(x, z) + 0.3, 2.3, `🤲 Pacelt: ${(DECOR[d.k] || { name: d.k }).name}`, () => this.pickDecor(i));
+    });
     // koki/akmeņi savā laukā
     for (const o of this.farmW.plotObjs) {
       if (o.slot !== slot || this.farmW.cleared.has(o.id)) continue;
@@ -403,10 +448,18 @@ export const Farm = {
       if (!v) {
         if (blocked) consider(9, 10, '🪓 Vispirms notīri šo vietu', () => toast('Šeit aug koks vai ir akmens — vispirms nocērt vai novāc to!'));
         else consider(1.0, 2, '⛏️ Uzart lauciņu', () => this.plowTile(tl));
+      } else if (v.tr) {
+        const d = TREES[v.tr], p = this.treeProgress(v);
+        const fname = FRUITS[d.fruit].name.toLowerCase();
+        if (this.fruitReady(v)) consider(1.0, 2.2, `🧺 Lasīt: ${fname} (${d.name})`, () => this.pickFruit(tl));
+        else if (p < 1 && !v.w) consider(1.0, 2.2, `💧 Aplaistīt: ${d.name}`, () => this.waterTile(tl));
+        else if (p < 1) consider(1.0, 2.2, `⏳ ${d.name} aug… ${Math.round(p * 100)}% · vēl ${fmtLeft(this.cropLeft(v))}`, () => toast(`🌳 ${d.name} izaugs pēc ${fmtLeft(this.cropLeft(v))}, tad nesīs ${fname}`));
+        else consider(1.0, 2.2, `🌳 ${d.name}: ${fname} pēc ${fmtLeft(this.fruitAt(v) - this.now() / 1000)}`, () => toast(`🌳 Nākamie ${fname} būs gatavi pēc ${fmtLeft(this.fruitAt(v) - this.now() / 1000)}`));
       } else if (!v.c) {
         const seed = this.currentSeed();
-        if (seed) consider(1.0, 2, `🌱 Sēt: ${CROPS[seed].icon} ${CROPS[seed].name} (${this.save.inv[seed + '_seed']})`, () => this.sowTile(tl, seed));
-        else consider(1.0, 2, '🌱 Nav sēklu — nopērc tirgū mežā 🛒', () => toast('Sēklas pārdod Ūdrs Ojārs Mežvidu mežā (austrumos) 🌱'));
+        if (seed && seed.startsWith('sap:')) { const tr = seed.slice(4); consider(1.0, 2, `🌳 Stādīt: ${TREES[tr].name} (${this.save.inv[tr + '_sap']})`, () => this.plantTree(tl, tr)); }
+        else if (seed) consider(1.0, 2, `🌱 Sēt: ${CROPS[seed].icon} ${CROPS[seed].name} (${this.save.inv[seed + '_seed']})`, () => this.sowTile(tl, seed));
+        else consider(1.0, 2, '🌱 Nav sēklu — nopērc tirgū mežā 🛒', () => toast('Sēklas un kociņus pārdod Ūdrs Ojārs Mežvidu mežā (austrumos) 🌱'));
       } else {
         const p = this.cropProgress(v), def = CROPS[v.c];
         if (p >= 1) consider(1.0, 2, `🧺 Novākt: ${def.icon} ${def.name}`, () => this.harvestTile(tl));
@@ -418,7 +471,7 @@ export const Farm = {
       const v = this.farmTile(tl.slot, tl.key);
       let ownerId = null, owner = null;
       for (const [id, pr] of this.profiles) if (pr.slot === tl.slot) { ownerId = id; owner = pr; }
-      if (v && v.c && owner && !v.w && this.cropProgress(v) < 1) consider(1.0, 2, `💧 Aplaistīt ${owner.name} lauku`, () => { this.net.toHost({ t: 'water', owner: ownerId, plot: tl.key }); sfx('plant'); this.me.petT = 0.6; });
+      if (v && (v.c || v.tr) && owner && !v.w && this.cropProgress(v) < 1) consider(1.0, 2, `💧 Aplaistīt ${owner.name} lauku`, () => { this.net.toHost({ t: 'water', owner: ownerId, plot: tl.key }); sfx('plant'); this.me.petT = 0.6; });
     }
   },
 
@@ -465,11 +518,11 @@ export const Farm = {
 
   waterTile(tl) {
     const v = this.save.farm.t[this.ckey(tl.key)];
-    if (!v || !v.c) return;
+    if (!v || !(v.c || v.tr)) return;
     // aplaistot ātrums mainās tikai no šī brīža (paveiktais procents saglabājas)
     const p = this.cropProgress(v);
     v.w = true;
-    v.at = Math.round(this.now() / 1000 - p * CROPS[v.c].grow * 0.6);
+    v.at = Math.round(this.now() / 1000 - p * (v.tr ? TREES[v.tr] : CROPS[v.c]).grow * 0.6);
     this.me.petT = 0.6;
     sfx('plant');
     this.spawnFloat('💧', new THREE.Vector3(tl.cx, this.me.pos.y, tl.cz));
@@ -490,13 +543,100 @@ export const Farm = {
     this.farmChanged();
   },
 
+  plantTree(tl, tr) {
+    const v = this.save.farm.t[this.ckey(tl.key)];
+    if (!v || v.c || v.tr || !(this.save.inv[tr + '_sap'] > 0)) return;
+    this.save.inv[tr + '_sap']--;
+    v.tr = tr; v.at = Math.round(this.now() / 1000); v.w = false; v.pk = 0;
+    this.me.petT = 0.8;
+    sfx('plant');
+    this.stat('planted');
+    const d = TREES[tr];
+    toast(`🌳 Iestādīji: ${d.name}! Izaugs pēc ${fmtLeft(d.grow)} un tad ik pa ${fmtLeft(d.every)} dos ${FRUITS[d.fruit].name.toLowerCase()}. Aplaisti!`, 'good', 5000);
+    if (this.selectedSeed === 'sap:' + tr && !(this.save.inv[tr + '_sap'] > 0)) this.selectedSeed = null;
+    this.farmChanged();
+  },
+
+  pickFruit(tl) {
+    const v = this.save.farm.t[this.ckey(tl.key)];
+    if (!v || !v.tr || !this.fruitReady(v)) return;
+    const d = TREES[v.tr];
+    v.pk = Math.round(this.now() / 1000);
+    this.addItem(d.fruit, d.yield);
+    this.stat('fruits', d.yield);
+    this.me.petT = 0.8;
+    sfx('pick');
+    this.spawnFloat('🧺', this.me.pos);
+    toast(`🧺 Salasīji: ${FRUITS[d.fruit].name} ×${d.yield}! Nākamie pēc ${fmtLeft(d.every)}.`, 'good');
+    this.farmChanged();
+  },
+
+  // ---------- rotājumu pārnešana (rokās) ----------
+  pickDecor(i) {
+    const d = this.save.decor[i];
+    if (!d || this.me.carry) return;
+    this.save.decor.splice(i, 1);
+    this.startCarry(d.k);
+    toast(`🤲 Nes: ${(DECOR[d.k] || {}).name}. Ej uz vietu savā sētā un spied „📍 Novietot”.`, '', 4000);
+  },
+  startCarry(k) {
+    this.me.carry = { k };
+    this.avatar.setCarry(buildDecor(k));
+    sfx('pick');
+    this.sendProfile();
+    this.timers.action = 0;
+  },
+  // kur novietot nesamo: 1,3 m priekšā; tikai savā sētā (ne mājiņā, siltumnīcā vai uz uzarta lauciņa)
+  carrySpot() {
+    const me = this.me, h = me.heading;
+    // attālums pēc rotājuma izmēra (strūklaka liela, rūķis mazs), lai to neieliek sev virsū
+    const sz = (this.decorSize = this.decorSize || {});
+    if (sz[me.carry.k] == null) { const b = new THREE.Box3().setFromObject(buildDecor(me.carry.k)), v = b.getSize(new THREE.Vector3()); sz[me.carry.k] = Math.max(v.x, v.z) / 2; }
+    const dist = 0.9 + sz[me.carry.k];
+    const x = me.pos.x + Math.sin(h) * dist, z = me.pos.z + Math.cos(h) * dist;
+    if (this.zone !== FARM || plotOf(x, z) !== this.mySlot) return null;
+    const part = yardPart(x, z);
+    if (part === 'house' || part === 'green') return null;
+    const tl = this.tileAt(x, z);
+    if (tl && tl.slot === this.mySlot && this.save.farm.t[this.ckey(tl.key)]) return null;
+    return { x, z };
+  },
+  carryAction() {
+    const c = this.me.carry, name = (DECOR[c.k] || {}).name || c.k;
+    const sp = this.carrySpot();
+    if (sp) return { label: `📍 Novietot: ${name}`, fn: () => this.placeCarry(sp) };
+    return { label: `🎒 Ielikt somā: ${name}`, fn: () => { toast(this.zone === FARM ? 'Šeit nevar novietot — tikai savā sētā (ne uz uzartas zemes). Ieliku somā 🎒' : 'Ieliku somā 🎒'); this.stowCarry(); } };
+  },
+  placeCarry(sp) {
+    const c = this.me.carry;
+    if (!c) return;
+    const [x, z] = canonPt(sp.x, sp.z, this.mySlot);
+    const r = this.me.heading + Math.PI - rotPlotY(this.mySlot);
+    this.save.decor.push({ k: c.k, x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100, r: Math.round(r * 100) / 100 });
+    this.me.carry = null;
+    this.avatar.setCarry(null);
+    sfx('plant');
+    this.spawnFloat('✨', new THREE.Vector3(sp.x, this.me.pos.y, sp.z));
+    this.sendProfile();
+    this.persist();
+  },
+  // nesamo — atpakaļ somā (arī aizejot no sētas)
+  stowCarry() {
+    const c = this.me.carry;
+    if (!c) return;
+    this.addItem('d_' + c.k);
+    this.me.carry = null;
+    this.avatar.setCarry(null);
+    this.sendProfile();
+  },
+
   // draugs aplaistīja manu lauciņu (water ziņa)
   onFarmWater(m) {
     if (m.owner === this.myId) {
       const v = typeof m.plot === 'string' ? this.save.farm.t[this.ckey(m.plot)] : null;
-      if (v && v.c && !v.w) {
+      if (v && (v.c || v.tr) && !v.w && this.cropProgress(v) < 1) {
         const p = this.cropProgress(v);
-        v.w = true; v.at = Math.round(this.now() / 1000 - p * CROPS[v.c].grow * 0.6);
+        v.w = true; v.at = Math.round(this.now() / 1000 - p * (v.tr ? TREES[v.tr] : CROPS[v.c]).grow * 0.6);
         const who = this.remotes.get(m.by);
         if (m.by !== this.myId) toast(`💧 ${who ? who.prof.name : 'Draugs'} aplaistīja tavu lauku! Augi augs ātrāk.`, 'good');
         this.farmChanged();

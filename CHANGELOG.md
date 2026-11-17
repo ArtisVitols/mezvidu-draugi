@@ -1,5 +1,34 @@
 # Izmaiņu žurnāls
 
+## 1.21.0 — 2026-11-17
+- 🚙 Draugu mašīnas brauc gludi: katrai pozīcijai līdzi nāk laiks, saimnieks to uzreiz pārsūta pārējiem (agrāk gaidīja līdz 100 ms),
+  braucot pozīciju sūta 20× sekundē, un draugus rāda ~0,1–0,2 s pagātnē, vienmērīgi pārvietojoties starp saņemtajiem punktiem
+  (interpolācija; īsi pārtraukumi tiek aizpildīti ar ātrumu). Nav raustīšanās un lēcienu.
+- 🚙🚙🚲 Transports tagad ir viens vienīgs visā pasaulē un kopīgs visiem: sētas krustojumā 2 mašīnas (zaļa un zila) un jauns
+  **velosipēds** (ar groziņu, kurā var braukt mājdzīvnieks); 🛷 sniega motocikls Ziemas zemē. Ar jebkuru var braukt ikviens, ja neviens
+  cits ar to nebrauc; izkāpjot tas paliek tur, kur atstāts (arī citā zemē), un to var paņemt kāds cits. Vairs nav „kopiju” stāvvietās.
+  Saimnieks atceras, kur stāv transports (arī nākamajā spēlē). Kartē redzams, kur ir katra mašīna.
+- 🗺️ Minikarte griežas līdzi: tu vienmēr centrā, bulta uz augšu, sarkanais **N** rāda ziemeļus. Pieskaroties — liela karte (gandrīz
+  viss ekrāns) ar tavas zemes detaļām (tirgotāji, aka, sētu īpašnieki, transports, visi spēlētāji ar vārdiem un virzienu);
+  poga „🧭 Visas zemes” — visa pasaule; pieskaries zemei, lai to redzētu tuvāk. Karte atjaunojas dzīvajā.
+- 👕 Drēbes: Pūce Paula tagad pārdod arī kreklus (svītrains, rūtains, futbola, ar zvaigznēm, Latvijas), brilles (saulesbrilles,
+  apaļās, sirsniņu), tauriņu, kaklasaiti, pērļu krelles, zelta medaļu, mugursomu, varoņa apmetni, tauriņa spārnus, gumijas zābakus,
+  kedas un 4 jaunas cepures (beisbola, berete, kovboja, pirāta). Draugi redz tavas drēbes.
+- 🎒 Jauna soma: augšā tavs tēls (īsts 3D attēls, var pagriezt) ar 6 drēbju vietām — pieskaries vietai un izvēlies, ko uzvilkt;
+  zemāk visu lietu režģis ar attēliem un skaitu; pieskaroties lietai — apraksts un darbības (sēt, stādīt, novietot, uzvilkt, dāvināt).
+- 🎁 Dāvanas: somā jebkuru lietu, zivis, drēbes vai monētas var uzdāvināt draugam istabā.
+- 🖼️ Katrai precei savs zīmēts attēls (SVG): katra kultūra, sēklu paciņa ar attiecīgo dārzeni, stādi, augļi, sēnes, ogas, zivis,
+  katra cepure un drēbe, rotājumi, mājdzīvnieki, makšķere — vairs nav vienādu emocijzīmju.
+- 🌱 10 jaunas kultūras: redīsi (45 s), salāti, sīpoli, zirņi, bietes, gurķi, kukurūza (1,5 h), paprika (2 h), arbūzi (3 h), lavanda (4 h).
+- 🌳 Augļu koki: ābele, bumbiere, ķirsis, plūme. Stādu iestāda uz uzarta lauciņa, tas izaug (2–3 h; aplaistīts ātrāk) un tad ik pa
+  30–40 min dod augļus (āboli, bumbieri, ķirši, plūmes), ko var pārdot.
+- 🤲 Rotājumus var pārnest: savā sētā pie rotājuma „🤲 Pacelt” — tēls to nes rokās; „📍 Novietot” noliek tur, kur skaties.
+  Nopirktie rotājumi nonāk somā — sētā tos izņem un novieto kur gribi. 3 jauni rotājumi: dārza sēne, mazās vējdzirnavas, ziedu dobe.
+- 🪙 Vēlēšanās aka meža ciemata vidū: iemet 5🪙 — dažreiz izkrīt sēklas, monētas, rotājums, koka stāds vai drēbe… bet dažreiz nekas.
+- 🎣 Noķerot zivi, ekrānā liels zivs attēls ar garumu, svaru un cenu; lielāka zivs — dārgāka. Jaunas zivis: karpa un rets sams.
+  Somā redzamas visas zivis ar izmēriem, sasniegumos — rekordi.
+- 💾 Vecie saglabājumi pārnesti: zivis kļūst par vidēja izmēra zivīm, rotājumi paliek savās vietās, noņemtie — somā.
+
 ## 1.20.0 — 2026-11-17
 - 🏡 Sēta pārbūvēta: krustojuma 4 stūros 4 vienādas iežogotas sētas (72 × 72 m). Katrā — dārzs 20 × 20 lauciņi (kvadrāts,
   paralēls ceļiem), sarkana dārza mājiņa, kurā var ieiet (iekšā jumts paslēpjas un sienas kļūst caurspīdīgas), stikla siltumnīca

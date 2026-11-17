@@ -1,15 +1,16 @@
 // Jaunās nodarbes, pievienotas Game klasei: makšķerēšana, ogas, mājdzīvnieki, dārza rotājumi,
 // īpašās vietas ar dārgumu, ķeramais un paslēpes, nedēļas kopīgais mērķis.
 import * as THREE from 'three';
-import { WATER_Y, GARDEN_SLOTS, VILLAGE_Y } from './world.js?v=1.20.0';
-import { buildNPC } from './characters.js?v=1.20.0';
-import { InstanceField } from './instancing.js?v=1.20.0';
-import { berryTemplate, buildDecor, DECOR_SPOTS, buildRod, buildBobber } from './props.js?v=1.20.0';
-import { buildScroll } from './places.js?v=1.20.0';
-import { ZONE_IDS, FOREST } from './zones.js?v=1.20.0';
-import { FISH, ROD_PRICE, BERRIES, COOKED, PETS, DECOR, PLACES, MAP_PIECES, weekNumber, weeklyGoal, WEEKLY_REWARD } from './data.js?v=1.20.0';
-import { makeTextSprite, angleLerp } from './util.js?v=1.20.0';
-import { $, toast, showPanel, refreshPanel, closePanel, el, itemRow, sfx, fmtTime } from './ui.js?v=1.20.0';
+import { WATER_Y, GARDEN_SLOTS, VILLAGE_Y, rotPlot, rotPlotY } from './world.js?v=1.21.0';
+import { buildNPC } from './characters.js?v=1.21.0';
+import { InstanceField } from './instancing.js?v=1.21.0';
+import { berryTemplate, buildDecor, DECOR_SPOTS, buildRod, buildBobber } from './props.js?v=1.21.0';
+import { buildScroll } from './places.js?v=1.21.0';
+import { ZONE_IDS, FOREST } from './zones.js?v=1.21.0';
+import { FISH, ROD_PRICE, BERRIES, COOKED, PETS, DECOR, PLACES, MAP_PIECES, weekNumber, weeklyGoal, WEEKLY_REWARD, rollFish, CROPS, TREES, CLOTHES, HATS, WISH_PRICE } from './data.js?v=1.21.0';
+import { icon, iconEl, fishSvg } from './icons.js?v=1.21.0';
+import { makeTextSprite, angleLerp } from './util.js?v=1.21.0';
+import { $, toast, showPanel, refreshPanel, closePanel, el, itemRow, sfx, fmtTime } from './ui.js?v=1.21.0';
 
 const BERRY_RESPAWN = 150000;
 const MG_NAMES = { tag: '🏃 Ķeramais', hide: '🙈 Paslēpes' };
@@ -22,6 +23,7 @@ export function makeTeam(now, weekly) {
 export const Activities = {
   // ======================= sagatavošana =======================
   initActivities() {
+    this.fixDecor();
     this.berryPicked = {};
     this.buildCenterActivities();
     this.chestAnim = 0;
@@ -130,6 +132,8 @@ export const Activities = {
       const label = this.save.treasure ? '🏰 Lāde ir tukša' : n >= MAP_PIECES.length ? '🗝️ Atvērt dārguma lādi!' : `🔒 Lāde (kartes gabali ${n}/${MAP_PIECES.length})`;
       consider(d2(ch.x, ch.z), 2.4, label, () => this.openChest());
     }
+    // vēlēšanās aka ciemata vidū
+    consider(d2(0, 0) - 0.8, 2.9, `🪙 Iemest akā ${WISH_PRICE}🪙 un vēlēties`, () => this.wishWell());
     // savs mājdzīvnieks
     if (this.pet && !this.pet.inCar && !(this.petCd > t)) consider(d2(this.pet.x, this.pet.z) + 1.2, 2.6, `🤗 Paglaudīt: ${PETS[this.pet.id].name}`, () => this.petMyPet()); // citas darbības svarīgākas
     // makšķerēt pie ūdens
@@ -222,12 +226,18 @@ export const Activities = {
     this.spawnFloat('💦', pos);
     if (d.junk) {
       sfx('bad');
-      toast('👢 Vecs zābaks! Tas gan nav ēdams… Metam atpakaļ 😄', '', 3000);
+      this.showPrize('👢 Ak vai…', null, 'Vecs zābaks!', 'Tas gan nav ēdams… Metam atpakaļ 😄', fishSvg('zabaks'));
     } else {
-      this.addItem(kind);
+      // zivs ar izmēru un svaru: lielāka — dārgāka
+      const fish = rollFish(kind, f.pier ? () => Math.min(1, Math.random() * 1.08) : Math.random);
+      this.save.fishBag.push(fish);
       this.stat('fish');
-      if (kind === 'zelta') { this.stat('goldfish'); sfx('star'); toast('✨ Zelta zivtiņa! Retums! Vērtība 40🪙', 'good', 4000); }
-      else { sfx('pick'); toast(`${d.icon} Noķēri: ${d.name}!`, 'good'); }
+      const best = this.save.fishBest[kind] || 0, record = fish.kg > best;
+      if (record) this.save.fishBest[kind] = fish.kg;
+      if (kind === 'zelta') { this.stat('goldfish'); sfx('star'); } else sfx(record && best ? 'win' : 'pick');
+      const kgTxt = fish.kg < 1 ? `${Math.round(fish.kg * 1000)} g` : `${fish.kg.toFixed(2).replace('.', ',')} kg`;
+      this.showPrize(kind === 'zelta' ? '✨ Zelta zivtiņa!' : '🎣 Noķēri zivi!', null, d.name,
+        `📏 <b>${fish.cm} cm</b> · ⚖️ <b>${kgTxt}</b> · 💰 <b>${fish.v}🪙</b>${record && best ? '<br>🏆 Tavs jaunais rekords!' : ''}`, fishSvg(kind));
       this.spawnFloat(d.icon, this.me.pos);
     }
     f.phase = 'wait'; f.t = 0; f.bite = 2.5 + Math.random() * 4.5;
@@ -378,7 +388,7 @@ export const Activities = {
       if (me.ride) { const d = this.remotes.get(me.ride.driver); return d && d.vehObj ? [d.vehObj, me.ride.seat] : null; }
       return null;
     }
-    if (r.vehObj && (r.vehCode === 2 || r.vehCode === 3)) return [r.vehObj, 0];
+    if (r.vehObj && (r.vehCode === 2 || r.vehCode === 3 || r.vehCode === 5)) return [r.vehObj, 0];
     if (r.vehCode === 4) {
       const d = r.rideDriver === this.myId ? null : this.remotes.get(r.rideDriver);
       const car = r.rideDriver === this.myId ? me.veh && me.veh.obj : d && d.vehObj;
@@ -445,20 +455,43 @@ export const Activities = {
   },
 
   // ======================= dārza rotājumi =======================
+  // 1.21.0: rotājumi stāv brīvi izvēlētās vietās ({k, x, z, r} 0. sētas koordinātēs); vecie — fiksētās vietās pie mājas
+  fixDecor() {
+    const s = this.save;
+    if (s.decorV === 2) return;
+    const gs = GARDEN_SLOTS[0];
+    const placed = [];
+    for (const d of s.decor || []) {
+      if (typeof d === 'string') { const sp = DECOR_SPOTS[d]; if (sp) placed.push({ k: d, x: gs.x + sp[0], z: gs.z + sp[1], r: sp[2] }); }
+      else if (d && d.k) placed.push(d);
+    }
+    // nopirkti, bet noņemti rotājumi — somā
+    for (const k of s.ownedDecor || []) if (!placed.some((d) => d.k === k) && DECOR[k]) s.inv['d_' + k] = (s.inv['d_' + k] || 0) + 1;
+    s.decor = placed;
+    s.decorV = 2;
+  },
+  decorView() { return (this.save.decor || []).filter((d) => d && typeof d === 'object').map((d) => [d.k, d.x, d.z, d.r]); },
+
   renderDecor(slot, list) {
-    if (!this.farmOn || slot == null) return; // rotājumi ir pie mājas vietas sētā
-    const key = (list || []).slice().sort().join(',');
+    if (!this.farmOn || slot == null) return;
+    // saraksts: [[k, x, z, r]] (vai vecāku versiju draugiem — ['karogs', …] fiksētās vietās)
+    const items = [];
+    for (const d of list || []) {
+      if (typeof d === 'string') { const sp = DECOR_SPOTS[d], gs = GARDEN_SLOTS[0]; if (sp) items.push([d, gs.x + sp[0], gs.z + sp[1], sp[2]]); }
+      else if (Array.isArray(d)) items.push(d);
+      else if (d && d.k) items.push([d.k, d.x, d.z, d.r]);
+    }
+    const key = JSON.stringify(items);
     if (this.decorKeys[slot] === key) return;
     this.decorKeys[slot] = key;
     for (const o of this.decorObjs[slot]) this.farmScene.remove(o);
     this.decorObjs[slot] = [];
-    const gs = GARDEN_SLOTS[slot];
-    for (const id of list || []) {
-      const sp = DECOR_SPOTS[id];
-      if (!sp) continue;
-      const o = buildDecor(id);
-      o.position.set(gs.x + sp[0], this.farmW.getHeight(gs.x + sp[0], gs.z + sp[1]), gs.z + sp[1]);
-      o.rotation.y = sp[2];
+    for (const [k, cx, cz, r] of items) {
+      if (!DECOR[k]) continue;
+      const [x, z] = rotPlot(cx, cz, slot);
+      const o = buildDecor(k);
+      o.position.set(x, this.farmW.getHeight(x, z), z);
+      o.rotation.y = (r || 0) + rotPlotY(slot);
       this.farmScene.add(o);
       this.decorObjs[slot].push(o);
     }
@@ -467,7 +500,7 @@ export const Activities = {
   // ======================= veikali =======================
   rodRow(b, rebuild) {
     b.append(el('div', { className: 'sect' }, 'Makšķerēšana'));
-    b.append(itemRow('🎣', 'Makšķere', this.save.rod ? 'Tev pieder! Ej pie ezera un spied „Makšķerēt”' : `${ROD_PRICE}🪙 · ķer zivis ezeros (no laipas ķeras labāk!)`,
+    b.append(itemRow(iconEl('rod'), 'Makšķere', this.save.rod ? 'Tev pieder! Ej pie ezera un spied „Makšķerēt”' : `${ROD_PRICE}🪙 · ķer zivis ezeros (no laipas ķeras labāk!)`,
       this.save.rod ? [] : [{ label: `Pirkt ${ROD_PRICE}🪙`, disabled: this.save.coins < ROD_PRICE, onclick: () => {
         if (this.save.coins < ROD_PRICE) return;
         this.addCoins(-ROD_PRICE); this.save.rod = true; sfx('coin');
@@ -493,7 +526,7 @@ export const Activities = {
               toast(`🐾 ${p.name} tagad ir tavs draugs un skries tev līdzi!`, 'good');
               refreshPanel(build);
             } }];
-        b.append(itemRow('🐾', p.name, owned ? (cur ? 'Skrien tev līdzi' : 'Tev pieder') : '', btns));
+        b.append(itemRow(iconEl('pet:' + k, 40), p.name, owned ? (cur ? 'Skrien tev līdzi' : 'Tev pieder') : `${p.price}🪙`, btns));
       }
     };
     showPanel('🐾 Suns Sprīdis — mājdzīvnieki', build);
@@ -501,26 +534,81 @@ export const Activities = {
 
   shopDecor() {
     const build = (b) => {
-      b.append(el('p', {}, 'Padari savu dārzu skaistāko ciemā! Rotājumi parādās pie tava dārza, un tos redz arī draugi. 🏡'));
+      b.append(el('p', {}, 'Padari savu sētu skaistāko ciemā! Nopirktais rotājums nonāk tavā somā 🎒 — sētā izņem to un novieto, kur gribi. Jau noliktu rotājumu var pacelt un pārnest. 🏡'));
       this.coinLine(b);
       for (const [k, d] of Object.entries(DECOR)) {
-        const owned = this.save.decor.includes(k);
-        const btns = owned ? [{ label: 'Noņemt', alt: true, onclick: () => { this.save.decor = this.save.decor.filter((x) => x !== k); this.sendProfile(); refreshPanel(build); } }]
-          : [{ label: `Pirkt ${d.price}🪙`, disabled: this.save.coins < d.price, onclick: () => {
-              if (this.save.coins < d.price) return;
-              this.addCoins(-d.price); this.save.decor.push(k);
-              this.save.ownedDecor = Array.from(new Set([...(this.save.ownedDecor || []), k]));
-              this.save.stats.decor = this.save.ownedDecor.length; this.checkQuests();
-              sfx('plant'); this.sendProfile();
-              toast(`${d.icon} ${d.name} jau stāv pie tava dārza!`, 'good');
-              refreshPanel(build);
-            } }];
-        // jau nopirkts, bet noņemts — var atlikt atpakaļ par brīvu
-        if (!owned && (this.save.ownedDecor || []).includes(k)) btns.splice(0, 1, { label: 'Atlikt', onclick: () => { this.save.decor.push(k); this.sendProfile(); refreshPanel(build); } });
-        b.append(itemRow(d.icon, d.name, owned ? 'Stāv pie tava dārza' : '', btns));
+        const inBag = this.save.inv['d_' + k] || 0, placed = (this.save.decor || []).filter((x) => x.k === k).length;
+        b.append(itemRow(iconEl('decor:' + k, 40), d.name, `${d.price}🪙${placed ? ` · sētā: ${placed}` : ''}${inBag ? ` · somā: ${inBag}` : ''}`, [{ label: `Pirkt ${d.price}🪙`, disabled: this.save.coins < d.price, onclick: () => {
+          if (this.save.coins < d.price) return;
+          this.addCoins(-d.price); this.addItem('d_' + k);
+          this.save.ownedDecor = Array.from(new Set([...(this.save.ownedDecor || []), k]));
+          this.save.stats.decor = this.save.ownedDecor.length; this.checkQuests();
+          sfx('plant');
+          toast(`${d.icon} ${d.name} ir tavā somā! Sētā atver 🎒 un spied „Novietot”.`, 'good', 4000);
+          refreshPanel(build);
+        } }]));
       }
     };
     showPanel('🏡 Lapsa Liene — dārza rotājumi', build);
+  },
+
+  // ======================= vēlēšanās aka (meža ciemata vidū) =======================
+  wishWell() {
+    if (this.save.coins < WISH_PRICE) { toast(`Akā jāiemet ${WISH_PRICE}🪙 — tev nepietiek`, 'bad'); return; }
+    this.addCoins(-WISH_PRICE, true);
+    this.stat('wishes');
+    this.me.petT = 0.7;
+    this.me.heading = Math.atan2(-this.me.pos.x, -this.me.pos.z);
+    sfx('coin');
+    this.spawnFloat('🪙', new THREE.Vector3(0, VILLAGE_Y + 1, 0));
+    const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+    const r = Math.random();
+    let gift = null;
+    if (r < 0.42) gift = null;
+    else if (r < 0.70) { const c = pick(Object.keys(CROPS)); gift = { k: c + '_seed', n: 2 + Math.floor(Math.random() * 3), text: `${CROPS[c].name} sēklas` }; }
+    else if (r < 0.80) gift = { coins: 8 + Math.floor(Math.random() * 13) };
+    else if (r < 0.89) { const d = pick(Object.keys(DECOR).filter((k) => DECOR[k].price <= 55)); gift = { k: 'd_' + d, n: 1, text: DECOR[d].name }; }
+    else if (r < 0.95) { const t = pick(Object.keys(TREES)); gift = { k: t + '_sap', n: 1, text: `Stāds: ${TREES[t].name}` }; }
+    else if (r < 0.985) {
+      const free = Object.keys(CLOTHES).filter((k) => !this.save.ownedClothes.includes(k) && CLOTHES[k].price <= 45);
+      gift = free.length ? { cloth: pick(free) } : { coins: 30 };
+    } else gift = { coins: 60, big: true };
+    setTimeout(() => {
+      if (!gift) {
+        const msgs = ['🪙 Plunkš… Aka klusē. Šoreiz nav veiksmes!', '🪙 Monēta aizripoja dziļi… Varbūt nākamreiz!', '🪙 Tikai ūdens apļi… Mēģini vēlreiz!'];
+        toast(pick(msgs), '', 3200); return;
+      }
+      sfx(gift.big ? 'win' : 'star');
+      let txt, ic;
+      if (gift.coins) { this.addCoins(gift.coins, true); txt = `${gift.coins}🪙`; ic = 'coin'; }
+      else if (gift.cloth) { this.save.ownedClothes.push(gift.cloth); txt = CLOTHES[gift.cloth].name + ' (somā)'; ic = 'cl:' + gift.cloth; }
+      else { this.addItem(gift.k, gift.n); txt = `${gift.text}${gift.n > 1 ? ' ×' + gift.n : ''}`; ic = gift.k; }
+      this.showPrize('✨ Aka piepildīja vēlēšanos!', ic, txt);
+      this.persist();
+    }, 650);
+  },
+
+  // liels attēls ekrāna vidū (laimests, noķerta zivs); pieskaroties pazūd
+  showPrize(title, iconKey, text, sub = '', svg = null) {
+    let ov = $('prize');
+    if (!ov) {
+      ov = el('div', { id: 'prize' });
+      document.body.append(ov);
+      ov.addEventListener('pointerdown', (e) => { e.preventDefault(); ov.classList.remove('on'); });
+    }
+    ov.innerHTML = '';
+    const box = el('div', { className: 'prize-box' });
+    box.append(el('div', { className: 'prize-title' }, title));
+    const fishPic = svg || (iconKey && iconKey.startsWith('fish:'));
+    const pic = el('div', { className: 'prize-pic' + (fishPic ? ' wide' : '') });
+    pic.innerHTML = svg || icon(iconKey || 'nothing');
+    box.append(pic, el('div', { className: 'prize-text' }, text));
+    if (sub) box.append(el('div', { className: 'prize-sub', html: sub }));
+    box.append(el('div', { className: 'prize-hint' }, 'Pieskaries, lai turpinātu'));
+    ov.append(box);
+    ov.classList.add('on');
+    clearTimeout(this.prizeT);
+    this.prizeT = setTimeout(() => ov.classList.remove('on'), 6000);
   },
 
   // ======================= nedēļas kopīgais mērķis =======================

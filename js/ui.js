@@ -14,6 +14,7 @@ export function toast(text, kind = '', ms = 2600) {
 
 let panelOnClose = null;
 export function showPanel(title, build, onClose = null) {
+  $('panel').querySelector('.panel-box').classList.remove('wide');
   $('panel-title').textContent = title;
   const body = $('panel-body');
   body.innerHTML = '';

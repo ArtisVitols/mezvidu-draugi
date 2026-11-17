@@ -1,12 +1,12 @@
 import * as THREE from 'three';
-import { makeNoise2D, mulberry32 } from './noise.js?v=1.20.0';
-import { MUSHROOMS } from './data.js?v=1.20.0';
+import { makeNoise2D, mulberry32 } from './noise.js?v=1.21.0';
+import { MUSHROOMS } from './data.js?v=1.21.0';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mat, smoothstep, lerp, makeTextSprite, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.20.0';
-import { optimizeRig, flattenStatic } from './characters.js?v=1.20.0';
-import { ZONE_HALF, ZONES, DIRS, GROUND_Y, sqDist, clampSquare, buildBorderPosts, smoothRoad, RoadIndex, buildRoadMesh, ROAD_HW, FOREST, neighbour, openSides, buildTerrainFence, wood } from './zones.js?v=1.20.0';
-import { buildGardenHouse, buildGreenhouse, buildGateArch, buildFingerpost, buildRoadSign, HOUSE } from './farmyard.js?v=1.20.0';
-import { findPlaces, placeHeight, inPlace, buildPlaces, updatePlaces, placeBerries } from './places.js?v=1.20.0';
+import { mat, smoothstep, lerp, makeTextSprite, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.21.0';
+import { optimizeRig, flattenStatic } from './characters.js?v=1.21.0';
+import { ZONE_HALF, ZONES, DIRS, GROUND_Y, sqDist, clampSquare, buildBorderPosts, smoothRoad, RoadIndex, buildRoadMesh, ROAD_HW, FOREST, neighbour, openSides, buildTerrainFence, wood } from './zones.js?v=1.21.0';
+import { buildGardenHouse, buildGreenhouse, buildGateArch, buildFingerpost, buildRoadSign, HOUSE } from './farmyard.js?v=1.21.0';
+import { findPlaces, placeHeight, inPlace, buildPlaces, updatePlaces, placeBerries } from './places.js?v=1.21.0';
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
@@ -108,7 +108,7 @@ export function gateSpots(slot) {
 export const VENDORS = [
   { id: 'seeds', name: 'Ūdrs Ojārs', title: '🌱 Sēklas', x: 14, z: -12, animal: 'udrs', fur: '#6b4a2e', shirt: '#2fa84f', cart: '#3c9a4a' },
   { id: 'buyer', name: 'Āpsis Arnolds', title: '🧺 Uzpērku', x: 18, z: 0, animal: 'apsis', fur: '#7d7d7d', shirt: '#2f6fd6', cart: '#2f6fd6' },
-  { id: 'hats', name: 'Pūce Paula', title: '🎩 Cepures', x: 14, z: 12, animal: 'puce', fur: '#9a7348', shirt: '#9b3bd2', cart: '#b04ad2' },
+  { id: 'hats', name: 'Pūce Paula', title: '🎩 Drēbes', x: 14, z: 12, animal: 'puce', fur: '#9a7348', shirt: '#9b3bd2', cart: '#b04ad2' },
   { id: 'pets', name: 'Suns Sprīdis', title: '🐾 Mājdzīvnieki', x: -9, z: -15, animal: 'suns', fur: '#c89b5e', shirt: '#f07b2a', cart: '#e0902a' },
   { id: 'decor', name: 'Lapsa Liene', title: '🏡 Dārzam', x: -9, z: 15, animal: 'lapsa', fur: '#e8742a', shirt: '#2fa84f', cart: '#3a9a9a' },
 ];

@@ -30,6 +30,32 @@ export const CROPS = {
   kaposts:   { name: 'Kāposts',    icon: '🥬', seedPrice: 22, sell: 16, yield: 4, grow: 1800, sp: 0.833, color: '#8fc06a' },
   saulgrieze:{ name: 'Saulgrieze', icon: '🌻', seedPrice: 30, sell: 12, yield: 6, grow: 2700, sp: 0.625, color: '#f2c12e' },
   kirbis:    { name: 'Ķirbis',     icon: '🎃', seedPrice: 45, sell: 90, yield: 2, grow: 3600, sp: 1.25,  color: '#f39a1e' },
+  // 1.21.0 — jaunas kultūras (tikai beigās: saglabājumā kultūra ir indekss šajā sarakstā)
+  redisi:    { name: 'Redīsi',     icon: '🔴', seedPrice: 4,  sell: 3,  yield: 5, grow: 45,    sp: 0.4167, color: '#e0306a' },
+  salati:    { name: 'Salāti',     icon: '🥬', seedPrice: 7,  sell: 5,  yield: 5, grow: 240,   sp: 0.625, color: '#9ad46a' },
+  sipols:    { name: 'Sīpols',     icon: '🧅', seedPrice: 10, sell: 4,  yield: 7, grow: 480,   sp: 0.4167, color: '#d9a85a' },
+  zirni:     { name: 'Zirņi',      icon: '🫛', seedPrice: 11, sell: 5,  yield: 6, grow: 720,   sp: 0.5,   color: '#7ac04a' },
+  biete:     { name: 'Biete',      icon: '🟣', seedPrice: 13, sell: 6,  yield: 6, grow: 1500,  sp: 0.5,   color: '#8a1a3a' },
+  gurkis:    { name: 'Gurķis',     icon: '🥒', seedPrice: 20, sell: 6,  yield: 8, grow: 2400,  sp: 0.833, color: '#3a8a2a' },
+  kukuruza:  { name: 'Kukurūza',   icon: '🌽', seedPrice: 28, sell: 9,  yield: 6, grow: 5400,  sp: 0.625, color: '#f2d040' },
+  paprika:   { name: 'Paprika',    icon: '🫑', seedPrice: 35, sell: 14, yield: 5, grow: 7200,  sp: 0.833, color: '#e8402a' },
+  arbuzs:    { name: 'Arbūzs',     icon: '🍉', seedPrice: 60, sell: 110, yield: 2, grow: 10800, sp: 1.25, color: '#2f7a3a' },
+  lavanda:   { name: 'Lavanda',    icon: '💜', seedPrice: 40, sell: 18, yield: 5, grow: 14400, sp: 0.625, color: '#9a6ad0' },
+};
+
+// ---------- Augļu koki (stāda no stāda uz uzarta lauciņa; izaug un tad ik pa laikam dod augļus) ----------
+// grow — līdz pieaugušam kokam (s), every — cik bieži nogatavojas augļi (s), yield — augļi vienā reizē
+export const TREES = {
+  abele:    { name: 'Ābele',    price: 80,  grow: 7200,  every: 1800, yield: 8,  fruit: 'abols',     leaf: '#4a8a30', fcol: '#d8302a' },
+  bumbiere: { name: 'Bumbiere', price: 100, grow: 9000,  every: 2100, yield: 7,  fruit: 'bumbieris', leaf: '#3f7f2c', fcol: '#c8c040' },
+  kirsis:   { name: 'Ķirsis',   price: 120, grow: 10800, every: 2400, yield: 12, fruit: 'kirsi',     leaf: '#3d7a2a', fcol: '#a0101e' },
+  plume:    { name: 'Plūme',    price: 110, grow: 9000,  every: 2100, yield: 10, fruit: 'plumes',    leaf: '#46802e', fcol: '#4a2a6a' },
+};
+export const FRUITS = {
+  abols:     { name: 'Āboli',     sell: 6 },
+  bumbieris: { name: 'Bumbieri',  sell: 8 },
+  kirsi:     { name: 'Ķirši',     sell: 5 },
+  plumes:    { name: 'Plūmes',    sell: 6 },
 };
 
 export const MUSHROOMS = {
@@ -45,6 +71,35 @@ export const HATS = {
   cilindrs:{ name: 'Cilindrs', price: 100 },
   kronis:  { name: 'Kronis', price: 150 },
   kivere:  { name: 'Bruņinieka ķivere', price: 0, hidden: true }, // tikai no dārguma lādes
+  nagene:  { name: 'Beisbola cepure', price: 30 },
+  berete:  { name: 'Berete', price: 35 },
+  kovbojs: { name: 'Kovboja cepure', price: 70 },
+  pirats:  { name: 'Pirāta cepure', price: 90 },
+};
+
+// ---------- Drēbes (pērk pie Pūces Paulas, uzvelk somā). slot: krekls, brilles, kakls, mugura, kājas ----------
+export const SLOTS = [
+  { id: 'hat', name: 'Cepure' }, { id: 'glasses', name: 'Brilles' }, { id: 'neck', name: 'Kakls' },
+  { id: 'top', name: 'Krekls' }, { id: 'back', name: 'Mugura' }, { id: 'feet', name: 'Apavi' },
+];
+export const CLOTHES = {
+  svitrains:   { slot: 'top', name: 'Svītrains krekls', price: 25 },
+  rutains:     { slot: 'top', name: 'Rūtains krekls', price: 30 },
+  futbola:     { slot: 'top', name: 'Futbola krekls', price: 35 },
+  zvaigznes:   { slot: 'top', name: 'Krekls ar zvaigznēm', price: 45 },
+  latvija:     { slot: 'top', name: 'Latvijas krekls', price: 50 },
+  saulesbrilles: { slot: 'glasses', name: 'Saulesbrilles', price: 30 },
+  apalas:      { slot: 'glasses', name: 'Apaļās brilles', price: 25 },
+  sirds:       { slot: 'glasses', name: 'Sirsniņbrilles', price: 35 },
+  taurenitis:  { slot: 'neck', name: 'Tauriņš', price: 20 },
+  kaklasaite:  { slot: 'neck', name: 'Kaklasaite', price: 25 },
+  krelles:     { slot: 'neck', name: 'Pērļu krelles', price: 40 },
+  medala:      { slot: 'neck', name: 'Zelta medaļa', price: 60 },
+  mugursoma:   { slot: 'back', name: 'Mugursoma', price: 45 },
+  apmetnis:    { slot: 'back', name: 'Varoņa apmetnis', price: 70 },
+  sparni:      { slot: 'back', name: 'Tauriņa spārni', price: 90 },
+  zabaki:      { slot: 'feet', name: 'Gumijas zābaki', price: 35 },
+  kedas:       { slot: 'feet', name: 'Kedas', price: 40 },
 };
 
 export const KART_COLORS = [
@@ -93,13 +148,25 @@ export const QUESTS = [
 // ---------- Makšķerēšana ----------
 export const ROD_PRICE = 25;
 // w — iespējamība, pier — iespējamība no laipas (tur labāk ķeras)
+// sell — vidēja izmēra zivs cena; lielāka zivs maksā vairāk. cm/kg — mazākā un lielākā zivs
 export const FISH = {
-  rauda:   { name: 'Rauda', icon: '🐟', sell: 4, w: 45, pier: 35 },
-  asaris:  { name: 'Asaris', icon: '🐠', sell: 6, w: 30, pier: 30 },
-  lidaka:  { name: 'Līdaka', icon: '🐊', sell: 12, w: 15, pier: 22 },
-  zelta:   { name: 'Zelta zivtiņa', icon: '✨', sell: 40, w: 3, pier: 8 },
-  zabaks:  { name: 'Vecs zābaks', icon: '👢', sell: 0, w: 7, pier: 5, junk: true },
+  rauda:   { name: 'Rauda', icon: '🐟', sell: 4, w: 42, pier: 32, cm: [12, 32], kg: [0.05, 0.6] },
+  asaris:  { name: 'Asaris', icon: '🐠', sell: 6, w: 28, pier: 27, cm: [12, 42], kg: [0.08, 1.4] },
+  lidaka:  { name: 'Līdaka', icon: '🐟', sell: 12, w: 13, pier: 18, cm: [40, 115], kg: [0.6, 11] },
+  karpa:   { name: 'Karpa', icon: '🐟', sell: 14, w: 7, pier: 9, cm: [30, 85], kg: [0.8, 12] },
+  sams:    { name: 'Sams', icon: '🐟', sell: 30, w: 1.5, pier: 4, cm: [80, 190], kg: [5, 45] },
+  zelta:   { name: 'Zelta zivtiņa', icon: '✨', sell: 40, w: 2.5, pier: 6, cm: [6, 15], kg: [0.03, 0.18] },
+  zabaks:  { name: 'Vecs zābaks', icon: '👢', sell: 0, w: 6, pier: 4, junk: true },
 };
+// noķertās zivs izmērs: t 0..1 (biežāk mazas), lielāka — dārgāka
+export function rollFish(kind, rnd = Math.random) {
+  const d = FISH[kind];
+  const t = Math.pow(rnd(), 1.7);
+  const cm = Math.round(d.cm[0] + (d.cm[1] - d.cm[0]) * t);
+  const kg = Math.round((d.kg[0] + (d.kg[1] - d.kg[0]) * Math.pow(t, 2.4)) * 100) / 100;
+  const v = Math.max(1, Math.round(d.sell * (0.45 + 2.3 * Math.pow(t, 1.4))));
+  return { k: kind, cm, kg, v };
+}
 
 // ---------- Ogas ----------
 export const BERRIES = {
@@ -128,7 +195,13 @@ export const DECOR = {
   biedeklis: { name: 'Putnubiedēklis', icon: '🎃', price: 45 },
   karogs:    { name: 'Latvijas karogs', icon: '🚩', price: 50 },
   struklaka: { name: 'Strūklaka', icon: '⛲', price: 80 },
+  sene:      { name: 'Dārza sēne', icon: '🍄', price: 55 },
+  vejdzirnavas: { name: 'Mazās vējdzirnavas', icon: '🌬️', price: 65 },
+  ziedudobe: { name: 'Ziedu dobe', icon: '🌷', price: 40 },
 };
+
+// ---------- Vēlēšanās aka meža ciemata vidū: iemet 5🪙 — dažreiz kaut kas izkrīt ----------
+export const WISH_PRICE = 5;
 
 // ---------- Īpašās vietas ----------
 export const PLACES = {

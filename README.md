@@ -25,15 +25,21 @@ Datorā: WASD / bultiņas, atstarpe, E, peles vilkšana.
   sarkana dārza mājiņa (var ieiet — iekšā galds, plaukts, paklājs), stikla siltumnīca ar tomātu dobēm un pagalms rotājumiem.
   Ceļi pie sētām taisni, tālāk līkumoti ar bērzu rindām; apkārt pļava un mežs.
   - 🪓 Nocērt kokus, ⛏️ novāc akmeņus, ⛏️ uzar 2,5 m lauciņus (līdz 400), 🌱 sēj, 💧 aplaisti, 🧺 novāc ražu un pārdod tirgū
-  - 🌾 9 kultūras: burkāni, auzas, kartupeļi, kvieši, tomāti, zemenes, kāposti, saulgriezes, ķirbji — dārgākās aug ilgāk (līdz 1 stundai), bet nes vairāk
+  - 🌾 19 kultūras: redīsi, burkāni, auzas, salāti, kartupeļi, sīpoli, kvieši, zirņi, tomāti, zemenes, bietes, kāposti, gurķi, saulgriezes, ķirbji, kukurūza, paprika, arbūzi, lavanda — dārgākās aug ilgāk (līdz 4 stundām), bet nes vairāk
+  - 🌳 Augļu koki (ābele, bumbiere, ķirsis, plūme): iestādi stādu, tas izaug un tad atkal un atkal dod augļus
+  - 🤲 Rotājumus savā sētā var pacelt, pārnest un novietot jebkur
   - Blakus lauciņi ar to pašu kultūru saaug vienā vienmērīgā laukā; dažādām kultūrām starp lauciņiem paliek sprauga
   - ⏰ Augi aug pēc pulksteņa — arī tad, kad spēle aizvērta
   - 👥 Draugu sētās var aiziet ciemos (👥 poga → „Ciemos”) un aplaistīt viņu dārzus
   - Visas 4 sētas ir vienādas (pagrieztas), tāpēc tavs dārzs paliek tāds pats, lai kurā sētā istabā tevi ieliek
   - 🪧 Abos sētas vārtos arkā karājas koka dēlis ar īpašnieka vārdu; krustojumā koka ceļa rādītājs, un katrā ceļā 100 m no krustojuma
     brūna ceļa zīme, kas rāda, kurp ceļš ved (otrā pusē — atpakaļ uz sētu)
-- 🧺 Tirgus: Ūdrs Ojārs (sēklas, makšķere), Āpsis Arnolds (uzpērk ražu, zivis, ogas), Pūce Paula (cepures, kartinga krāsas), Suns Sprīdis (mājdzīvnieki), Lapsa Liene (dārza rotājumi), Bebrs Bruno ar saldējuma ratiņiem
-- 🎣 Makšķerēšana ezeros: kad pludiņš raustās — „VILKT!”. Raudas, asari, līdakas un reta zelta zivtiņa (no laipas ķeras labāk)
+- 🧺 Tirgus: Ūdrs Ojārs (sēklas, augļu koku stādi, makšķere), Āpsis Arnolds (uzpērk ražu, augļus, zivis, ogas), Pūce Paula (cepures, drēbes, kartinga krāsas), Suns Sprīdis (mājdzīvnieki), Lapsa Liene (dārza rotājumi), Bebrs Bruno ar saldējuma ratiņiem.
+  Katrai precei savs attēls.
+- 🪙 Vēlēšanās aka ciemata vidū: iemet 5🪙 — dažreiz izkrīt kaut kas jauks
+- 👕 Drēbes: krekli, brilles, kaklarotas, mugursoma, apmetnis, spārni, zābaki, kedas un cepures. 🎒 Somā redzams tavs tēls ar drēbēm un visas lietas režģī.
+- 🎁 Lietas un monētas var uzdāvināt draugiem (somā)
+- 🎣 Makšķerēšana ezeros: kad pludiņš raustās — „VILKT!”. Raudas, asari, līdakas, karpas, rets sams un zelta zivtiņa (no laipas ķeras labāk). Katrai zivij savs garums un svars — lielāka maksā vairāk
 - 🫐 Ogas: mellenes mežā, avenes meža malās, dzērvenes purvā
 - 🐾 Mājdzīvnieki, kas skrien līdzi (un ielec mašīnā!): ezītis, zaķēns, vāverīte, mežacūciņa, stirnēns
 - 🏡 Dārza rotājumi: rūķis, puķu pods, putnu būrītis, soliņš, laterna, putnubiedēklis, Latvijas karogs, strūklaka — tos redz arī draugi
@@ -42,20 +48,22 @@ Datorā: WASD / bultiņas, atstarpe, E, peles vilkšana.
 - 🎲 Ķeramais un paslēpes ar draugiem
 - 🏎️ **Sacīkšu trase** (rietumos): ~1,6 km aplis ar diviem tuneļiem cauri pakalniem un turbo bultām — 2 apļu sacīkstes ar draugiem un robotiem
 - 🦌 Meža dzīvnieki: stirnas, zaķi, eži, mežacūkas, vāveres, stārķi — tos var paglaudīt
-- 🧭 5 zemes (katra 630 × 630 m): 🏡 sēta centrā, 🌲 Mežvidu mežs austrumos (ciems ar tirgu, sēnes, ogas, dzīvnieki, īpašās vietas), 🏁 sacīkšu trase rietumos, ❄️ Ziemas zeme ziemeļos, 🏖️ Dienvidu kāpas dienvidos. No sētas uz katru zemi ved grants ceļš — pa tiem var braukt ar 🚙 mašīnu (arī uz citu zemi, līdz 4 draugiem vienā mašīnā). Ziemas zemē ir 🛷 sniega motocikls un liels slēpošanas kalns.
+- 🧭 5 zemes (katra 630 × 630 m): 🏡 sēta centrā, 🌲 Mežvidu mežs austrumos (ciems ar tirgu, sēnes, ogas, dzīvnieki, īpašās vietas), 🏁 sacīkšu trase rietumos, ❄️ Ziemas zeme ziemeļos, 🏖️ Dienvidu kāpas dienvidos. No sētas uz katru zemi ved grants ceļš — pa tiem var braukt ar 🚙 mašīnu (arī uz citu zemi, līdz 4 draugiem vienā mašīnā) vai 🚲 velosipēdu. Sētas krustojumā stāv 2 mašīnas un velosipēds — katrs ir viens vienīgs, ar to var braukt ikviens, un tas paliek tur, kur atstāts. Ziemas zemē ir 🛷 sniega motocikls un liels slēpošanas kalns.
   Pār robežu var pāriet jebkurā vietā, kur aiz tās ir cita zeme (robežu iezīmē sarkanbalti stabiņi, ārējās malās — žogs); kāpas pagaidām ir līdzenas
 - ❄️ **Ziemas zeme** (uz ziemeļiem): sniegs, sniegputenis, sniegotas eglītes, Ziemassvētku egle, sniegavīri un ziemeļbrieži.
   Tēlam automātiski ir ziemas cepure, dūraiņi un plīvojoša šalle.
   - ⛷️ Liels slēpošanas kalns (~157 m augsts, ~330 m garš nobrauciens): brauc ar krēslu pacēlāju augšā un slēpo lejā (kursorsvira — stūrēt, uz leju — bremzēt, ⤒ — lēkt). Slēpot var visi kopā, un trasē slalomā brauc arī citi slēpotāji — zaķis, lapsa, kaķis un suns.
   - ❄️ Sniega piku kauja: laukumā ar sniega vaļņiem met pikas draugiem vai sniegavīru mērķiem (dzeltenā poga „Mest piku”).
-- 🗺️ Pieskaries minikartei, lai redzētu karti — visas zemes kopā un kur atrodas katrs draugs
+- 🗺️ Minikarte griežas līdzi tev (bulta vienmēr uz augšu, N — ziemeļi). Pieskaries tai — liela tavas zemes karte ar visiem spēlētājiem un transportu; „🧭 Visas zemes” — visa pasaule
 - 🌲 Dabiska pasaule: egļu, priežu, bērzu un ozolu meži, kas šūpojas vējā, pļavas ar ziediem, ezeri ar niedrēm un ūdensrozēm, guļbūvju ciemats
 - ⭐ 15 zelta zvaigznes paslēptas kalnu virsotnēs
 - 📜 Uzdevumi ar balvām
 
 ## Saglabāšana
-Katra spēlētāja progress (monētas, soma, sētas lauks, zvaigznes, uzdevumi, cepures, mājdzīvnieki, rotājumi, atklātās vietas, kartes gabali, nedēļas mērķis, labākais aplis, zeme un vieta tajā) tiek saglabāts
+Katra spēlētāja progress (monētas, soma, sētas lauks, koki, zvaigznes, uzdevumi, cepures un drēbes, mājdzīvnieki, rotājumi, zivis, atklātās vietas, kartes gabali, nedēļas mērķis, labākais aplis, zeme un vieta tajā) tiek saglabāts
 **tā telefona pārlūkā** zem spēlētāja vārda — ik pēc 5 sekundēm un aizverot spēli. Nākamreiz ieraksti to pašu vārdu.
+Pasaule visiem ir viena un tā pati, tāpēc nav svarīgi, kurš ir saimnieks: katrs atnāk ar savu progresu un savu dārzu.
+Saimnieka telefons glabā tikai to, kur stāv kopīgās mašīnas.
 
 ## Tehniski
 - Tīrs HTML + JavaScript, [three.js](https://threejs.org) 3D grafikai, [PeerJS](https://peerjs.com) (WebRTC) tiešiem savienojumiem.

@@ -1,8 +1,8 @@
 // Mazie modeļi jaunajām nodarbēm: ogu krūmi, dārza rotājumi, makšķere, pludiņš
 import * as THREE from 'three';
-import { mat, canvasTexture, noiseTexture } from './util.js?v=1.20.0';
-import { optimizeRig, buildHat } from './characters.js?v=1.20.0';
-import { BERRIES } from './data.js?v=1.20.0';
+import { mat, canvasTexture, noiseTexture } from './util.js?v=1.21.0';
+import { optimizeRig, buildHat } from './characters.js?v=1.21.0';
+import { BERRIES, TREES } from './data.js?v=1.21.0';
 
 const TAU = Math.PI * 2;
 function put(parent, geo, m, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) {
@@ -170,6 +170,78 @@ export function buildDecor(id) {
       put(g, cyl(0.3, 0.02, 0.4, 14), wm, 0, 1.42, 0);
       put(g, cyl(0.75, 0.32, 0.8, 18), new THREE.MeshStandardMaterial({ color: '#cfe8ff', transparent: true, opacity: 0.18, roughness: 0.05, depthWrite: false, side: THREE.DoubleSide }), 0, 0.78, 0);
       break;
+    }
+    case 'sene': {
+      put(g, lathe([[0, 0], [0.22, 0], [0.2, 0.2], [0.17, 0.55], [0.15, 0.7], [0, 0.7]], 18), mat('#f2ead6', { roughness: 0.8 }));
+      put(g, lathe([[0, 0.62], [0.62, 0.6], [0.66, 0.66], [0.58, 0.82], [0.36, 0.98], [0, 1.04]], 28), mat('#d8302a', { roughness: 0.45 }));
+      const wm = mat('#fbf6ea', { roughness: 0.7 });
+      for (let i = 0; i < 12; i++) { const a = i * 2.4, r = 0.12 + (i % 4) * 0.12; const y = 1.04 - Math.pow(r / 0.62, 2) * 0.42; put(g, sph(0.05, 8, 6), wm, Math.cos(a) * r, y, Math.sin(a) * r).scale.y = 0.45; }
+      put(g, new THREE.BoxGeometry(0.16, 0.24, 0.02), mat('#6a3e1e'), 0, 0.2, 0.2);
+      put(g, sph(0.012, 6, 5), mat('#d8b040', { metalness: 0.8 }), 0.05, 0.2, 0.215);
+      put(g, new THREE.BoxGeometry(0.1, 0.1, 0.02), new THREE.MeshStandardMaterial({ color: '#fff0b0', emissive: '#ffb84a', emissiveIntensity: 0.6 }), 0, 0.45, 0.17);
+      break;
+    }
+    case 'vejdzirnavas': {
+      const wall = mat('#ece4d2', { roughness: 0.9 });
+      put(g, lathe([[0, 0], [0.42, 0], [0.36, 1.1], [0.3, 1.25], [0, 1.25]], 8), wall);
+      put(g, new THREE.ConeGeometry(0.42, 0.45, 8), mat('#8a3a2a', { roughness: 0.8 }), 0, 1.45, 0);
+      put(g, new THREE.BoxGeometry(0.2, 0.36, 0.04), woodM('#6a4a2a'), 0, 0.18, 0.37);
+      const hub = new THREE.Group(); hub.position.set(0, 1.2, 0.36); g.add(hub);
+      put(hub, cyl(0.05, 0.05, 0.12, 8), mat('#4a3a2a'), 0, 0, 0, Math.PI / 2, 0, 0);
+      const sail = woodM('#e8e0cc');
+      for (let i = 0; i < 4; i++) {
+        const arm = new THREE.Group(); arm.rotation.z = i * Math.PI / 2 + 0.3; hub.add(arm);
+        put(arm, new THREE.BoxGeometry(0.03, 0.85, 0.02), mat('#5a4a3a'), 0, 0.45, 0.05);
+        put(arm, new THREE.BoxGeometry(0.18, 0.6, 0.012), sail, 0.1, 0.55, 0.06);
+      }
+      g.userData.spin = hub;
+      break;
+    }
+    case 'ziedudobe': {
+      put(g, cyl(0.85, 0.9, 0.18, 22), mat('#9a948a', { roughness: 1, map: noiseTexture('stone', 64) }), 0, 0.09, 0);
+      put(g, cyl(0.78, 0.78, 0.04, 22), mat('#5a4030', { roughness: 1 }), 0, 0.18, 0);
+      const lm = mat('#3f7a2a', { roughness: 0.8, side: THREE.DoubleSide });
+      const cols = ['#e83a5a', '#f2d23a', '#ffffff', '#c05ae0', '#ff7a2a', '#e8302a'];
+      for (let i = 0; i < 26; i++) {
+        const a = i * 2.4, r = 0.1 + (i % 5) * 0.14, x = Math.cos(a) * r, z = Math.sin(a) * r, h = 0.25 + (i % 3) * 0.08;
+        put(g, cyl(0.008, 0.008, h, 4), lm, x, 0.2 + h / 2, z);
+        put(g, sph(0.06, 8, 6), mat(cols[i % cols.length], { roughness: 0.6 }), x, 0.2 + h, z).scale.y = 0.6;
+      }
+      break;
+    }
+  }
+  return finish(g);
+}
+
+// ---------- augļu koki dārzā (stadija 0 — stāds, 1 — jauns koks, 2 — pieaudzis; fruit — ar augļiem) ----------
+export function buildFruitTree(kind, stage, fruit) {
+  const T = TREES[kind] || TREES.abele;
+  const g = new THREE.Group();
+  const bark = woodM('#6a4e36');
+  const lm = mat(T.leaf, { roughness: 0.85 });
+  if (stage === 0) {
+    put(g, cyl(0.025, 0.018, 0.8, 6), bark, 0, 0.4, 0);
+    put(g, cyl(0.012, 0.012, 0.9, 4), woodM('#a8885a'), 0.06, 0.45, 0); // mietiņš
+    for (let i = 0; i < 4; i++) put(g, sph(0.1, 7, 5), lm, Math.cos(i * 1.7) * 0.07, 0.62 + i * 0.06, Math.sin(i * 1.7) * 0.07).scale.set(1, 0.7, 1);
+    return finish(g);
+  }
+  const big = stage === 2;
+  const H = big ? 1.5 : 0.95, R = big ? 1.15 : 0.6;
+  put(g, cyl(big ? 0.13 : 0.07, big ? 0.09 : 0.05, H, 8), bark, 0, H / 2, 0);
+  for (let i = 0; i < 3; i++) { const a = i * 2.1 + 0.4; put(g, cyl(0.05, 0.03, R * 0.9, 6), bark, Math.cos(a) * R * 0.3, H + R * 0.25, Math.sin(a) * R * 0.3, Math.sin(a) * 0.7, 0, -Math.cos(a) * 0.7); }
+  const blobs = [[0, H + R * 0.75, 0, R], [R * 0.6, H + R * 0.45, 0.1, R * 0.7], [-R * 0.55, H + R * 0.5, -0.15, R * 0.72], [0.1, H + R * 0.5, R * 0.55, R * 0.68], [-0.1, H + R * 0.4, -R * 0.55, R * 0.66]];
+  const dark = mat(new THREE.Color(T.leaf).multiplyScalar(0.8).getStyle(), { roughness: 0.9 });
+  blobs.forEach(([x, y, z, r], i) => put(g, new THREE.IcosahedronGeometry(r, 1), i % 2 ? dark : lm, x, y, z).scale.set(1, 0.82, 1));
+  if (fruit && big) {
+    const fm = mat(T.fcol, { roughness: 0.35 });
+    const geo = kind === 'bumbiere' ? new THREE.CapsuleGeometry(0.06, 0.06, 3, 8) : sph(kind === 'kirsis' ? 0.045 : 0.075, 8, 6);
+    let seed = 3;
+    const r = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+    for (let i = 0; i < 22; i++) {
+      const b = blobs[i % blobs.length], th = r() * Math.PI * 2, ph = 0.3 + r() * 1.6;
+      const x = b[0] + Math.sin(ph) * Math.cos(th) * b[3] * 0.98, y = b[1] + Math.cos(ph) * b[3] * 0.8, z = b[2] + Math.sin(ph) * Math.sin(th) * b[3] * 0.98;
+      put(g, geo, fm, x, y - 0.03, z);
+      if (kind === 'kirsis') put(g, geo, fm, x + 0.05, y - 0.06, z + 0.02);
     }
   }
   return finish(g);
