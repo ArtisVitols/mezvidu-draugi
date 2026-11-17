@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mat, makeBlobShadow, noiseTexture, lerp, canvasTexture } from './util.js?v=1.18.0';
+import { mat, makeBlobShadow, noiseTexture, lerp, canvasTexture } from './util.js?v=1.19.0';
 
 // kažoka/auduma materiāli ar smalku faktūru
 let furTex = null, clothTex = null;
@@ -173,7 +173,8 @@ export function flattenStatic(root, opts = {}) {
   return out;
 }
 
-const S = (r, w = 16, h = 12) => new THREE.SphereGeometry(r, w, h);
+// segmentu skaits ×0,72 (1.19.0): tikpat gludi no spēles kameras attāluma, bet ~2× mazāk trijstūru katram dzīvniekam
+const S = (r, w = 16, h = 12) => new THREE.SphereGeometry(r, Math.max(6, Math.round(w * 0.72)), Math.max(5, Math.round(h * 0.72)));
 const lighten = (hex, k) => '#' + new THREE.Color(hex).lerp(new THREE.Color('#ffffff'), k).getHexString();
 const darken = (hex, k) => '#' + new THREE.Color(hex).lerp(new THREE.Color('#000000'), k).getHexString();
 

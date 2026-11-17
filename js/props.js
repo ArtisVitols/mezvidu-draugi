@@ -1,8 +1,8 @@
 // Mazie modeļi jaunajām nodarbēm: ogu krūmi, dārza rotājumi, makšķere, pludiņš
 import * as THREE from 'three';
-import { mat, canvasTexture, noiseTexture } from './util.js?v=1.18.0';
-import { optimizeRig, buildHat } from './characters.js?v=1.18.0';
-import { BERRIES } from './data.js?v=1.18.0';
+import { mat, canvasTexture, noiseTexture } from './util.js?v=1.19.0';
+import { optimizeRig, buildHat } from './characters.js?v=1.19.0';
+import { BERRIES } from './data.js?v=1.19.0';
 
 const TAU = Math.PI * 2;
 function put(parent, geo, m, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) {
@@ -35,11 +35,11 @@ export function buildBerryBush(kind) {
       const lm = mat('#3d6a2a', { roughness: 0.9 });
       for (let i = 0; i < 8; i++) {
         const a = i / 8 * TAU, d = i ? 0.22 : 0;
-        put(g, sph(0.2, 9, 7), lm, Math.cos(a) * d, 0.18 + r() * 0.08, Math.sin(a) * d).scale.set(1.1, 0.75, 1.1);
+        put(g, sph(0.2, 7, 5), lm, Math.cos(a) * d, 0.18 + r() * 0.08, Math.sin(a) * d).scale.set(1.1, 0.75, 1.1);
       }
       for (let i = 0; i < 22; i++) {
         const a = r() * TAU, d = 0.1 + r() * 0.28;
-        put(berries, sph(0.038, 8, 6), bm, Math.cos(a) * d, 0.18 + r() * 0.22, Math.sin(a) * d);
+        put(berries, sph(0.038, 5, 4), bm, Math.cos(a) * d, 0.18 + r() * 0.22, Math.sin(a) * d);
       }
     } else if (kind === 'avene') {
       const cm = mat('#7a5a3a', { roughness: 0.9 }), lm = mat('#4f8a34', { roughness: 0.85, side: THREE.DoubleSide });
@@ -50,21 +50,21 @@ export function buildBerryBush(kind) {
       }
       for (let i = 0; i < 16; i++) {
         const a = r() * TAU, d = 0.15 + r() * 0.3, y = 0.35 + r() * 0.75;
-        put(g, sph(0.13, 8, 6), lm, Math.cos(a) * d, y, Math.sin(a) * d).scale.set(1.2, 0.45, 0.9);
+        put(g, sph(0.13, 6, 4), lm, Math.cos(a) * d, y, Math.sin(a) * d).scale.set(1.2, 0.45, 0.9);
       }
       for (let i = 0; i < 18; i++) {
         const a = r() * TAU, d = 0.2 + r() * 0.28, y = 0.35 + r() * 0.7;
-        put(berries, sph(0.045, 8, 6), bm, Math.cos(a) * d, y, Math.sin(a) * d).scale.y = 1.25;
+        put(berries, sph(0.045, 5, 4), bm, Math.cos(a) * d, y, Math.sin(a) * d).scale.y = 1.25;
       }
     } else { // dzērvenes — zems paklājiņš ar sarkanām ogām
       const lm = mat('#4a5a2a', { roughness: 0.95 });
       for (let i = 0; i < 6; i++) {
         const a = i / 6 * TAU, d = i ? 0.3 : 0;
-        put(g, sph(0.32, 10, 6), lm, Math.cos(a) * d, 0.02, Math.sin(a) * d).scale.set(1, 0.18, 1);
+        put(g, sph(0.32, 8, 5), lm, Math.cos(a) * d, 0.02, Math.sin(a) * d).scale.set(1, 0.18, 1);
       }
       for (let i = 0; i < 16; i++) {
         const a = r() * TAU, d = r() * 0.5;
-        put(berries, sph(0.042, 8, 6), bm, Math.cos(a) * d, 0.08, Math.sin(a) * d);
+        put(berries, sph(0.042, 5, 4), bm, Math.cos(a) * d, 0.08, Math.sin(a) * d);
       }
     }
     finish(g);

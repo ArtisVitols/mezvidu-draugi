@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import { makeNoise2D, mulberry32 } from './noise.js?v=1.18.0';
-import { MUSHROOMS } from './data.js?v=1.18.0';
+import { makeNoise2D, mulberry32 } from './noise.js?v=1.19.0';
+import { MUSHROOMS } from './data.js?v=1.19.0';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mat, smoothstep, lerp, makeTextSprite, makeSignBoard, signWood, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.18.0';
-import { optimizeRig, flattenStatic } from './characters.js?v=1.18.0';
-import { ZONE_HALF, ZONES, DIRS, GROUND_Y, sqDist, clampSquare, buildBorderPosts, smoothRoad, RoadIndex, buildRoadMesh, ROAD_HW, FOREST, neighbour, openSides, buildTerrainFence, wood } from './zones.js?v=1.18.0';
-import { findPlaces, placeHeight, inPlace, buildPlaces, updatePlaces, placeBerries } from './places.js?v=1.18.0';
+import { mat, smoothstep, lerp, makeTextSprite, makeSignBoard, signWood, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.19.0';
+import { optimizeRig, flattenStatic } from './characters.js?v=1.19.0';
+import { ZONE_HALF, ZONES, DIRS, GROUND_Y, sqDist, clampSquare, buildBorderPosts, smoothRoad, RoadIndex, buildRoadMesh, ROAD_HW, FOREST, neighbour, openSides, buildTerrainFence, wood } from './zones.js?v=1.19.0';
+import { findPlaces, placeHeight, inPlace, buildPlaces, updatePlaces, placeBerries } from './places.js?v=1.19.0';
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
@@ -94,6 +94,47 @@ export const SPAWN = { x: 5, z: 5 };
 
 // Pasaule ar reljefu. zone: 'e' — mežs ar ciematu, tirgu, dzīvniekiem un īpašām vietām; 'c' — sēta ar 4 laukiem;
 // 'w' — sacīkšu trase ar tuneļiem. Visām kopīgs reljefs, koki, zāle, ceļi un robežas.
+// reljefa gabala detalizācijas līmeņi: [pilns režģis, 2× retāks]; abiem gar malām „svārki” (paslēpj spraugas starp līmeņiem).
+// Virsotnes kopīgas, atšķiras tikai indeksi.
+const TERR_LOD = 110;
+function terrainLods(geo, TS) {
+  const W = TS + 1, n0 = W * W, ring = [];
+  for (let a = 0; a < W; a++) ring.push([a, 0]);
+  for (let b = 1; b < W; b++) ring.push([TS, b]);
+  for (let a = TS - 1; a >= 0; a--) ring.push([a, TS]);
+  for (let b = TS - 1; b > 0; b--) ring.push([0, b]);
+  // svārku virsotnes: malas virsotņu kopijas 2,5 m zemāk
+  for (const name of Object.keys(geo.attributes)) {
+    const A = geo.attributes[name], k = A.itemSize, src = A.array, dst = new Float32Array((n0 + ring.length) * k);
+    dst.set(src.subarray(0, n0 * k));
+    ring.forEach(([a, b], j) => { for (let c = 0; c < k; c++) dst[(n0 + j) * k + c] = src[(b * W + a) * k + c]; if (name === 'position') dst[(n0 + j) * 3 + 1] -= 2.5; });
+    geo.setAttribute(name, new THREE.BufferAttribute(dst, k));
+  }
+  const skirtOf = new Map(ring.map(([a, b], j) => [b * W + a, n0 + j]));
+  const make = (st) => {
+    const idx = [];
+    for (let b = 0; b < TS; b += st) for (let a = 0; a < TS; a += st) {
+      const i0 = b * W + a, i1 = i0 + st, i2 = i0 + st * W, i3 = i2 + st;
+      idx.push(i0, i2, i1, i1, i2, i3);
+    }
+    const edge = []; // mala ar soli st
+    for (let a = 0; a < TS; a += st) edge.push([a, 0, a + st, 0], [a, TS, a + st, TS]);
+    for (let b = 0; b < TS; b += st) edge.push([0, b, 0, b + st], [TS, b, TS, b + st]);
+    for (const [a0, b0, a1, b1] of edge) {
+      const p = b0 * W + a0, q = b1 * W + a1, ps = skirtOf.get(p), qs = skirtOf.get(q);
+      idx.push(p, ps, q, q, ps, qs, p, q, ps, q, qs, ps); // abas puses
+    }
+    const g = new THREE.BufferGeometry();
+    for (const name of Object.keys(geo.attributes)) g.setAttribute(name, geo.attributes[name]);
+    g.setIndex(idx);
+    g.computeBoundingSphere();
+    return g;
+  };
+  const lods = [make(1), make(2)];
+  geo.dispose();
+  return lods;
+}
+
 export class World {
   constructor(seed, zone = FOREST) {
     this.zone = zone;
@@ -541,12 +582,14 @@ export class World {
       }
       geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
       geo.setAttribute('splat', new THREE.BufferAttribute(splat, 4));
-      geo.computeBoundingSphere();
-      const m = new THREE.Mesh(geo, material);
+      const lods = terrainLods(geo, TS);
+      const m = new THREE.Mesh(lods[0], material);
       m.position.set(ox, 0, oz);
       m.receiveShadow = true;
+      m.userData.lodGeos = lods; // freeGpu atbrīvo abus
       this.group.add(m);
       this.terrainTiles.push(m);
+      (this.terrLod = this.terrLod || []).push({ m, cx: ox, cz: oz, h: TW / 2, lods, k: 0 });
     }
     this.terrain = this.terrainTiles[0];
   }
@@ -986,13 +1029,13 @@ export class World {
     {
       let px = 6, pz = -6;
       for (let k = 0; k < 6; k++) { px = roadNS(pz) + 6.5; pz = roadEW(px) - 6.5; }
-      const py = H(px, pz), PH = 6.2;
+      const py = H(px, pz), PH = 6.2, fp = new THREE.Group();
       const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.16, PH, 8), signWood());
       pole.position.set(px, py + PH / 2 - 0.3, pz); pole.castShadow = true;
-      this.group.add(pole);
+      fp.add(pole);
       const cap = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.35, 8), signWood());
       cap.position.set(px, py + PH - 0.12, pz);
-      this.group.add(cap);
+      fp.add(cap);
       this.addCollider(px, pz, 0.35);
       const R = 28;
       [[roadNS(-R), -R, '❄️ Ziemas zeme', '#3b6c9c'], [R, roadEW(R), '🌲 Mežs · 🛒 tirgus', '#3c7432'],
@@ -1002,10 +1045,11 @@ export class World {
         const off = w / 2 + 0.25;
         obj.position.set(px + dx / l * off, py + PH - 0.85 - i * 1.15, pz + dz / l * off);
         obj.rotation.y = Math.atan2(-dz, dx);
-        this.group.add(obj);
+        fp.add(obj);
       });
+      this.group.add(flattenStatic(fp));
     }
-    const t = makeTextSprite('🏡 Mežvidu sēta', { fontSize: 56, bg: 'rgba(60,120,40,0.85)', scale: 1.5 });
+    const t = makeTextSprite('🏡 Mežvidu sēta', { fontSize: 56, bg: 'rgba(60,120,40,0.85)', scale: 1.1 });
     t.position.set(0, VILLAGE_Y + 6, 0);
     this.group.add(t);
   }
@@ -1501,6 +1545,12 @@ export class World {
 
   // Redzamība pēc attāluma: tuvu pilni koki, tālu impostori; sīkas detaļas tikai tuvumā
   updateVisibility(x, z) {
+    // tāli reljefa gabali ar 2× retāku režģi
+    if (this.terrLod) for (const t of this.terrLod) {
+      const d = Math.hypot(Math.max(0, Math.abs(x - t.cx) - t.h), Math.max(0, Math.abs(z - t.cz) - t.h));
+      const k = d > TERR_LOD ? 1 : 0;
+      if (k !== t.k) { t.m.geometry = t.lods[k]; t.k = k; }
+    }
     if (this.lodChunks) for (const ch of this.lodChunks.values()) {
       const d = Math.hypot(ch.cx - x, ch.cz - z);
       const far = Math.min(400, (this.farCull || 450) + 40);
@@ -1643,6 +1693,8 @@ export class World {
           vec4 gc = texture2D(uGroundTex, tuv);
           float gd = length(gp - uCenter) / (${(TILE / 2).toFixed(1)} * uGrassR);
           float gs = aOff.w * smoothstep(0.12, 0.45, gc.a) * (1.0 - smoothstep(0.45, 1.0, gd)); // tālumā stiebri pakāpeniski mazāki — neparādās pēkšņi
+          float keep = 1.0 - 0.55 * smoothstep(0.3, 0.85, gd); // tālāk retāki (bet nedaudz lielāki) kušķi — mazāk pikseļu zīmēšanas
+          gs *= step(fract(aOff.z * 5.731), keep) * (1.0 + 0.4 * (1.0 - keep));
           float cs = cos(aOff.z), sn = sin(aOff.z);
           transformed.xz = mat2(cs, -sn, sn, cs) * transformed.xz;
           transformed *= vec3(gs, gs * (0.75 + 0.5 * gc.a), gs);
@@ -1727,8 +1779,8 @@ export class World {
     for (let j = 0; j < catG.attributes.position.count; j++) ccol.set(catG.attributes.position.getY(j) > 1.35 ? [0.32, 0.2, 0.1] : [0.35, 0.45, 0.18], j * 3);
     catG.setAttribute('color', new THREE.BufferAttribute(ccol, 3));
     const catM = natureMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85 }), { wind: 0.06 });
-    this.chunked(reedG, reedM, reeds, (m, d, i) => { dummy.position.set(d.x, d.y, d.z); dummy.scale.set(d.s, d.s, d.s); dummy.rotation.set(0, d.ry, 0); dummy.updateMatrix(); m.setMatrixAt(i, dummy.matrix); }, 150, { castShadow: true });
-    this.chunked(catG, catM, cats, (m, d, i) => { dummy.position.set(d.x + 0.1, d.y, d.z); dummy.scale.setScalar(d.s); dummy.rotation.set(0.05, d.ry, 0); dummy.updateMatrix(); m.setMatrixAt(i, dummy.matrix); }, 150, { castShadow: true });
+    this.chunked(reedG, reedM, reeds, (m, d, i) => { dummy.position.set(d.x, d.y, d.z); dummy.scale.set(d.s, d.s, d.s); dummy.rotation.set(0, d.ry, 0); dummy.updateMatrix(); m.setMatrixAt(i, dummy.matrix); }, 150);
+    this.chunked(catG, catM, cats, (m, d, i) => { dummy.position.set(d.x + 0.1, d.y, d.z); dummy.scale.setScalar(d.s); dummy.rotation.set(0.05, d.ry, 0); dummy.updateMatrix(); m.setMatrixAt(i, dummy.matrix); }, 150);
     // ūdensrožu lapas ar iegriezumu un daži balti ziedi
     const padShape = new THREE.Shape(); padShape.moveTo(0, 0); padShape.absarc(0, 0, 0.35, 0.25, Math.PI * 2 - 0.05, false); padShape.lineTo(0, 0);
     const padG = new THREE.ShapeGeometry(padShape, 12); padG.rotateX(-Math.PI / 2);

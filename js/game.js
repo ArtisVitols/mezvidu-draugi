@@ -1,23 +1,23 @@
 import * as THREE from 'three';
-import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.18.0';
-import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.18.0';
-import { Controls } from './controls.js?v=1.18.0';
+import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.19.0';
+import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.19.0';
+import { Controls } from './controls.js?v=1.19.0';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS } from './data.js?v=1.18.0';
-import { writeSave } from './save.js?v=1.18.0';
-import { VERSION, BUILD_DATE } from './version.js?v=1.18.0';
-import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.18.0';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.18.0';
-import { Activities, makeTeam } from './activities.js?v=1.18.0';
-import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel } from './quality.js?v=1.18.0';
-import { hdrEnvironment } from './gfx.js?v=1.18.0';
-import { buildRod, buildDecor } from './props.js?v=1.18.0';
-import { InstanceField } from './instancing.js?v=1.18.0';
-import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.18.0';
-import { Vehicles } from './vehicles.js?v=1.18.0';
-import { Farm, fmtLeft } from './farm.js?v=1.18.0';
-import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.18.0';
-import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.18.0';
+import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS } from './data.js?v=1.19.0';
+import { writeSave } from './save.js?v=1.19.0';
+import { VERSION, BUILD_DATE } from './version.js?v=1.19.0';
+import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.19.0';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.19.0';
+import { Activities, makeTeam } from './activities.js?v=1.19.0';
+import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel, statsWanted } from './quality.js?v=1.19.0';
+import { hdrEnvironment } from './gfx.js?v=1.19.0';
+import { buildRod, buildDecor } from './props.js?v=1.19.0';
+import { InstanceField } from './instancing.js?v=1.19.0';
+import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.19.0';
+import { Vehicles } from './vehicles.js?v=1.19.0';
+import { Farm, fmtLeft } from './farm.js?v=1.19.0';
+import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.19.0';
+import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.19.0';
 
 const ANIM = ['idle', 'walk', 'run', 'jump', 'swim', 'sit', 'pet', 'wave', 'fish', 'ski', 'lift', 'throw'];
 const MUSH_RESPAWN = 120000;
@@ -69,6 +69,7 @@ export class Game {
     this.renderer.setSize(window.innerWidth, window.innerHeight, false); // CSS izmēru nosaka style.css (100 %)
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.info.autoReset = false; // kadra skaitītājus nomet statsTick (visi zīmēšanas gājieni kopā)
     this.renderer.toneMappingExposure = 0.62;
     // stage — īstā three.js aina; scene — Mežvidu (centra zemes) saturs, ko var noņemt, kad esi citā zemē
     this.stage = new THREE.Scene();
@@ -207,9 +208,11 @@ export class Game {
   }
 
   renderFrame() {
+    if (this.shadowTick) this.shadowTick();
     if (this.refl && this.refl.enabled && this.zone === FOREST) this.refl.update(this.renderer, this.stage, this.camera, this.world.water, WATER_Y);
     if (this.post && this.post.enabled) this.post.render(this.stage, this.camera);
     else this.renderer.render(this.stage, this.camera);
+    this.statsTick();
   }
 
   onResize() {
@@ -678,6 +681,7 @@ export class Game {
     }
     this.net.toHost({ t: 'hello', prof: this.myProf(), weekly: this.save.weekly });
     this.clock = new THREE.Clock();
+    if (statsWanted()) this.toggleStats(true);
     const loop = () => {
       if (this.ended) return;
       requestAnimationFrame(loop);
@@ -1940,6 +1944,9 @@ export class Game {
       });
       b.append(qb);
       b.append(el('div', { style: 'font-size:12px;opacity:0.65;margin-top:4px' }, 'Auto pats izvēlas grafiku pēc tā, cik ātri telefons zīmē.'));
+      const sb = el('button', { className: 'pbtn' }, `📊 Ātruma mērītājs: ${this.statsOn ? 'ieslēgts' : 'izslēgts'}`);
+      sb.addEventListener('click', () => { this.toggleStats(); sb.textContent = `📊 Ātruma mērītājs: ${this.statsOn ? 'ieslēgts' : 'izslēgts'}`; });
+      b.append(' ', sb);
       b.append(' ');
       b.append(el('button', { className: 'pbtn', onclick: () => { this.persist(); toast('💾 Saglabāts!', 'good'); } }, '💾 Saglabāt'));
       b.append(' ');

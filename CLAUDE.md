@@ -111,6 +111,17 @@ Static site: plain HTML + ES modules, no build step. Photo textures in `assets/`
   < 27 → one level down; ≥ 50 for ~6 s → try one level up; a trial level must hold ≥ 40 fps or it is reverted and blocked for 2 days
   (`mezvidi_auto_block`). Last auto level is remembered (`mezvidi_auto_q`); the first guess uses `deviceMemory`/`hardwareConcurrency`.
   With PostFX the scene renders into a HalfFloat MSAA target, so tone mapping/sRGB happen in the PostFX composite shader.
+  **Cheap lighting** (`cheap: true` on lowest/low): `patchCheapLighting()` in quality.js wraps parts of three's physical lighting chunks in
+  `#ifndef CHEAP_LIGHT` (no GGX specular, no IBL radiance, no multiscatter — diffuse sun + hemisphere + env irradiance stay).
+  `cheapScan()` adds/removes the `CHEAP_LIGHT` define on every MeshStandardMaterial (defines are part of the program key), on quality
+  change and every 1.5 s for new objects. Opt out with `material.userData.keepPBR = true` (water). `shadowEvery: 2` (low) re-renders
+  the shadow map every 2nd frame (`shadowTick`). 📊 meter in ☰ menu (`toggleStats`, localStorage `mezvidi_stats`):
+  `renderer.info.autoReset` is false and `statsTick()` resets it once per frame, so counts include shadow/reflection/PostFX passes.
+- **Terrain LOD:** World terrain tiles have 2 index-only LODs sharing vertices (`terrainLods`: full and 2× coarser beyond `TERR_LOD` m,
+  both with 2.5 m skirts against cracks); the mesh keeps both in `userData.lodGeos` (freeGpu/disposeTree dispose all of them).
+  Winter snow is 5×5 tiles of 200 m (`buildSnowTiles`, `SNOW_T` 68 cells) with 3 LODs (`SNOW_LOD` distances), switched in `updateVisibility`.
+  Grass blades thin out with distance in the grass vertex shader (`keep`). Planar reflection skips frames where the water is
+  off-screen and updates every 2nd frame.
 - Terrain splat weights come from `world.splatAt()` (forest, sand, dirt, rock; meadow = remainder) as a `splat` vertex attribute.
 - Layer 1 = small details (grass field, flowers, rocks) that the water reflection camera skips; the main camera enables layer 1.
 - Minimap: `mapBase` is a canvas of the whole world; the HUD minimap shows ~130 m around the player, and tapping it opens the full map.

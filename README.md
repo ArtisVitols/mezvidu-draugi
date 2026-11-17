@@ -83,6 +83,8 @@ ilgi tiek galā viegli, tā tiek uzlabota (līdz Augstai). Atrastais līmenis ti
 Grafika mainās uzreiz, bez pārlādes.
 Faktūras un debesu attēls — [Poly Haven](https://polyhaven.com) (CC0), mapē `assets/`.
 
+📊 Izvēlnē ☰ var ieslēgt **Ātruma mērītāju** — ekrāna augšā redzams fps, zīmēšanas izsaukumi un trijstūri (noder, lai salīdzinātu grafikas līmeņus savā telefonā).
+
 ### Zināmie ierobežojumi
 - Ja saimnieks aizver spēli vai telefons aizmieg, istaba beidzas (pārējo progress saglabājas).
 - Dažos mobilajos tīklos WebRTC savienojums var neizdoties — vislabāk visiem būt vienā Wi-Fi.

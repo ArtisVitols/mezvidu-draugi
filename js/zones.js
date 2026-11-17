@@ -3,8 +3,8 @@
 // Katrai zemei ir savas lokālās koordinātas (centrs 0,0); kopējā kartē zeme ir nobīdīta par ZONE_SIZE.
 // Uz kaimiņu zemi var aiziet pa jebkuru robežas vietu.
 import * as THREE from 'three';
-import { canvasTexture } from './util.js?v=1.18.0';
-import { loadTexture } from './gfx.js?v=1.18.0';
+import { canvasTexture } from './util.js?v=1.19.0';
+import { loadTexture } from './gfx.js?v=1.19.0';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 export const ZONE_HALF = 315;              // spēles laukuma puse (kvadrāts 630 × 630 m)
@@ -107,6 +107,7 @@ export function disposeTree(root, keep) {
   const seen = new Set(keep || []);
   root.traverse((o) => {
     if (o.geometry && !seen.has(o.geometry)) { seen.add(o.geometry); o.geometry.dispose(); }
+    if (o.userData.lodGeos) for (const g of o.userData.lodGeos) if (!seen.has(g)) { seen.add(g); g.dispose(); }
     const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
     for (const m of ms) {
       if (seen.has(m)) continue;
@@ -128,6 +129,7 @@ export function freeGpu(root, extraTextures = []) {
   const tex = (v) => { if (v && v.isTexture && !v.isRenderTargetTexture && !seen.has(v)) { seen.add(v); v.dispose(); } };
   root.traverse((o) => {
     if (o.geometry && !seen.has(o.geometry)) { seen.add(o.geometry); o.geometry.dispose(); }
+    if (o.userData.lodGeos) for (const g of o.userData.lodGeos) if (!seen.has(g)) { seen.add(g); g.dispose(); } // citi detalizācijas līmeņi
     if (o.isInstancedMesh) o.dispose(); // instanču matricu buferi
     const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
     for (const m of ms) {

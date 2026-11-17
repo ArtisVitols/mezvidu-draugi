@@ -171,6 +171,7 @@ export async function hdrEnvironment(renderer, sunDir, intensity = 1) {
 // ---------- ūdens: krasta caurspīdīgums, putu josla, atspulgi ----------
 export function upgradeWater(world, reflection) {
   const m = world.water.material;
+  m.userData.keepPBR = true; // ūdenim spīdums vajadzīgs arī vienkāršotajā apgaismojumā
   m.color.set('#1d3e48');
   m.opacity = 1;
   m.roughness = 0.04;
@@ -237,6 +238,14 @@ export class PlanarReflection {
   }
   setSize(w, h) { this.rt.setSize(Math.max(16, Math.floor(w * this.scale)), Math.max(16, Math.floor(h * this.scale))); }
   update(renderer, scene, camera, water, y) {
+    // ūdens nav redzams — atspulgu nezīmē; citādi atjauno ik otro kadru (ūdens viļņos nobīde nav pamanāma)
+    this.fr = this.fr || new THREE.Frustum();
+    this.pm = this.pm || new THREE.Matrix4();
+    this.fr.setFromProjectionMatrix(this.pm.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+    if (!this.fr.intersectsObject(water)) return;
+    this.tick = (this.tick || 0) + 1;
+    if (this.tick % 2 && this.drawn) return;
+    this.drawn = true;
     const normal = new THREE.Vector3(0, 1, 0), mirrorPos = new THREE.Vector3(0, y, 0);
     const camPos = camera.getWorldPosition(new THREE.Vector3());
     if (camPos.y < y) return;

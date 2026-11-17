@@ -1,5 +1,17 @@
 # Izmaiņu žurnāls
 
+## 1.19.0 — 2026-11-17
+- ⚡ Ātrāka grafika vājākiem telefoniem. Mērījums (tās pašas 7 vietas visās zemēs, pirms → pēc):
+  Viszemākā un Zemā grafika zīmē ~1,5× ātrāk (kadra laiks −35 % / −33 %), trijstūru −25 % / −37 %;
+  Vidējā un Augstā — par ~20 % mazāk trijstūru (ātrums apmēram tāds pats — tur galvenais darbs ir foto faktūras un mīkstās ēnas).
+  Ziemas zemē trijstūru −43 %.
+  - Viszemākā/Zemā: vienkāršots apgaismojums (bez spīduma un vides atspīduma aprēķina) — izskats gandrīz tāds pats, bet lētāks katrs pikselis.
+  - Zemā: ēnas pārzīmē ik otro kadru; niedres vairs nemet ēnas.
+  - Zemes reljefs tālumā ar 2× retāku režģi; ziemas sniega reljefs sadalīts 200 m gabalos ar 3 detalizācijas līmeņiem (agrāk viens 231 000 trijstūru gabals).
+  - Zāle tālumā retāka; vienkāršāki ogu krūmi un dzīvnieku galvas/ķermeņi (~2× mazāk trijstūru); ezera atspulgs tikai tad, kad ūdens redzams, un ik otro kadru.
+  - Sētas zīmes apvienotas (mazāk zīmēšanas izsaukumu).
+- 📊 Izvēlnē ☰ „Ātruma mērītājs”: ekrāna augšā fps, kadra laiks, zīmēšanas izsaukumi, trijstūri un pikseļi.
+
 ## 1.18.0 — 2026-11-17
 - 🪧 Sētā īstas koka zīmes ar lieliem burtiem: pie katra lauka abiem vārtiem vārtu arka ar dēli „🏡 <vārds> sēta” (vai „🌾 Brīvs lauks”),
   ko var izlasīt no abām pusēm. Krustojumā augsts ceļa rādītāja stabs ar 4 krāsainām bultām, kas rāda katra ceļa virzienu

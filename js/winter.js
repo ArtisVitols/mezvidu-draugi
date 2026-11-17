@@ -4,13 +4,13 @@
 // sniega pikas (arī ar draugiem), ziemas drēbes.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { ZONE_HALF, GROUND_Y, DIRS, clampSquare, openSides, buildBorderPosts, disposeTree, smoothRoad, RoadIndex, buildRoadMesh, roadMaterial } from './zones.js?v=1.18.0';
-import { makeTextSprite, canvasTexture, mat, smoothstep, lerp, angleLerp, clamp } from './util.js?v=1.18.0';
-import { buildNPC, buildAnimal, flattenStatic } from './characters.js?v=1.18.0';
-import { loadTexture } from './gfx.js?v=1.18.0';
-import { InstanceField } from './instancing.js?v=1.18.0';
-import { makeNoise2D, mulberry32 } from './noise.js?v=1.18.0';
-import { $, toast, sfx } from './ui.js?v=1.18.0';
+import { ZONE_HALF, GROUND_Y, DIRS, clampSquare, openSides, buildBorderPosts, disposeTree, smoothRoad, RoadIndex, buildRoadMesh, roadMaterial } from './zones.js?v=1.19.0';
+import { makeTextSprite, canvasTexture, mat, smoothstep, lerp, angleLerp, clamp } from './util.js?v=1.19.0';
+import { buildNPC, buildAnimal, flattenStatic } from './characters.js?v=1.19.0';
+import { loadTexture } from './gfx.js?v=1.19.0';
+import { InstanceField } from './instancing.js?v=1.19.0';
+import { makeNoise2D, mulberry32 } from './noise.js?v=1.19.0';
+import { $, toast, sfx } from './ui.js?v=1.19.0';
 
 const SEED = 9137;
 const TAU = Math.PI * 2;
@@ -133,6 +133,52 @@ export function winterMap() {
   return c;
 }
 export const WINTER_ICONS = [['⛷️', -25, -245], ['🚡', LIFT.x, LIFT.zB], ['❄️', ARENA.x, ARENA.z], ['🎄', PLAZA.x, PLAZA.z]];
+
+// ---------- sniega reljefa gabali ar detalizācijas līmeņiem ----------
+const SNOW_T = 68, SNOW_LOD = [80, 200]; // gabals 68 šūnas (200 m); attālumi, kur pāriet uz 2×/4× retāku režģi
+function buildSnowTiles(geo, G, mat) {
+  const P = geo.attributes.position.array, Nn = geo.attributes.normal.array, U = geo.attributes.uv.array, W = N + 1;
+  const tiles = [];
+  for (let tz = 0; tz < N / SNOW_T; tz++) for (let tx = 0; tx < N / SNOW_T; tx++) {
+    const lods = [1, 2, 4].map((st, li) => {
+      const n = SNOW_T / st; // 34/4 nav vesels — pēdējo kolonnu ņem uz malas
+      const cols = [];
+      for (let i = 0; i <= Math.ceil(n); i++) cols.push(Math.min(SNOW_T, Math.round(i * st)));
+      const C = cols.length, pos = [], nor = [], uv = [], idx = [];
+      const put = (gi, dy) => { pos.push(P[gi * 3], P[gi * 3 + 1] + dy, P[gi * 3 + 2]); nor.push(Nn[gi * 3], Nn[gi * 3 + 1], Nn[gi * 3 + 2]); uv.push(U[gi * 2], U[gi * 2 + 1]); };
+      const gid = (a, b) => (tz * SNOW_T + cols[b]) * W + tx * SNOW_T + cols[a];
+      for (let b = 0; b < C; b++) for (let a = 0; a < C; a++) put(gid(a, b), 0);
+      for (let b = 0; b < C - 1; b++) for (let a = 0; a < C - 1; a++) {
+        const i0 = b * C + a;
+        idx.push(i0, i0 + C, i0 + 1, i0 + 1, i0 + C, i0 + C + 1);
+      }
+      // „svārki” gar malām — paslēpj spraugas starp blakus gabaliem ar dažādu režģi
+      const edge = (list) => {
+        const base = pos.length / 3;
+        for (const [a, b] of list) put(gid(a, b), -1.5 * st);
+        for (let k = 0; k < list.length - 1; k++) {
+          const t0 = list[k][1] * C + list[k][0], t1 = list[k + 1][1] * C + list[k + 1][0];
+          idx.push(t0, base + k, t1, t1, base + k, base + k + 1, t0, t1, base + k, t1, base + k + 1, base + k);
+        }
+      };
+      const r = [...Array(C).keys()];
+      edge(r.map((a) => [a, 0])); edge(r.map((a) => [a, C - 1])); edge(r.map((b) => [0, b])); edge(r.map((b) => [C - 1, b]));
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+      g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+      g.setIndex(idx);
+      g.computeBoundingSphere();
+      const m = new THREE.Mesh(g, mat);
+      m.receiveShadow = true; m.visible = li === 2;
+      G.add(m);
+      return m;
+    });
+    const h = SNOW_T * CELL / 2;
+    tiles.push({ cx: -HS + (tx * SNOW_T) * CELL + h, cz: -HS + (tz * SNOW_T) * CELL + h, h, lods, k: 2 });
+  }
+  return tiles;
+}
 
 // ---------- materiāli un modeļi ----------
 let snowMat = null;
@@ -377,6 +423,11 @@ export class WinterZone {
   }
 
   updateVisibility(x, z) {
+    if (this.snowTiles) for (const t of this.snowTiles) {
+      const d = Math.hypot(Math.max(0, Math.abs(x - t.cx) - t.h), Math.max(0, Math.abs(z - t.cz) - t.h));
+      const k = d < SNOW_LOD[0] ? 0 : d < SNOW_LOD[1] ? 1 : 2;
+      if (k !== t.k) { t.lods[t.k].visible = false; t.lods[k].visible = true; t.k = k; }
+    }
     if (!this.trees) return;
     this.trees.update(x, z);
     this.treesLo.view = Math.min(420, this.viewFar || 420);
@@ -394,9 +445,9 @@ export class WinterZone {
     for (let i = 0; i < p.count; i++) { p.setY(i, this.heights[i]); uv.setXY(i, p.getX(i), p.getZ(i)); }
     geo.computeVertexNormals();
     const snow = snowMaterial();
-    const ground = new THREE.Mesh(geo, snow);
-    ground.receiveShadow = true;
-    G.add(ground);
+    // reljefu sadala 200 m gabalos (5×5): nezīmē tos, kas nav redzami, un tālos zīmē ar retāku režģi (LOD)
+    this.snowTiles = buildSnowTiles(geo, G, snow);
+    geo.dispose();
     // līdzenums ap reljefu (gredzens — zem reljefa tā nav, citādi tas izspiežas cauri ieplakām)
     const B = 1300, rects = [[-B, -B, B, -HS], [-B, HS, B, B], [-B, -HS, -HS, HS], [HS, -HS, B, HS]];
     const far = mergeGeometries(rects.map(([x0, z0, x1, z1]) => new THREE.PlaneGeometry(x1 - x0, z1 - z0).rotateX(-Math.PI / 2).translate((x0 + x1) / 2, GROUND_Y - 0.05, (z0 + z1) / 2)));

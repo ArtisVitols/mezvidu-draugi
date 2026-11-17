@@ -4,13 +4,13 @@
 // dažādām kultūrām starp lauciņiem paliek neliela sprauga. Augšana iet pēc pulksteņa (arī tad, kad spēle aizvērta).
 // Farm — Game papildinājums (mixin).
 import * as THREE from 'three';
-import { World, GARDEN_SLOTS, PLOT_IN, PLOT_OUT, TILE, plotOf, plotSign, roadNS, roadEW, tileToSlot, tileToCanon, VILLAGE_Y } from './world.js?v=1.18.0';
-import { buildCrop, flattenStatic } from './characters.js?v=1.18.0';
-import { WORLD_SEED, CROPS, PETS } from './data.js?v=1.18.0';
-import { InstanceField } from './instancing.js?v=1.18.0';
-import { canvasTexture, makeSignBoard, signWood } from './util.js?v=1.18.0';
-import { $, toast, sfx, fmtTime } from './ui.js?v=1.18.0';
-import { ZONES, FARM, freeGpu } from './zones.js?v=1.18.0';
+import { World, GARDEN_SLOTS, PLOT_IN, PLOT_OUT, TILE, plotOf, plotSign, roadNS, roadEW, tileToSlot, tileToCanon, VILLAGE_Y } from './world.js?v=1.19.0';
+import { buildCrop, flattenStatic } from './characters.js?v=1.19.0';
+import { WORLD_SEED, CROPS, PETS } from './data.js?v=1.19.0';
+import { InstanceField } from './instancing.js?v=1.19.0';
+import { canvasTexture, makeSignBoard, signWood } from './util.js?v=1.19.0';
+import { $, toast, sfx, fmtTime } from './ui.js?v=1.19.0';
+import { ZONES, FARM, freeGpu } from './zones.js?v=1.19.0';
 
 const CROP_IDS = Object.keys(CROPS);
 const MAX_TILES = 400;
@@ -377,8 +377,10 @@ export const Farm = {
       beam.position.set(x, top + 0.4, z); beam.rotation.y = obj.rotation.y; beam.castShadow = true;
       g.add(beam);
     }
-    this.farmScene.add(g);
-    this.gardenSigns[slot] = g;
+    const fg = flattenStatic(g); // ~3 zīmēšanas izsaukumi visai zīmei
+    g.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
+    this.farmScene.add(fg);
+    this.gardenSigns[slot] = fg;
   },
 
   // ---------- darbības (dzeltenā poga) ----------
