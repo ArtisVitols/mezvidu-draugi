@@ -30,7 +30,7 @@ Static site: plain HTML + ES modules, no build step. Photo textures in `assets/`
 | `js/game.js` | `Game`: renderer/sky/lights, land loading (`switchZone`, `teleport`, `landWorld`), player movement, karts, race (in `raceW`), shops, quests, host logic, net messages |
 | `js/world.js` | `World(seed, zone)`: one generator for the three terrain lands — mode `forest` (zone `e`: village, water, places, mushrooms/stars/NPCs/berries), `farm` (zone `c`: gentle hills, 4 plots, forest belt, plot fences, clearable `plotObjs`), `race` (zone `w`: 1.6 km track `TRACK_PTS`/`TRACK_N` 800, `TUNNELS` with hill/roof/walls, `kartSpot`, `carSpot`). Shared: terrain, trees, GPU grass, rocks, flowers, reeds, clouds, roads, border posts, terrain fence on closed sides |
 | `js/characters.js` | Player animals (rigged, pose-blended animation), hats, NPC forest animals, kart, vendor carts, mushrooms, stars, crops; `optimizeRig` merges meshes per material |
-| `js/util.js` | Text sprites, cached materials, `natureMaterial` (wind shader), procedural canvas textures (leaves, needles, grass, fur, cloth, stone) |
+| `js/util.js` | Text sprites, wooden sign boards (`makeSignBoard`: big text on both faces, optional arrow tip; shared `signWood()` material — farm crossroads fingerpost in `buildFarmYard`, plot gate arches in `setGardenSign`), cached materials, `natureMaterial` (wind shader), procedural canvas textures (leaves, needles, grass, fur, cloth, stone) |
 | `js/net.js` | PeerJS wrapper. Host is authoritative; peer ID prefix `mezvidu-draugi-lv-v1-` + 5-char room code |
 | `js/save.js` | localStorage saves per player name (`mezvidi_save_v1_<name>`) |
 | `js/data.js` | Game data: animals, crops, mushrooms, hats, quests, NPC types |

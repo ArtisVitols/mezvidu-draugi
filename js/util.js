@@ -301,3 +301,59 @@ export function noiseTexture(kind, size = 128) {
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   return t;
 }
+
+// ---------- koka ceļa zīmes ----------
+// Zīmes dēlis ar lieliem burtiem abās pusēs. Dēlis stāv XY plaknē ar centru (0,0,0); arrow — smaile uz +x.
+// Atgriež { obj, w } (w — dēļa taisnās daļas platums metros).
+let signWoodMat = null;
+export function signWood() {
+  if (!signWoodMat) signWoodMat = new THREE.MeshStandardMaterial({ color: 0x6e4a2a, roughness: 0.9 });
+  return signWoodMat;
+}
+export function makeSignBoard(text, opts = {}) {
+  const H = opts.h || 0.8, PX = 128;
+  const font = `bold ${Math.round(PX * 0.6)}px system-ui, sans-serif`;
+  const m0 = document.createElement('canvas').getContext('2d');
+  m0.font = font;
+  const cw = Math.ceil(Math.max(m0.measureText(text).width + PX * 0.7, PX * 2.4));
+  const base = opts.color || '#8a5a32';
+  const tex = canvasTexture(cw, PX, (g, w, h) => {
+    g.fillStyle = base; g.fillRect(0, 0, w, h);
+    // dēļu šuves un koka šķiedras
+    g.globalAlpha = 0.18;
+    for (let i = 0; i < 26; i++) {
+      g.strokeStyle = Math.random() < 0.5 ? '#000' : '#fff';
+      g.lineWidth = 1 + Math.random() * 2;
+      const y = Math.random() * h;
+      g.beginPath(); g.moveTo(0, y); g.bezierCurveTo(w * 0.3, y + (Math.random() - 0.5) * 8, w * 0.7, y + (Math.random() - 0.5) * 8, w, y); g.stroke();
+    }
+    g.globalAlpha = 0.45; g.fillStyle = '#2a170a'; g.fillRect(0, h * 0.5 - 1.5, w, 3);
+    g.globalAlpha = 1; g.strokeStyle = 'rgba(30,16,6,0.8)'; g.lineWidth = 8; g.strokeRect(4, 4, w - 8, h - 8);
+    g.font = font; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.lineJoin = 'round'; g.lineWidth = 10; g.strokeStyle = '#2a1608';
+    g.strokeText(text, w / 2, h / 2 + 4);
+    g.fillStyle = opts.textColor || '#fff4d6';
+    g.fillText(text, w / 2, h / 2 + 4);
+  });
+  tex.anisotropy = 4;
+  const W = H * cw / PX, D = 0.09;
+  const faceMat = new THREE.MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: 0x4a4a4a, roughness: 0.85 });
+  faceMat.userData.sign = true;
+  const obj = new THREE.Group();
+  let body;
+  if (opts.arrow) {
+    const s = new THREE.Shape(), e = 0.06, x0 = -W / 2 - e, x1 = W / 2, y = H / 2 + e;
+    s.moveTo(x0, -y); s.lineTo(x1, -y); s.lineTo(x1 + H * 0.5, 0); s.lineTo(x1, y); s.lineTo(x0, y); s.closePath();
+    body = new THREE.ExtrudeGeometry(s, { depth: D, bevelEnabled: false }).translate(0, 0, -D / 2);
+  } else body = new THREE.BoxGeometry(W + 0.14, H + 0.14, D);
+  const bm = new THREE.Mesh(body, signWood());
+  bm.castShadow = true;
+  obj.add(bm);
+  const fg = new THREE.PlaneGeometry(W, H);
+  const front = new THREE.Mesh(fg, faceMat);
+  front.position.z = D / 2 + 0.004;
+  const back = new THREE.Mesh(fg, faceMat);
+  back.rotation.y = Math.PI; back.position.z = -D / 2 - 0.004;
+  obj.add(front, back);
+  return { obj, w: W };
+}

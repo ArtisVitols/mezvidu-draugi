@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import { makeNoise2D, mulberry32 } from './noise.js?v=1.17.0';
-import { MUSHROOMS } from './data.js?v=1.17.0';
+import { makeNoise2D, mulberry32 } from './noise.js?v=1.18.0';
+import { MUSHROOMS } from './data.js?v=1.18.0';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mat, smoothstep, lerp, makeTextSprite, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.17.0';
-import { optimizeRig, flattenStatic } from './characters.js?v=1.17.0';
-import { ZONE_HALF, ZONES, DIRS, GROUND_Y, sqDist, clampSquare, buildBorderPosts, smoothRoad, RoadIndex, buildRoadMesh, ROAD_HW, FOREST, neighbour, openSides, buildTerrainFence, wood } from './zones.js?v=1.17.0';
-import { findPlaces, placeHeight, inPlace, buildPlaces, updatePlaces, placeBerries } from './places.js?v=1.17.0';
+import { mat, smoothstep, lerp, makeTextSprite, makeSignBoard, signWood, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.18.0';
+import { optimizeRig, flattenStatic } from './characters.js?v=1.18.0';
+import { ZONE_HALF, ZONES, DIRS, GROUND_Y, sqDist, clampSquare, buildBorderPosts, smoothRoad, RoadIndex, buildRoadMesh, ROAD_HW, FOREST, neighbour, openSides, buildTerrainFence, wood } from './zones.js?v=1.18.0';
+import { findPlaces, placeHeight, inPlace, buildPlaces, updatePlaces, placeBerries } from './places.js?v=1.18.0';
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
@@ -982,16 +982,30 @@ export class World {
     rm.castShadow = true;
     this.group.add(rm);
     rails.forEach((g) => g.dispose());
-    // ceļa rādītāji krustojumā
-    for (const [x, z, txt] of [[roadNS(-19) + 6, -19, '❄️ Ziemas zeme'], [19, roadEW(19) + 6, '🌲 Mežs · 🛒 tirgus'], [-19, roadEW(-19) - 6, '🏁 Sacīkšu trase'], [roadNS(19) - 6, 19, '🏖️ Kāpas']]) {
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 2.6, 6), wood());
-      pole.position.set(x, H(x, z) + 1.3, z); pole.castShadow = true;
+    // ceļa rādītājs krustojumā: stabs ar 4 bultu dēļiem, katrs rāda savā ceļā
+    {
+      let px = 6, pz = -6;
+      for (let k = 0; k < 6; k++) { px = roadNS(pz) + 6.5; pz = roadEW(px) - 6.5; }
+      const py = H(px, pz), PH = 6.2;
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.16, PH, 8), signWood());
+      pole.position.set(px, py + PH / 2 - 0.3, pz); pole.castShadow = true;
       this.group.add(pole);
-      const sp = makeTextSprite(txt, { fontSize: 40, bg: 'rgba(110,72,36,0.9)' });
-      sp.position.set(x, H(x, z) + 3, z);
-      this.group.add(sp);
+      const cap = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.35, 8), signWood());
+      cap.position.set(px, py + PH - 0.12, pz);
+      this.group.add(cap);
+      this.addCollider(px, pz, 0.35);
+      const R = 28;
+      [[roadNS(-R), -R, '❄️ Ziemas zeme', '#3b6c9c'], [R, roadEW(R), '🌲 Mežs · 🛒 tirgus', '#3c7432'],
+        [-R, roadEW(-R), '🏁 Sacīkšu trase', '#a33a2c'], [roadNS(R), R, '🏖️ Kāpas', '#b9853a']].forEach(([tx, tz, txt, col], i) => {
+        const { obj, w } = makeSignBoard(txt, { arrow: true, h: 0.95, color: col });
+        const dx = tx - px, dz = tz - pz, l = Math.hypot(dx, dz);
+        const off = w / 2 + 0.25;
+        obj.position.set(px + dx / l * off, py + PH - 0.85 - i * 1.15, pz + dz / l * off);
+        obj.rotation.y = Math.atan2(-dz, dx);
+        this.group.add(obj);
+      });
     }
-    const t = makeTextSprite('🏡 Mežvidu sēta', { fontSize: 56, bg: 'rgba(60,120,40,0.85)' });
+    const t = makeTextSprite('🏡 Mežvidu sēta', { fontSize: 56, bg: 'rgba(60,120,40,0.85)', scale: 1.5 });
     t.position.set(0, VILLAGE_Y + 6, 0);
     this.group.add(t);
   }

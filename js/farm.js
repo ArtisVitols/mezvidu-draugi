@@ -4,13 +4,13 @@
 // dažādām kultūrām starp lauciņiem paliek neliela sprauga. Augšana iet pēc pulksteņa (arī tad, kad spēle aizvērta).
 // Farm — Game papildinājums (mixin).
 import * as THREE from 'three';
-import { World, GARDEN_SLOTS, PLOT_IN, PLOT_OUT, TILE, plotOf, plotSign, tileToSlot, tileToCanon, VILLAGE_Y } from './world.js?v=1.17.0';
-import { buildCrop, flattenStatic } from './characters.js?v=1.17.0';
-import { WORLD_SEED, CROPS, PETS } from './data.js?v=1.17.0';
-import { InstanceField } from './instancing.js?v=1.17.0';
-import { makeTextSprite, canvasTexture } from './util.js?v=1.17.0';
-import { $, toast, sfx, fmtTime } from './ui.js?v=1.17.0';
-import { ZONES, FARM, freeGpu } from './zones.js?v=1.17.0';
+import { World, GARDEN_SLOTS, PLOT_IN, PLOT_OUT, TILE, plotOf, plotSign, roadNS, roadEW, tileToSlot, tileToCanon, VILLAGE_Y } from './world.js?v=1.18.0';
+import { buildCrop, flattenStatic } from './characters.js?v=1.18.0';
+import { WORLD_SEED, CROPS, PETS } from './data.js?v=1.18.0';
+import { InstanceField } from './instancing.js?v=1.18.0';
+import { canvasTexture, makeSignBoard, signWood } from './util.js?v=1.18.0';
+import { $, toast, sfx, fmtTime } from './ui.js?v=1.18.0';
+import { ZONES, FARM, freeGpu } from './zones.js?v=1.18.0';
 
 const CROP_IDS = Object.keys(CROPS);
 const MAX_TILES = 400;
@@ -343,12 +343,42 @@ export const Farm = {
     if (!this.farmOn || slot == null) return;
     if (this.gardenSigns[slot] && this.gardenSignNames[slot] === name) return;
     this.gardenSignNames[slot] = name;
-    if (this.gardenSigns[slot]) this.farmScene.remove(this.gardenSigns[slot]);
-    const s = GARDEN_SLOTS[slot];
-    const sp = makeTextSprite(name ? `🏡 ${name} sēta` : '🌾 Brīvs lauks', { fontSize: 44, bg: name ? 'rgba(120,80,30,0.85)' : 'rgba(0,0,0,0.35)' });
-    sp.position.set(s.x, VILLAGE_Y + 3.4, s.z);
-    this.farmScene.add(sp);
-    this.gardenSigns[slot] = sp;
+    const old = this.gardenSigns[slot];
+    if (old) {
+      this.farmScene.remove(old);
+      old.traverse((o) => {
+        if (o.geometry) o.geometry.dispose();
+        if (o.material && o.material.userData.sign) { o.material.map.dispose(); o.material.dispose(); }
+      });
+    }
+    // vārtu arkas abos lauka vārtos (pie abiem ceļiem): divi stabi ar lielu dēli virsū
+    const g = new THREE.Group(), W = this.farmW, H = (x, z) => W.getHeight(x, z);
+    const home = GARDEN_SLOTS[slot], [sx, sz] = plotSign(slot), d = PLOT_IN + 0.6;
+    const txt = name ? `🏡 ${name} sēta` : '🌾 Brīvs lauks';
+    const gates = [
+      [home.x, roadEW(home.x) + sz * d, 1, (roadEW(home.x + 1) - roadEW(home.x - 1)) / 2],
+      [roadNS(home.z) + sx * d, home.z, (roadNS(home.z + 1) - roadNS(home.z - 1)) / 2, 1],
+    ];
+    const postG = new THREE.CylinderGeometry(0.11, 0.14, 1, 7).translate(0, 0.5, 0);
+    for (const [x, z, tx, tz] of gates) {
+      const l = Math.hypot(tx, tz), ux = tx / l, uz = tz / l;
+      const { obj, w } = makeSignBoard(txt, { h: 1.35, color: name ? '#8a5a32' : '#6f6a58' });
+      const half = w / 2 + 0.25, top = Math.max(H(x - ux * half, z - uz * half), H(x + ux * half, z + uz * half)) + 4.2;
+      for (const k of [-1, 1]) {
+        const qx = x + ux * half * k, qz = z + uz * half * k, qy = H(qx, qz) - 0.2;
+        const post = new THREE.Mesh(postG, signWood());
+        post.scale.y = top - qy + 0.35; post.position.set(qx, qy, qz); post.castShadow = true;
+        g.add(post);
+      }
+      obj.position.set(x, top - 0.25, z);
+      obj.rotation.y = Math.atan2(-uz, ux);
+      g.add(obj);
+      const beam = new THREE.Mesh(new THREE.BoxGeometry(half * 2 + 0.5, 0.16, 0.22), signWood());
+      beam.position.set(x, top + 0.4, z); beam.rotation.y = obj.rotation.y; beam.castShadow = true;
+      g.add(beam);
+    }
+    this.farmScene.add(g);
+    this.gardenSigns[slot] = g;
   },
 
   // ---------- darbības (dzeltenā poga) ----------

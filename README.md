@@ -28,6 +28,7 @@ Datorā: WASD / bultiņas, atstarpe, E, peles vilkšana.
   - ⏰ Augi aug pēc pulksteņa — arī tad, kad spēle aizvērta
   - 👥 Draugu sētās var aiziet ciemos (👥 poga → „Ciemos”) un aplaistīt viņu laukus
   - Visi 4 lauki ir vienādi (pagriezti), tāpēc tavs lauks paliek tāds pats, lai kurā laukā istabā tevi ieliek
+  - Pie katra lauka vārtiem (abos ceļos) — koka vārtu arka ar lieliem burtiem „🏡 <vārds> sēta” (brīvam laukam „🌾 Brīvs lauks”); krustojumā ceļa rādītājs ar 4 krāsainām bultām uz ziemas zemi, mežu un tirgu, sacīkšu trasi un kāpām
 - 🧺 Tirgus: Ūdrs Ojārs (sēklas, makšķere), Āpsis Arnolds (uzpērk ražu, zivis, ogas), Pūce Paula (cepures, kartinga krāsas), Suns Sprīdis (mājdzīvnieki), Lapsa Liene (dārza rotājumi), Bebrs Bruno ar saldējuma ratiņiem
 - 🎣 Makšķerēšana ezeros: kad pludiņš raustās — „VILKT!”. Raudas, asari, līdakas un reta zelta zivtiņa (no laipas ķeras labāk)
 - 🫐 Ogas: mellenes mežā, avenes meža malās, dzērvenes purvā

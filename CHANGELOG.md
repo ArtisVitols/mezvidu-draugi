@@ -1,5 +1,10 @@
 # Izmaiņu žurnāls
 
+## 1.18.0 — 2026-11-17
+- 🪧 Sētā īstas koka zīmes ar lieliem burtiem: pie katra lauka abiem vārtiem vārtu arka ar dēli „🏡 <vārds> sēta” (vai „🌾 Brīvs lauks”),
+  ko var izlasīt no abām pusēm. Krustojumā augsts ceļa rādītāja stabs ar 4 krāsainām bultām, kas rāda katra ceļa virzienu
+  (❄️ ziema, 🌲 mežs un tirgus, 🏁 trase, 🏖️ kāpas). „Mežvidu sēta” uzraksts virs krustojuma lielāks.
+
 ## 1.17.0 — 2026-11-16
 - ⛷️ Ziemas kalns 2× lielāks: virsotne ~157 m (bija ~77 m), nobrauciens ~330 m, slīpums tāds pats kā agrāk. Pacēlājs garāks
   un ātrāks (28 krēsli). Aiz ziemeļu žoga kalns lēzeni nolaižas līdz līdzenumam (reljefs plašāks par spēles laukumu).
