@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import { ANIMALS, FUR_COLORS, SHIRT_COLORS } from './data.js?v=1.21.0';
-import { loadSave, writeSave, lastProfileName, listProfiles } from './save.js?v=1.21.0';
-import { buildAnimal } from './characters.js?v=1.21.0';
-import { Net, randomCode } from './net.js?v=1.21.0';
-import { Game } from './game.js?v=1.21.0';
-import { $, initAudio } from './ui.js?v=1.21.0';
-import { VERSION, BUILD_DATE } from './version.js?v=1.21.0';
+import { ANIMALS, FUR_COLORS, SHIRT_COLORS } from './data.js?v=1.22.0';
+import { loadSave, writeSave, lastProfileName, listProfiles } from './save.js?v=1.22.0';
+import { buildAnimal } from './characters.js?v=1.22.0';
+import { Net, randomCode } from './net.js?v=1.22.0';
+import { Game } from './game.js?v=1.22.0';
+import { $, initAudio } from './ui.js?v=1.22.0';
+import { VERSION, BUILD_DATE } from './version.js?v=1.22.0';
 
 const EMOJI = { lacis: '🐻', lapsa: '🦊', zakis: '🐰', kakis: '🐱', cuka: '🐷', suns: '🐶', varde: '🐸', pile: '🦆' };
 let save = null;
@@ -151,13 +151,21 @@ $('btn-room-back').onclick = () => show('scr-char');
 
 async function launch(net, code) {
   $('loading').classList.remove('hidden');
-  $('loading-text').textContent = 'Veidojam pasauli…';
+  $('loading').classList.add('busy');
+  const progress = (f, t) => {
+    const pc = Math.round(Math.max(0, Math.min(1, f)) * 100);
+    $('loading-text').textContent = t;
+    $('loading-bar').style.width = pc + '%';
+    $('loading-pc').textContent = pc + '%';
+  };
+  progress(0, 'Veidojam pasauli…');
   await new Promise((r) => setTimeout(r, 50));
   try {
     const game = new Game({ save, net, roomCode: code });
-    game.init();
+    await game.init(progress);
     $('menu').classList.add('hidden');
     $('loading').classList.add('hidden');
+    $('loading').classList.remove('busy');
     game.start();
     window.__game = game;
     if (code && net.isHost && !net.offline) {
@@ -167,6 +175,7 @@ async function launch(net, code) {
   } catch (e) {
     console.error(e);
     $('loading').classList.add('hidden');
+    $('loading').classList.remove('busy');
     status('Kļūda: ' + e.message);
     setBusy(false);
   }

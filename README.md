@@ -34,7 +34,7 @@ Datorā: WASD / bultiņas, atstarpe, E, peles vilkšana.
   - Visas 4 sētas ir vienādas (pagrieztas), tāpēc tavs dārzs paliek tāds pats, lai kurā sētā istabā tevi ieliek
   - 🪧 Abos sētas vārtos arkā karājas koka dēlis ar īpašnieka vārdu; krustojumā koka ceļa rādītājs, un katrā ceļā 100 m no krustojuma
     brūna ceļa zīme, kas rāda, kurp ceļš ved (otrā pusē — atpakaļ uz sētu)
-- 🧺 Tirgus: Ūdrs Ojārs (sēklas, augļu koku stādi, makšķere), Āpsis Arnolds (uzpērk ražu, augļus, zivis, ogas), Pūce Paula (cepures, drēbes, kartinga krāsas), Suns Sprīdis (mājdzīvnieki), Lapsa Liene (dārza rotājumi), Bebrs Bruno ar saldējuma ratiņiem.
+- 🧺 Tirgus: Ūdrs Ojārs (sēklas, augļu koku stādi, makšķere), Āpsis Arnolds (uzpērk ražu, augļus, zivis, ogas), Pūce Paula (cepures, drēbes, kartinga krāsas), Suns Sprīdis (mājdzīvnieki), Lapsa Liene (dārza rotājumi), Bebrs Bruno, kurš lēnām stumj saldējuma ratiņus ap aku (kad pērc, viņš apstājas), un velosipēdu statīvs ar 4 velosipēdiem.
   Katrai precei savs attēls.
 - 🪙 Vēlēšanās aka ciemata vidū: iemet 5🪙 — dažreiz izkrīt kaut kas jauks
 - 👕 Drēbes: krekli, brilles, kaklarotas, mugursoma, apmetnis, spārni, zābaki, kedas un cepures. 🎒 Somā redzams tavs tēls ar drēbēm un visas lietas režģī.
@@ -48,7 +48,7 @@ Datorā: WASD / bultiņas, atstarpe, E, peles vilkšana.
 - 🎲 Ķeramais un paslēpes ar draugiem
 - 🏎️ **Sacīkšu trase** (rietumos): ~1,6 km aplis ar diviem tuneļiem cauri pakalniem un turbo bultām — 2 apļu sacīkstes ar draugiem un robotiem
 - 🦌 Meža dzīvnieki: stirnas, zaķi, eži, mežacūkas, vāveres, stārķi — tos var paglaudīt
-- 🧭 5 zemes (katra 630 × 630 m): 🏡 sēta centrā, 🌲 Mežvidu mežs austrumos (ciems ar tirgu, sēnes, ogas, dzīvnieki, īpašās vietas), 🏁 sacīkšu trase rietumos, ❄️ Ziemas zeme ziemeļos, 🏖️ Dienvidu kāpas dienvidos. No sētas uz katru zemi ved grants ceļš — pa tiem var braukt ar 🚙 mašīnu (arī uz citu zemi, līdz 4 draugiem vienā mašīnā) vai 🚲 velosipēdu. Sētas krustojumā stāv 2 mašīnas un velosipēds — katrs ir viens vienīgs, ar to var braukt ikviens, un tas paliek tur, kur atstāts. Ziemas zemē ir 🛷 sniega motocikls un liels slēpošanas kalns.
+- 🧭 5 zemes (katra 630 × 630 m): 🏡 sēta centrā, 🌲 Mežvidu mežs austrumos (ciems ar tirgu, sēnes, ogas, dzīvnieki, īpašās vietas), 🏁 sacīkšu trase rietumos, ❄️ Ziemas zeme ziemeļos, 🏖️ Dienvidu kāpas dienvidos. No sētas uz katru zemi ved grants ceļš — pa tiem var braukt ar 🚙 mašīnu (arī uz citu zemi, līdz 4 draugiem vienā mašīnā) vai 🚲 velosipēdu. Sētas krustojumā stāv 2 mašīnas, pie katras sētas vārtiem velosipēds un vēl 4 velosipēdi meža tirgū — katrs ir viens vienīgs, ar to var braukt ikviens, un tas paliek tur, kur atstāts. Ziemas zemē ir 🛷 sniega motocikls un liels slēpošanas kalns.
   Pār robežu var pāriet jebkurā vietā, kur aiz tās ir cita zeme (robežu iezīmē sarkanbalti stabiņi, ārējās malās — žogs); kāpas pagaidām ir līdzenas
 - ❄️ **Ziemas zeme** (uz ziemeļiem): sniegs, sniegputenis, sniegotas eglītes, Ziemassvētku egle, sniegavīri un ziemeļbrieži.
   Tēlam automātiski ir ziemas cepure, dūraiņi un plīvojoša šalle.

@@ -1,12 +1,12 @@
 import * as THREE from 'three';
-import { makeNoise2D, mulberry32 } from './noise.js?v=1.21.0';
-import { MUSHROOMS } from './data.js?v=1.21.0';
+import { makeNoise2D, mulberry32 } from './noise.js?v=1.22.0';
+import { MUSHROOMS } from './data.js?v=1.22.0';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mat, smoothstep, lerp, makeTextSprite, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.21.0';
-import { optimizeRig, flattenStatic } from './characters.js?v=1.21.0';
-import { ZONE_HALF, ZONES, DIRS, GROUND_Y, sqDist, clampSquare, buildBorderPosts, smoothRoad, RoadIndex, buildRoadMesh, ROAD_HW, FOREST, neighbour, openSides, buildTerrainFence, wood } from './zones.js?v=1.21.0';
-import { buildGardenHouse, buildGreenhouse, buildGateArch, buildFingerpost, buildRoadSign, HOUSE } from './farmyard.js?v=1.21.0';
-import { findPlaces, placeHeight, inPlace, buildPlaces, updatePlaces, placeBerries } from './places.js?v=1.21.0';
+import { mat, smoothstep, lerp, makeTextSprite, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.22.0';
+import { optimizeRig, flattenStatic } from './characters.js?v=1.22.0';
+import { ZONE_HALF, ZONES, DIRS, GROUND_Y, sqDist, clampSquare, buildBorderPosts, smoothRoad, RoadIndex, buildRoadMesh, ROAD_HW, FOREST, neighbour, openSides, buildTerrainFence, wood } from './zones.js?v=1.22.0';
+import { buildGardenHouse, buildGreenhouse, buildGateArch, buildFingerpost, buildRoadSign, HOUSE } from './farmyard.js?v=1.22.0';
+import { findPlaces, placeHeight, inPlace, buildPlaces, updatePlaces, placeBerries } from './places.js?v=1.22.0';
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
@@ -43,6 +43,8 @@ const ROADS = {
   race: null, // pēc kartinga vietas (buildTrackCurve)
 };
 // mašīnas stāvvieta meža ciemata malā un sētas pagalmā
+// velosipēdu statīvs meža ciemata rietumu malā (pie ceļa uz sētu)
+export const BIKE_RACK = { x: -19, z: -2 };
 export const CAR_SPOT = { x: 46, z: 40, heading: 0.9 };
 export const FARM_CAR = { x: -10, z: 6, heading: Math.PI / 2 };
 
@@ -431,16 +433,22 @@ export class World {
 
   // ---------- būvēšana ----------
   build(scene, renderer = null) {
+    for (const _ of this.buildSteps(scene, renderer)) { /* viss uzreiz */ }
+  }
+
+  // uzbūve pa soļiem: ielādes laikā starp soļiem pārlūks var pārzīmēt ekrānu (piem., pagriežot telefonu)
+  *buildSteps(scene, renderer = null) {
     this.renderer = renderer;
     scene.add(this.group);
     const M = this.mode;
-    this.buildTerrain();
+    this.buildTerrain(); yield;
     if (M !== 'farm') this.buildWater();
     if (M === 'race') { this.buildTrackMesh(); this.buildTunnels(); }
-    if (M === 'forest') { this.buildVillage(); buildPlaces(this); }
+    if (M === 'forest') { this.buildVillage(); yield; buildPlaces(this); }
     if (M === 'farm') this.buildFarmYard();
-    this.buildTrees();
-    this.buildRocksAndFlowers();
+    yield;
+    this.buildTrees(); yield;
+    this.buildRocksAndFlowers(); yield;
     this.buildClouds();
     if (M === 'forest') {
       this.placeMushrooms();

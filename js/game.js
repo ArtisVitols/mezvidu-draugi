@@ -1,25 +1,25 @@
 import * as THREE from 'three';
-import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, yardPart, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.21.0';
-import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.21.0';
-import { Controls } from './controls.js?v=1.21.0';
+import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, yardPart, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.22.0';
+import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.22.0';
+import { Controls } from './controls.js?v=1.22.0';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS, TREES, FRUITS, CLOTHES, SLOTS, DECOR } from './data.js?v=1.21.0';
-import { writeSave } from './save.js?v=1.21.0';
-import { VERSION, BUILD_DATE } from './version.js?v=1.21.0';
-import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.21.0';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.21.0';
-import { icon, iconEl, fishSvg } from './icons.js?v=1.21.0';
-import { Activities, makeTeam } from './activities.js?v=1.21.0';
-import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel, statsWanted } from './quality.js?v=1.21.0';
-import { hdrEnvironment } from './gfx.js?v=1.21.0';
-import { buildRod, buildDecor } from './props.js?v=1.21.0';
-import { InstanceField } from './instancing.js?v=1.21.0';
-import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.21.0';
-import { Vehicles } from './vehicles.js?v=1.21.0';
-import { Farm, fmtLeft } from './farm.js?v=1.21.0';
-import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.21.0';
-import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.21.0';
-import { plotOf } from './world.js?v=1.21.0';
+import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS, TREES, FRUITS, CLOTHES, SLOTS, DECOR } from './data.js?v=1.22.0';
+import { writeSave } from './save.js?v=1.22.0';
+import { VERSION, BUILD_DATE } from './version.js?v=1.22.0';
+import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.22.0';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.22.0';
+import { icon, iconEl, fishSvg } from './icons.js?v=1.22.0';
+import { Activities, makeTeam } from './activities.js?v=1.22.0';
+import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel, statsWanted } from './quality.js?v=1.22.0';
+import { hdrEnvironment } from './gfx.js?v=1.22.0';
+import { buildRod, buildDecor } from './props.js?v=1.22.0';
+import { InstanceField } from './instancing.js?v=1.22.0';
+import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.22.0';
+import { Vehicles } from './vehicles.js?v=1.22.0';
+import { Farm, fmtLeft } from './farm.js?v=1.22.0';
+import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.22.0';
+import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.22.0';
+import { plotOf } from './world.js?v=1.22.0';
 
 const ANIM = ['idle', 'walk', 'run', 'jump', 'swim', 'sit', 'pet', 'wave', 'fish', 'ski', 'lift', 'throw'];
 const MUSH_RESPAWN = 120000;
@@ -59,7 +59,10 @@ export class Game {
   now() { return Date.now() + this.timeOffset; }
 
   // ======================= Inicializācija =======================
-  init() {
+  // progress(daļa 0..1, teksts) — ielādes ekrānam; starp soļiem atdodam vadību pārlūkam, lai tas var pārzīmēt ekrānu
+  async init(progress = () => {}) {
+    const step = async (f, t) => { progress(f, t); await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0))); };
+    await step(0.02, 'Gatavojam debesis…');
     const canvas = $('game');
     // grafikas līmenis: Auto (pēc fps) vai izvēlēts izvēlnē; iestatījumi tiek uzlikti pēc pasaules uzbūvēšanas
     this.qMode = loadQualityMode();
@@ -112,12 +115,24 @@ export class Game {
 
     this.camera.layers.enable(1);
     hdrEnvironment(this.renderer, this.sunDir, 1.0).then((env) => { this.stage.environment = env; }).catch((e) => console.warn(e));
-    this.buildForest();
-    this.buildFarm();
+    await step(0.06, 'Veidojam mežu…');
+    let n = 0;
+    for (const _ of this.buildForest()) await step(0.06 + Math.min(0.42, ++n * 0.05), 'Veidojam mežu…');
+    await step(0.5, 'Veidojam sētu un dārzus…');
+    n = 0;
+    for (const _ of this.buildFarm()) await step(0.5 + Math.min(0.25, ++n * 0.04), 'Veidojam sētu un dārzus…');
+    await step(0.76, 'Veidojam sacīkšu trasi…');
     this.raceW = new World(WORLD_SEED + 2000, RACE); // trases dati (aplis, tuneļi) — modeļi tiek uzbūvēti, pirmoreiz ierodoties
     this.raceScene = new THREE.Group();
+    await step(0.8, 'Iestatām grafiku…');
     this.applyQuality(startQ);
+    this.mapBases = {};
+    for (const [id, W] of [[FOREST, this.world], [FARM, this.farmW], [RACE, this.raceW]]) {
+      await step(0.8 + Object.keys(this.mapBases).length * 0.012, 'Zīmējam karti…');
+      this.mapBases[id] = this.mapBase(W);
+    }
     this.buildMinimap();
+    await step(0.84, 'Gatavojam tavu tēlu…');
 
     // mans tēls
     let sz = ZONES[this.save.zone] ? this.save.zone : FARM;
@@ -140,12 +155,45 @@ export class Game {
 
     this.cam = { yaw: Math.PI * 0.25, pitch: 0.38, dist: 7.5 };
     this.initVehicles();
+    await step(0.88, 'Ejam uz tavu vietu…');
     this.switchZone(sz, sp, null); // ielādējas saglabātā zeme (mežs tiek izlādēts, ja tā nav mežs)
     this.controls = new Controls($('touch'));
     this.bindHud();
     this.setupNet();
     this.updateCoins();
     this.onResize();
+    // šeideru kompilēšana pirms pirmā kadra (citādi pirmais kadrs uz brīdi „sasalst”)
+    await step(0.92, 'Gatavojam krāsas un gaismas…');
+    this.camera.position.set(this.me.pos.x, 3, this.me.pos.z + 6);
+    try { await this.precompile((f) => step(0.92 + f * 0.08, 'Gatavojam krāsas un gaismas…')); } catch (e) { console.warn(e); }
+    await step(1, 'Gatavs!');
+  }
+
+  // šeideri pa daļām (renderer.compile vienam objektam ar visas ainas gaismām), lai ielādes ekrāns paliek dzīvs
+  async precompile(tick) {
+    const list = [];
+    const add = (o, d) => {
+      if (!o.visible) return;
+      if (d < 3 && !o.isMesh && o.children.length > 6) o.children.forEach((c) => add(c, d + 1));
+      else list.push(o);
+    };
+    this.stage.children.forEach((c) => add(c, 0));
+    let t = performance.now();
+    for (let i = 0; i < list.length; i++) {
+      this.renderer.compile(list[i], this.camera, this.stage);
+      if (performance.now() - t > 120) { await tick(i / list.length * 0.3); t = performance.now(); }
+    }
+    // īstā šeideru saistīšana un ģeometrijas/faktūru augšupielāde notiek pirmajā zīmēšanā — zīmējam vēl zem ielādes
+    // ekrāna, atklājot objektus pa daļām (katrā kadrā tikai daļa jaunā darba)
+    this.updateCamera(0.016);
+    for (const o of list) o.visible = false;
+    const parts = 8;
+    for (let k = 1; k <= parts; k++) {
+      const to = Math.round(list.length * k / parts);
+      for (let i = Math.round(list.length * (k - 1) / parts); i < to; i++) list[i].visible = true;
+      this.renderFrame();
+      await tick(0.3 + 0.7 * k / parts);
+    }
   }
 
   // pilnā pasaule (World) zemei id vai null
@@ -174,11 +222,13 @@ export class Game {
   // Visi meža objekti ir grupā this.scene. Aizejot uz citu zemi, grupa tiek izņemta no ainas un visa tās GPU atmiņa
   // (ģeometriju buferi, faktūras, arī lielā foto reljefa faktūra) atbrīvota. JS dati paliek, tāpēc atgriežoties
   // nekas nav jābūvē no jauna — three.js tikai augšupielādē datus GPU (ātri), nevis vairākas sekundes ģenerē pasauli.
-  buildForest() {
+  *buildForest() {
     this.scene = new THREE.Group();
     this.stage.add(this.scene);
     const W = this.world = new World(WORLD_SEED, FOREST);
-    W.build(this.scene, this.renderer);
+    yield;
+    yield* W.buildSteps(this.scene, this.renderer);
+    yield;
     this.terr = W; // aktīvās zemes reljefs (kustībai, kamerai, mājdzīvniekiem)
     if (this.Q) this.applyWorldQuality(W);
     this.buildMushrooms();
@@ -187,8 +237,7 @@ export class Game {
     this.buildVendors();
     this.bots = [];
     this.centerOn = true;
-    return Promise.resolve();
-  }
+      }
 
   unloadForest() {
     if (!this.centerOn) return;
@@ -305,7 +354,7 @@ export class Game {
   // Kopējās kartes koordinātas: lokālā pozīcija + zemes nobīde (zoneOffset), tā redzamas visas zemes kopā.
   buildMinimap() {
     this.mapR = PLAY_RADIUS + 10;
-    this.mapBases = { [FOREST]: this.mapBase(this.world), [FARM]: this.mapBase(this.farmW), [RACE]: this.mapBase(this.raceW) };
+    if (!this.mapBases) this.mapBases = { [FOREST]: this.mapBase(this.world), [FARM]: this.mapBase(this.farmW), [RACE]: this.mapBase(this.raceW) };
     this.mapHi = {};
     this.mapCtx = $('minimap').getContext('2d');
     $('minimap').addEventListener('click', () => this.openBigMap());
@@ -1534,14 +1583,7 @@ export class Game {
       n.model.root.rotation.y = n.heading;
       n.model.animate(dt, sp > 0.05, sp);
     }
-    // saldējuma ratiņi
-    const a = ts * 0.035;
-    const ip = this.ice.pos.set(Math.cos(a) * 9, VILLAGE_Y, Math.sin(a) * 9);
-    this.ice.cart.position.copy(ip);
-    this.ice.cart.rotation.y = -a;
-    this.ice.av.root.position.set(ip.x - Math.cos(a) * 1.5, VILLAGE_Y, ip.z - Math.sin(a) * 1.5);
-    this.ice.av.root.rotation.y = -a + Math.PI;
-    this.ice.av.animate(dt, 'walk', 2);
+    this.updateIceCart(dt, ts);
     // star savākšana
     if (!this.me.inKart) {
       this.world.stars.forEach((s, i) => {
@@ -1673,6 +1715,52 @@ export class Game {
     this.stat('petted');
     const msgs = { stirna: 'Stirna priecīgi pamāja ar ausīm', zakis: 'Zaķis sarāva degunu', ezis: 'Ezītis nošņaukājās — uzmanīgi, adatas!', mezacuka: 'Mežacūka apmierināti ņurdēja', vavere: 'Vāverīte paslēpa riekstu', starkis: 'Stārķis noklabināja knābi' };
     toast(`❤️ ${msgs[n.home.type]}`);
+  }
+
+  // saldējuma pārdevējs lēnām stumj ratiņus pa līkumotu apli ap aku (ratiņu priekšpuse — lokālā +x, rokturi aizmugurē),
+  // laiku pa laikam apstājas un pamāj. Ja kāds stāv pie ratiņiem (pērk), viņš stāv uz vietas.
+  // Kustība ir tikai vizuāla katrā telefonā (sākuma vieta no kopējā pulksteņa, tāpēc visiem līdzīga).
+  updateIceCart(dt, ts) {
+    const I = this.ice;
+    const path = (th) => { const r = 10 + 1.6 * Math.sin(2 * th + 1) + 0.6 * Math.sin(5 * th); return [Math.cos(th) * r, Math.sin(th) * r]; };
+    if (I.th == null) {
+      I.th = (ts * 0.012) % (Math.PI * 2); I.v = 0; I.stop = 0; I.wave = 0; I.next = 14 + Math.random() * 14;
+      I.av.pushing = true;
+    }
+    // vai kāds stāv pie ratiņiem
+    const near = (x, z) => Math.hypot(x - I.pos.x, z - I.pos.z) < 4.2;
+    let buyer = this.zone === FOREST && !this.me.veh && !this.me.ride && near(this.me.pos.x, this.me.pos.z);
+    for (const r of this.remotes.values()) if (!buyer && (r.zone || FARM) === FOREST && near(r.pos.x, r.pos.z)) buyer = true;
+    if (I.stop > 0) I.stop -= dt;
+    if (I.wave > 0) I.wave -= dt;
+    const want = buyer || I.stop > 0 ? 0 : 1.15; // m/s — lēns solis
+    I.v += (want - I.v) * Math.min(1, dt * (want ? 1.5 : 4));
+    if (I.v < 0.02 && !want) I.v = 0;
+    const [x0, z0] = path(I.th), [x1, z1] = path(I.th + 0.01);
+    const dl = Math.hypot(x1 - x0, z1 - z0) / 0.01;
+    const step = I.v * dt;
+    I.th += step / dl;
+    I.next -= step;
+    if (I.next <= 0 && !buyer) {
+      // pietura: dažreiz pamāj ar roku
+      I.stop = 4 + Math.random() * 4;
+      if (Math.random() < 0.65) I.wave = 2.6;
+      I.next = 16 + Math.random() * 18;
+    }
+    const [px, pz] = path(I.th), [qx, qz] = path(I.th + 0.02);
+    const tx = qx - px, tz = qz - pz, tl = Math.hypot(tx, tz) || 1;
+    const dx = tx / tl, dz = tz / tl;
+    I.pos.set(px, VILLAGE_Y, pz);
+    I.cart.position.copy(I.pos);
+    I.cart.rotation.y = Math.atan2(-dz, dx); // lokālā +x pa kustības virzienu
+    // pārdevējs aiz rokturiem, skatās kustības virzienā
+    const av = I.av;
+    av.root.position.set(px - dx * 2.25, VILLAGE_Y, pz - dz * 2.25);
+    let ry = Math.atan2(dx, dz);
+    if (I.wave > 0) ry += Math.sin(Math.min(1, (2.6 - I.wave) * 2) * Math.PI / 2) * 0.5; // pagriežas pret garāmgājējiem
+    av.root.rotation.y = angleLerp(av.root.rotation.y, ry, 1 - Math.exp(-dt * 6));
+    av.pushing = I.wave <= 0;
+    av.animate(dt, I.wave > 0 ? 'wave' : I.v > 0.15 ? 'walk' : 'idle', I.v);
   }
 
   buyIceCream() {

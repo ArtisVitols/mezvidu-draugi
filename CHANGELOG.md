@@ -1,5 +1,14 @@
 # Izmaiņu žurnāls
 
+## 1.22.0 — 2026-11-18
+- ⏳ Sākuma ielāde notiek pa soļiem ar joslu un procentiem (mežs, sēta, karte, tēls, grafika). Starp soļiem ekrāns tiek pārzīmēts,
+  tāpēc, pagriežot telefonu ielādes laikā, ekrāns vairs nepaliek melns — ielāde redzama arī guļus. Grafikas sagatavošana un pirmie
+  kadri notiek vēl zem ielādes ekrāna (spēle neuzsalst pirmajā brīdī).
+- 🚲 8 velosipēdi: pa vienam pie katras sētas vārtiem (4) un 4 velosipēdu statīvā meža ciemata tirgū. Katram sava krāsa,
+  ar katru var braukt ikviens, un tas paliek tur, kur atstāts. Krustojuma velosipēds pārcelts pie 1. sētas vārtiem.
+- 🍦 Bebrs Bruno tagad lēnām stumj saldējuma ratiņus uz priekšu (rokas uz rokturiem), staigā pa līkumotu apli ap aku, laiku pa laikam
+  apstājas un pamāj garāmgājējiem. Kad kāds stāv pie ratiņiem (pērk), viņš stāv uz vietas.
+
 ## 1.21.0 — 2026-11-17
 - 🚙 Draugu mašīnas brauc gludi: katrai pozīcijai līdzi nāk laiks, saimnieks to uzreiz pārsūta pārējiem (agrāk gaidīja līdz 100 ms),
   braucot pozīciju sūta 20× sekundē, un draugus rāda ~0,1–0,2 s pagātnē, vienmērīgi pārvietojoties starp saņemtajiem punktiem

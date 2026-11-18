@@ -3,13 +3,13 @@
 // ja neviens cits ar to nebrauc; izkāpjot tas paliek tur, kur atstāts (arī citā zemē). Saimnieks glabā, kurš ar ko brauc
 // un kur katrs stāv (saimnieka saglabājumā `vehs`). Vehicles — Game papildinājums.
 import * as THREE from 'three';
-import { mat, lerp, clamp, makeBlobShadow } from './util.js?v=1.21.0';
-import { optimizeRig, tyreGeo } from './characters.js?v=1.21.0';
-import { $, toast, sfx } from './ui.js?v=1.21.0';
-import { DIRS, neighbour, FARM, FOREST, ZONE_IDS } from './zones.js?v=1.21.0';
-import { WATER_Y } from './world.js?v=1.21.0';
-import { SLED_SPOT } from './winter.js?v=1.21.0';
-import { ZONES } from './zones.js?v=1.21.0';
+import { mat, lerp, clamp, makeBlobShadow, makeTextSprite } from './util.js?v=1.22.0';
+import { optimizeRig, tyreGeo } from './characters.js?v=1.22.0';
+import { $, toast, sfx } from './ui.js?v=1.22.0';
+import { DIRS, neighbour, FARM, FOREST, ZONE_IDS } from './zones.js?v=1.22.0';
+import { WATER_Y, YARD, YARD_IN, rotPlot, rotPlotY, BIKE_RACK } from './world.js?v=1.22.0';
+import { SLED_SPOT } from './winter.js?v=1.22.0';
+import { ZONES } from './zones.js?v=1.22.0';
 
 // tīkla kods (pos ziņas 6. lauks): 1 = kartings, 2 = mašīna, 3 = sniega motocikls, 5 = velosipēds
 export const VEH_CODE = { car: 2, sled: 3, bike: 5 }; // 4 = pasažieris (p[8] — vadītāja id, p[9] — sēdvieta); p[10] — transporta id
@@ -25,9 +25,18 @@ export const DEF = {
 export const VEHICLES = [
   { id: 'car1', kind: 'car', color: '#3a7d44', name: 'Zaļā mašīna', zone: FARM, x: -15, z: 4.2, h: Math.PI / 2 },
   { id: 'car2', kind: 'car', color: '#2f6fd6', name: 'Zilā mašīna', zone: FARM, x: 15, z: -4.2, h: -Math.PI / 2 },
-  { id: 'bike1', kind: 'bike', color: '#d23b3b', name: 'Velosipēds', zone: FARM, x: -4.4, z: -14, h: Math.PI },
   { id: 'sled1', kind: 'sled', color: '#d8262a', name: 'Sniega motocikls', zone: 'n', x: SLED_SPOT.x, z: SLED_SPOT.z, h: SLED_SPOT.heading },
 ];
+// velosipēdi: pa vienam pie katras sētas vārtiem (ceļmalā starp ceļu un žogu) un 4 statīvā meža ciemata tirgū
+const BIKE_COL = [['#d23b3b', 'Sarkanais'], ['#2f6fd6', 'Zilais'], ['#f2c12e', 'Dzeltenais'], ['#2fa84f', 'Zaļais'],
+  ['#e05aa8', 'Rozā'], ['#f07b2a', 'Oranžais'], ['#8a4ad2', 'Violetais'], ['#1f9a9a', 'Tirkīza']];
+for (let s = 0; s < 4; s++) {
+  const [x, z] = rotPlot(-YARD.gateA + 5.5, -YARD_IN + 2.3, s);
+  VEHICLES.push({ id: 'bike' + (s + 1), kind: 'bike', color: BIKE_COL[s][0], name: BIKE_COL[s][1] + ' velosipēds', zone: FARM, x, z, h: Math.PI / 2 + rotPlotY(s) });
+}
+for (let i = 0; i < 4; i++) {
+  VEHICLES.push({ id: 'bike' + (i + 5), kind: 'bike', color: BIKE_COL[i + 4][0], name: BIKE_COL[i + 4][1] + ' velosipēds', zone: FOREST, x: BIKE_RACK.x, z: BIKE_RACK.z + i * 1.25, h: Math.PI / 2 });
+}
 const VDEF = Object.fromEntries(VEHICLES.map((v) => [v.id, v]));
 
 // ---------- modeļi ----------
@@ -243,6 +252,24 @@ export const Vehicles = {
   initVehicles() {
     this.vehs = {};
     for (const d of VEHICLES) this.vehs[d.id] = cleanVeh(d, null);
+    // velosipēdu statīvs meža ciematā (metāla loki) ar zīmi
+    const rack = new THREE.Group();
+    const pipe = (len) => new THREE.CylinderGeometry(0.035, 0.035, len, 8);
+    const bar = new THREE.Mesh(pipe(5.4), chromeM()); bar.rotation.x = Math.PI / 2; bar.position.set(0.95, 0.32, 1.875); rack.add(bar);
+    for (let i = 0; i < 4; i++) {
+      const loop = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.03, 6, 16, Math.PI), chromeM());
+      loop.position.set(0.95, 0.32, i * 1.25); rack.add(loop);
+    }
+    for (const z of [-0.8, 4.55]) { const leg = new THREE.Mesh(pipe(0.34), chromeM()); leg.position.set(0.95, 0.17, z); rack.add(leg); }
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.9, 8), darkM()); post.position.set(0.95, 0.95, -1.2); rack.add(post);
+    const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.04, 20), mat('#2f6fd6', { roughness: 0.5 }));
+    plate.rotation.z = Math.PI / 2; plate.position.set(0.95, 1.9, -1.2); rack.add(plate);
+    const sign = makeTextSprite('🚲 Velosipēdi', { fontSize: 40, bg: 'rgba(47,111,214,0.85)' });
+    sign.position.set(0.95, 2.55, -1.2); rack.add(sign);
+    const W = this.world;
+    rack.position.set(BIKE_RACK.x, W.getHeight(BIKE_RACK.x, BIKE_RACK.z + 1.9), BIKE_RACK.z);
+    rack.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    this.scene.add(rack);
   },
   // saimnieks: transports no saimnieka saglabājuma
   hostInitVehs() {

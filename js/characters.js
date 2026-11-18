@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mat, makeBlobShadow, noiseTexture, lerp, canvasTexture } from './util.js?v=1.21.0';
+import { mat, makeBlobShadow, noiseTexture, lerp, canvasTexture } from './util.js?v=1.22.0';
 
 // kažoka/auduma materiāli ar smalku faktūru
 let furTex = null, clothTex = null;
@@ -699,6 +699,8 @@ export function buildAnimal({ animal = 'lacis', fur = '#8b5a2b', shirt = '#d23b3
         T.hY = Math.sin(this.t * 0.35) * 0.35 * Math.max(0, Math.sin(this.t * 0.13));
       }
       if (this.carryObj && state !== 'sit' && state !== 'bike') { T.sh = [-1.0, -1.0]; T.shZ = [0.34, -0.34]; T.el = [-0.85, -0.85]; }
+      // stumj ratiņus: abas rokas uz priekšu pie rokturiem, nedaudz noliecies
+      if (this.pushing && (state === 'walk' || state === 'idle')) { T.sh = [-1.15, -1.15]; T.shZ = [0.2, -0.2]; T.el = [-0.25, -0.25]; T.spX += 0.12; T.spY *= 0.4; }
       if (this.wings) { const f = Math.sin(this.t * (state === 'run' || state === 'jump' ? 9 : 2.2)) * 0.35; this.wings[0].rotation.y = 0.35 + f; this.wings[1].rotation.y = -0.35 - f; }
       const L = (a, b) => a + (b - a) * k;
       for (let i = 0; i < 2; i++) {
