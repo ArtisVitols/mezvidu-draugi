@@ -4,13 +4,13 @@
 // sniega pikas (arī ar draugiem), ziemas drēbes.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { ZONE_HALF, GROUND_Y, DIRS, clampSquare, openSides, buildBorderPosts, disposeTree, smoothRoad, RoadIndex, buildRoadMesh, roadMaterial } from './zones.js?v=1.23.0';
-import { makeTextSprite, canvasTexture, mat, smoothstep, lerp, angleLerp, clamp } from './util.js?v=1.23.0';
-import { buildNPC, buildAnimal, flattenStatic } from './characters.js?v=1.23.0';
-import { loadTexture } from './gfx.js?v=1.23.0';
-import { InstanceField } from './instancing.js?v=1.23.0';
-import { makeNoise2D, mulberry32 } from './noise.js?v=1.23.0';
-import { $, toast, sfx } from './ui.js?v=1.23.0';
+import { ZONE_HALF, GROUND_Y, DIRS, clampSquare, openSides, buildBorderPosts, disposeTree, smoothRoad, RoadIndex, buildRoadMesh, roadMaterial } from './zones.js?v=1.24.0';
+import { makeTextSprite, canvasTexture, mat, smoothstep, lerp, angleLerp, clamp } from './util.js?v=1.24.0';
+import { buildNPC, buildAnimal, flattenStatic } from './characters.js?v=1.24.0';
+import { loadTexture } from './gfx.js?v=1.24.0';
+import { InstanceField } from './instancing.js?v=1.24.0';
+import { makeNoise2D, mulberry32 } from './noise.js?v=1.24.0';
+import { $, toast, sfx } from './ui.js?v=1.24.0';
 
 const SEED = 9137;
 const TAU = Math.PI * 2;
@@ -36,6 +36,7 @@ const ROADS = [
   [[0, 380], [0, 315], [0, 290], [27, 274], [62, 264], [89, 246]],
   [[82, 209], [76, 180], [69, 145], [64, 112], [62, 94]],
 ];
+export const WINTER_ROAD = ROADS[0]; // autobusa maršrutam (bus.js)
 let roadLines = null, roadIdx = null;
 export function winterRoads() {
   if (!roadLines) { roadLines = ROADS.map((p) => smoothRoad(p)); roadIdx = new RoadIndex(roadLines); }

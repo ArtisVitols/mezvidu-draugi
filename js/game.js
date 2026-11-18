@@ -1,26 +1,27 @@
 import * as THREE from 'three';
-import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, yardPart, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.23.0';
-import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.23.0';
-import { Controls } from './controls.js?v=1.23.0';
+import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, yardPart, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.24.0';
+import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.24.0';
+import { Controls } from './controls.js?v=1.24.0';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS, TREES, FRUITS, CLOTHES, SLOTS, DECOR } from './data.js?v=1.23.0';
-import { writeSave } from './save.js?v=1.23.0';
-import { VERSION, BUILD_DATE } from './version.js?v=1.23.0';
-import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.23.0';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.23.0';
-import { icon, iconEl, fishSvg } from './icons.js?v=1.23.0';
-import { Activities, makeTeam } from './activities.js?v=1.23.0';
-import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel, statsWanted } from './quality.js?v=1.23.0';
-import { hdrEnvironment } from './gfx.js?v=1.23.0';
-import { buildRod, buildDecor } from './props.js?v=1.23.0';
-import { InstanceField } from './instancing.js?v=1.23.0';
-import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.23.0';
-import { Vehicles } from './vehicles.js?v=1.23.0';
-import { Farm, fmtLeft } from './farm.js?v=1.23.0';
-import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.23.0';
-import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.23.0';
-import { plotOf } from './world.js?v=1.23.0';
-import { kartClamp } from './racetrack.js?v=1.23.0';
+import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS, TREES, FRUITS, CLOTHES, SLOTS, DECOR } from './data.js?v=1.24.0';
+import { writeSave } from './save.js?v=1.24.0';
+import { VERSION, BUILD_DATE } from './version.js?v=1.24.0';
+import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.24.0';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.24.0';
+import { icon, iconEl, fishSvg } from './icons.js?v=1.24.0';
+import { Activities, makeTeam } from './activities.js?v=1.24.0';
+import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel, statsWanted } from './quality.js?v=1.24.0';
+import { hdrEnvironment } from './gfx.js?v=1.24.0';
+import { buildRod, buildDecor } from './props.js?v=1.24.0';
+import { InstanceField } from './instancing.js?v=1.24.0';
+import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.24.0';
+import { Vehicles } from './vehicles.js?v=1.24.0';
+import { Farm, fmtLeft } from './farm.js?v=1.24.0';
+import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.24.0';
+import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.24.0';
+import { plotOf } from './world.js?v=1.24.0';
+import { kartClamp } from './racetrack.js?v=1.24.0';
+import { Bus, BUS_STOPS } from './bus.js?v=1.24.0';
 
 const ANIM = ['idle', 'walk', 'run', 'jump', 'swim', 'sit', 'pet', 'wave', 'fish', 'ski', 'lift', 'throw'];
 const MUSH_RESPAWN = 120000;
@@ -156,6 +157,7 @@ export class Game {
 
     this.cam = { yaw: Math.PI * 0.25, pitch: 0.38, dist: 7.5 };
     this.initVehicles();
+    this.initBus();
     await step(0.88, 'Ejam uz tavu vietu…');
     this.switchZone(sz, sp, null); // ielādējas saglabātā zeme (mežs tiek izlādēts, ja tā nav mežs)
     this.controls = new Controls($('touch'));
@@ -491,6 +493,12 @@ export class Game {
       const [px, py] = toPx0(...this.globalPos(v.zone, v.x, v.z));
       this.mapIcon(g, v.kind === 'car' ? '🚙' : v.kind === 'bike' ? '🚲' : '🛷', px, py, zoom === 1 ? 17 : zoom === 2 ? 12 : 10, v.color);
     }
+    // autobuss un pieturas (globālās koordinātēs)
+    if (this.bus && this.bus.zone) {
+      if (zoom > 0) for (const s of BUS_STOPS) { const [px, py] = toPx0(s.x, s.z); this.mapIcon(g, '🚏', px, py, zoom === 1 ? 14 : 10, 'rgba(255,255,255,0.9)'); }
+      const [ox, oz] = zoneOffset(this.bus.zone), [px, py] = toPx0(this.bus.lx + ox, this.bus.lz + oz);
+      this.mapIcon(g, '🚌', px, py, zoom === 1 ? 19 : zoom === 2 ? 14 : 12, '#1f6fd6');
+    }
     // draugi
     for (const [, r] of this.remotes) {
       if (!r.seen || (this.mgHidden && this.mgHidden(r.id))) continue;
@@ -716,6 +724,7 @@ export class Game {
     if (this.zone === FARM) this.farmActions(consider, d2);
     if (this.zone === RACE) { const ks = this.raceW.kartSpot; consider(d2(ks.x, ks.z), 3.5, '🏎️ Sēsties kartā', () => this.enterKart()); }
     this.vehicleActions(consider, d2);
+    this.busActions(consider, d2);
     return best;
   }
 
@@ -732,7 +741,7 @@ export class Game {
     press('btn-quests', () => this.openQuests());
     press('btn-menu', () => this.openMenu());
     press('btn-room', () => this.openRoom());
-    press('btn-exit-kart', () => (this.me.ride ? this.leaveRide() : this.me.veh ? this.exitVehicle() : this.exitKart()));
+    press('btn-exit-kart', () => (this.me.bus ? this.leaveBus() : this.me.ride ? this.leaveRide() : this.me.veh ? this.exitVehicle() : this.exitKart()));
     press('btn-race', () => { this.net.toHost({ t: 'raceReq' }); sfx('beep'); });
     press('btn-games', () => this.openGames());
     $('panel-close').addEventListener('click', () => closePanel());
@@ -1190,7 +1199,7 @@ export class Game {
     // lēnākos telefonos sadalām kustību vairākos soļos, lai spēle nepalēninātos
     const steps = Math.min(3, Math.ceil(dt / 0.034));
     for (let i = 0; i < steps; i++) {
-      if (this.me.inKart) this.updateKart(dt / steps, mv);
+      if (this.me.bus) { /* sēž autobusā (updateBus) */ } else if (this.me.inKart) this.updateKart(dt / steps, mv);
       else if (this.me.veh) this.updateVehicle(dt / steps, mv);
       else if (this.me.ride) { if (i === 0) this.updateRide(dt); }
       else if (this.me.lift) { if (i === 0) this.updateLift(dt); }
@@ -1198,6 +1207,7 @@ export class Game {
       else this.updateWalk(dt / steps, mv, jump && i === 0);
     }
 
+    this.updateBus(dt);
     this.updateCamera(dt);
     this.updateSun(dt);
     this.updateRemotes(dt);
@@ -1413,16 +1423,16 @@ export class Game {
 
   updateCamera(dt) {
     const me = this.me;
-    const riding = me.veh || me.ride;
+    const riding = me.veh || me.ride || me.bus;
     if (me.inKart || me.ski || riding) {
-      const rideFast = me.veh ? Math.abs(me.veh.speed) > 1 : me.ride ? this.remoteSpeed(me.ride.driver) > 1 : false;
+      const rideFast = me.bus ? this.bus.speed > 1 : me.veh ? Math.abs(me.veh.speed) > 1 : me.ride ? this.remoteSpeed(me.ride.driver) > 1 : false;
       if (this.controls.camId === null && (me.inKart || rideFast || (me.ski && me.ski.v > 1.5))) {
-        const target = (me.inKart ? me.kart.heading : me.veh ? me.veh.heading : me.ride ? me.heading : me.ski.heading) + Math.PI;
+        const target = (me.inKart ? me.kart.heading : me.veh ? me.veh.heading : me.ride || me.bus ? me.heading : me.ski.heading) + Math.PI;
         this.cam.yaw = angleLerp(this.cam.yaw, target, 1 - Math.exp(-dt * 3.5));
         this.cam.pitch = lerp(this.cam.pitch, 0.3, 1 - Math.exp(-dt * 2));
       }
     }
-    let dist = me.inKart ? Math.max(this.cam.dist, 8) : riding ? Math.max(this.cam.dist, 9.5) : this.cam.dist;
+    let dist = me.inKart ? Math.max(this.cam.dist, 8) : me.bus ? Math.max(this.cam.dist, 12) : riding ? Math.max(this.cam.dist, 9.5) : this.cam.dist;
     const tx = me.pos.x, ty = me.pos.y + 1.5, tz = me.pos.z;
     const cp = Math.cos(this.cam.pitch);
     // ja starp kameru un tēlu ir kalns, pievelkam kameru tuvāk
@@ -1675,7 +1685,7 @@ export class Game {
   }
 
   findAction() {
-    if (this.me.inKart || this.me.veh || this.me.ride) return null;
+    if (this.me.inKart || this.me.veh || this.me.ride || this.me.bus) return null;
     if (this.me.carry) return this.carryAction();
     if (this.zone !== FOREST) return this.findZoneAction();
     const p = this.me.pos, t = this.now();
@@ -1700,6 +1710,7 @@ export class Game {
       consider(d, 2.8, `🤗 Paglaudīt: ${NPC_TYPES[n.home.type].name}`, () => this.petNpc(n));
     }
     this.vehicleActions(consider, d2);
+    this.busActions(consider, d2);
     return best;
   }
 
@@ -2513,5 +2524,5 @@ export class Game {
   }
 }
 
-Object.assign(Game.prototype, Activities, Quality, Winter, Vehicles, Farm);
+Object.assign(Game.prototype, Activities, Quality, Winter, Vehicles, Farm, Bus);
 Game.prototype.weeklyIcon = function () { return ({ mushrooms: '🍄', fish: '🐟', berries: '🫐', harvested: '🥕', petted: '🦌', races: '🏎️' })[this.team.stat] || ''; };

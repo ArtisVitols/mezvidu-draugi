@@ -1,13 +1,13 @@
 import * as THREE from 'three';
-import { makeNoise2D, mulberry32 } from './noise.js?v=1.23.0';
-import { MUSHROOMS } from './data.js?v=1.23.0';
+import { makeNoise2D, mulberry32 } from './noise.js?v=1.24.0';
+import { MUSHROOMS } from './data.js?v=1.24.0';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mat, smoothstep, lerp, makeTextSprite, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.23.0';
-import { optimizeRig, flattenStatic } from './characters.js?v=1.23.0';
-import { ZONE_HALF, ZONES, DIRS, GROUND_Y, sqDist, clampSquare, buildBorderPosts, smoothRoad, RoadIndex, buildRoadMesh, ROAD_HW, FOREST, neighbour, openSides, buildTerrainFence, wood } from './zones.js?v=1.23.0';
-import { buildGardenHouse, buildGreenhouse, buildGateArch, buildFingerpost, buildRoadSign, HOUSE } from './farmyard.js?v=1.23.0';
-import { findPlaces, placeHeight, inPlace, buildPlaces, updatePlaces, placeBerries } from './places.js?v=1.23.0';
-import { raceFrame, yardWeight, inRaceYard, inLot, buildBarriers, buildStartPad, buildRaceYard, ROAD_END } from './racetrack.js?v=1.23.0';
+import { mat, smoothstep, lerp, makeTextSprite, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.24.0';
+import { optimizeRig, flattenStatic } from './characters.js?v=1.24.0';
+import { ZONE_HALF, ZONES, DIRS, GROUND_Y, sqDist, clampSquare, buildBorderPosts, smoothRoad, RoadIndex, buildRoadMesh, ROAD_HW, FOREST, neighbour, openSides, buildTerrainFence, wood } from './zones.js?v=1.24.0';
+import { buildGardenHouse, buildGreenhouse, buildGateArch, buildFingerpost, buildRoadSign, HOUSE } from './farmyard.js?v=1.24.0';
+import { findPlaces, placeHeight, inPlace, buildPlaces, updatePlaces, placeBerries } from './places.js?v=1.24.0';
+import { raceFrame, yardWeight, inRaceYard, inLot, buildBarriers, buildStartPad, buildRaceYard, ROAD_END } from './racetrack.js?v=1.24.0';
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
@@ -43,6 +43,7 @@ const ROADS = {
   farm: null, // līkumoti ceļi — pēc roadNS / roadEW (zemāk)
   race: null, // pēc kartinga vietas (buildTrackCurve)
 };
+export const FOREST_ROAD = ROADS.forest[0]; // autobusa maršrutam (bus.js)
 // mašīnas stāvvieta meža ciemata malā un sētas pagalmā
 // velosipēdu statīvs meža ciemata rietumu malā (pie ceļa uz sētu)
 export const BIKE_RACK = { x: -19, z: -2 };

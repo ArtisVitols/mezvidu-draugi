@@ -407,3 +407,15 @@ export function parkingSvg() {
   <path fill="#ffffff" fill-rule="evenodd" d="M31 18 H56 C70 18 78 27 78 39 C78 51 70 60 56 60 H45 V82 H31 Z M45 30 V48 H55 C61 48 64 44 64 39 C64 34 61 30 55 30 Z"/>
 </svg>`;
 }
+
+// autobusa pieturas zīme: zils kvadrāts ar baltu autobusu
+export function busStopSvg() {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="256" height="256">
+  <rect x="2" y="2" width="96" height="96" rx="12" fill="#ffffff"/>
+  <rect x="7" y="7" width="86" height="86" rx="9" fill="#1d5fc4"/>
+  <rect x="22" y="20" width="56" height="54" rx="9" fill="#ffffff"/>
+  <rect x="28" y="27" width="44" height="22" rx="3" fill="#1d5fc4"/>
+  <rect x="27" y="56" width="10" height="6" rx="2" fill="#1d5fc4"/><rect x="63" y="56" width="10" height="6" rx="2" fill="#1d5fc4"/>
+  <rect x="26" y="72" width="12" height="10" rx="3" fill="#ffffff"/><rect x="62" y="72" width="12" height="10" rx="3" fill="#ffffff"/>
+</svg>`;
+}

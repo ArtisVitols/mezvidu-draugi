@@ -1,5 +1,15 @@
 # Izmaiņu žurnāls
 
+## 1.24.0 — 2026-11-18
+- 🚌 Zilais Mežvidu autobuss visu laiku brauc no ❄️ Ziemas laukuma pa ceļu caur sētu līdz 🛒 Mežvidu tirgum, tur apgriežas
+  un brauc atpakaļ — un tā bez apstājas. Vada 🐱 kaķis Kārlis ar beisbola cepuri. Autobusam caurspīdīgi logi (redz pasažierus),
+  12 sēdvietas, durvis, kas pieturā atveras, maršruta tablo „Ziema ⇄ Tirgus”.
+- 🚏 4 pieturas ar nojumi, soliņu un zilu autobusa zīmi (SVG): Ziemas laukums, Sēta — ziemeļi, Sēta — austrumi, Mežvidu tirgus.
+  Pieturā redzams, pēc cik sekundēm atbrauks autobuss.
+- Iekāpt un izkāpt var tikai pieturā, kamēr autobuss stāv. Brauciens maksā 2🪙. Pasažieri pārbrauc no zemes uz zemi kopā ar autobusu,
+  draugi redz tevi sēžam autobusā. Kartē redzams 🚌 un pieturas 🚏.
+- Autobusa kustība izriet no kopējā pulksteņa — visi spēlētāji redz to vienā un tajā pašā vietā.
+
 ## 1.23.0 — 2026-11-18
 - 🏁 Sacīkšu trasei abās pusēs barjeras: vietām riepu kaudzes (melnas vai sarkanbaltas), vietām koka žogs, vietām siena ķīpas
   (dažviet divās kārtās) — mainās nejauši gar visu trasi. Ar kartu vairs nevar izbraukt no trases (tikai trase un starta laukums),
