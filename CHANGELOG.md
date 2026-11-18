@@ -1,5 +1,16 @@
 # Izmaiņu žurnāls
 
+## 1.23.0 — 2026-11-18
+- 🏁 Sacīkšu trasei abās pusēs barjeras: vietām riepu kaudzes (melnas vai sarkanbaltas), vietām koka žogs, vietām siena ķīpas
+  (dažviet divās kārtās) — mainās nejauši gar visu trasi. Ar kartu vairs nevar izbraukt no trases (tikai trase un starta laukums),
+  atsitoties pret barjeru, karts piebremzē. Bērns trasē neapmaldīsies.
+- 🛣️ Ceļš no sētas uz trasi vairs nekāpj pāri lielam kalnam — tas ir līdzens visu ceļu (plašā ielejā) līdz pat trasei.
+- 🅿️ Ceļa galā grants stāvlaukums mašīnām un velosipēdiem ar baltām stāvvietu līnijām, koka apmalēm un parastā izmēra zilu
+  „P” zīmi (zīmēta SVG). Tur gaida 2 velosipēdi (melns un sudraba).
+- 🏎️ Kartu starta vieta tagad labi redzama: liels balts aplis ar rūtotu malu, uzrakstu START, pulsējošu dzeltenu gaismas apli,
+  gaismas stabu un diviem plīvojošiem rūtotiem karodziņiem; ap to sarkanbaltu riepu žogs.
+- 🏆 Blakus — goda pjedestāls ar 1., 2. un 3. vietas pakāpieniem (zelts, sudrabs, bronza), uz tiem var uzkāpt.
+
 ## 1.22.0 — 2026-11-18
 - ⏳ Sākuma ielāde notiek pa soļiem ar joslu un procentiem (mežs, sēta, karte, tēls, grafika). Starp soļiem ekrāns tiek pārzīmēts,
   tāpēc, pagriežot telefonu ielādes laikā, ekrāns vairs nepaliek melns — ielāde redzama arī guļus. Grafikas sagatavošana un pirmie

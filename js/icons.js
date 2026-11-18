@@ -398,3 +398,12 @@ export function iconEl(key, px = 34) {
   s.innerHTML = icon(key);
   return s;
 }
+
+// zila stāvvietas zīme „P” (ceļa zīme 521) — izmanto arī 3D zīmes faktūrai (racetrack.js)
+export function parkingSvg() {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="256" height="256">
+  <rect x="2" y="2" width="96" height="96" rx="12" fill="#ffffff"/>
+  <rect x="7" y="7" width="86" height="86" rx="9" fill="#1d5fc4"/>
+  <path fill="#ffffff" fill-rule="evenodd" d="M31 18 H56 C70 18 78 27 78 39 C78 51 70 60 56 60 H45 V82 H31 Z M45 30 V48 H55 C61 48 64 44 64 39 C64 34 61 30 55 30 Z"/>
+</svg>`;
+}

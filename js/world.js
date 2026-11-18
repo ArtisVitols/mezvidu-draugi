@@ -1,12 +1,13 @@
 import * as THREE from 'three';
-import { makeNoise2D, mulberry32 } from './noise.js?v=1.22.0';
-import { MUSHROOMS } from './data.js?v=1.22.0';
+import { makeNoise2D, mulberry32 } from './noise.js?v=1.23.0';
+import { MUSHROOMS } from './data.js?v=1.23.0';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mat, smoothstep, lerp, makeTextSprite, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.22.0';
-import { optimizeRig, flattenStatic } from './characters.js?v=1.22.0';
-import { ZONE_HALF, ZONES, DIRS, GROUND_Y, sqDist, clampSquare, buildBorderPosts, smoothRoad, RoadIndex, buildRoadMesh, ROAD_HW, FOREST, neighbour, openSides, buildTerrainFence, wood } from './zones.js?v=1.22.0';
-import { buildGardenHouse, buildGreenhouse, buildGateArch, buildFingerpost, buildRoadSign, HOUSE } from './farmyard.js?v=1.22.0';
-import { findPlaces, placeHeight, inPlace, buildPlaces, updatePlaces, placeBerries } from './places.js?v=1.22.0';
+import { mat, smoothstep, lerp, makeTextSprite, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.23.0';
+import { optimizeRig, flattenStatic } from './characters.js?v=1.23.0';
+import { ZONE_HALF, ZONES, DIRS, GROUND_Y, sqDist, clampSquare, buildBorderPosts, smoothRoad, RoadIndex, buildRoadMesh, ROAD_HW, FOREST, neighbour, openSides, buildTerrainFence, wood } from './zones.js?v=1.23.0';
+import { buildGardenHouse, buildGreenhouse, buildGateArch, buildFingerpost, buildRoadSign, HOUSE } from './farmyard.js?v=1.23.0';
+import { findPlaces, placeHeight, inPlace, buildPlaces, updatePlaces, placeBerries } from './places.js?v=1.23.0';
+import { raceFrame, yardWeight, inRaceYard, inLot, buildBarriers, buildStartPad, buildRaceYard, ROAD_END } from './racetrack.js?v=1.23.0';
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
@@ -211,7 +212,10 @@ export class World {
     const a1 = { x: pk.x + tk.z * o, z: pk.z - tk.x * o }, a2 = { x: pk.x - tk.z * o, z: pk.z + tk.x * o };
     this.kartSpot = { ...(a1.x > a2.x ? a1 : a2), heading: Math.atan2(tk.x, tk.z) };
     this.carSpot = { x: this.kartSpot.x + 10, z: this.kartSpot.z + 6, heading: Math.PI / 2 };
-    ROADS.race = [[[380, 0], [318, 0], [285, 0], [240, 2], [this.kartSpot.x + 26, this.kartSpot.z + 4]]];
+    // trases apkārtnes rāmis (stāvlaukums, starta laukums, pjedestāls — racetrack.js); ceļš no sētas beidzas stāvlaukumā
+    this.raceF = raceFrame(sp, this.trackTan, k);
+    const re = this.raceF.toW(ROAD_END.l, ROAD_END.a), re2 = this.raceF.toW(ROAD_END.l + 16, ROAD_END.a);
+    ROADS.race = [[[380, 0], [318, 0], [285, 0], [245, 1], [re2.x, re2.z], [re.x, re.z]]];
   }
 
   trackDist(x, z) {
@@ -281,8 +285,11 @@ export class World {
         h = h.map((_, i) => { let sum = 0, n = 0; for (let k = -12; k <= 12; k++) { const v = h[i + k]; if (v !== undefined) { sum += v; n++; } } return sum / n; });
       }
       l.forEach((p, i) => { p.h = Math.max(1.4, h[i]); });
+      // trases zemē ceļš ir līdzens: no robežas lēni pāriet trases augstumā un tālāk paliek tajā
+      if (this.mode === 'race') l.forEach((p) => { p.h = lerp(TRACK_Y - 0.05, p.h, smoothstep(250, 305, p.x)); });
     }
     this.roadIdx = new RoadIndex(this.roadLines);
+    if (this.mode === 'race') this.roadIdxWide = new RoadIndex(this.roadLines, 22, 3); // ieleja ap ceļu (precīzs līdz 66 m)
   }
 
   // attālums līdz tuvākajam grants ceļam (no ceļa malas ~3 m platā joslā skaitās "uz ceļa")
@@ -335,7 +342,14 @@ export class World {
   computeHeight(x, z) {
     let h = this.baseHeight(x, z);
     const r = this.roadIdx.near(x, z);
-    if (r.d < 12) h = lerp(h, r.p.h, 1 - smoothstep(ROAD_HW + 0.8, 12, r.d));
+    if (this.mode === 'race') {
+      // ceļš uz trasi plašā, līdzenā ielejā (nevis pāri kalnam); stāvlaukums un starta vieta līdzeni; pakalni virs tuneļiem paliek
+      const rw = this.roadIdxWide.near(x, z);
+      if (rw.d < 60) h = lerp(h, rw.p.h, 1 - smoothstep(ROAD_HW + 6, 60, rw.d));
+      h = lerp(h, TRACK_Y - 0.05, yardWeight(this.raceF, x, z));
+      const hill = this.hillAt(x, z);
+      if (hill > 0) h = Math.max(h, TRACK_Y - 0.05 + hill);
+    } else if (r.d < 12) h = lerp(h, r.p.h, 1 - smoothstep(ROAD_HW + 0.8, 12, r.d));
     if (this.places.length) h = placeHeight(this, x, z, h);
     const e = sqDist(x, z);
     if (e > BLEND0) h = lerp(h, GROUND_Y, smoothstep(BLEND0, BLEND1, e));
@@ -443,7 +457,12 @@ export class World {
     const M = this.mode;
     this.buildTerrain(); yield;
     if (M !== 'farm') this.buildWater();
-    if (M === 'race') { this.buildTrackMesh(); this.buildTunnels(); }
+    if (M === 'race') {
+      this.buildTrackMesh(); this.buildTunnels(); yield;
+      this.barriers = buildBarriers(this, this.group);
+      this.startFx = buildStartPad(this, this.group);
+      buildRaceYard(this, this.group);
+    }
     if (M === 'forest') { this.buildVillage(); yield; buildPlaces(this); }
     if (M === 'farm') this.buildFarmYard();
     yield;
@@ -875,19 +894,8 @@ export class World {
 
     // kartu stāvvieta: betona laukums ar marķējumu (vieta aprēķināta buildTrackCurve)
     const sign = makeTextSprite('🏎️ Kartings', { fontSize: 48, bg: 'rgba(210,40,40,0.85)' });
-    sign.position.set(this.kartSpot.x, TRACK_Y + 3.4, this.kartSpot.z);
+    sign.position.set(this.kartSpot.x, TRACK_Y + 5.8, this.kartSpot.z);
     this.group.add(sign);
-    const concrete = canvasTexture(256, 256, (c, w, h) => {
-      c.fillStyle = '#b8b4aa'; c.fillRect(0, 0, w, h);
-      for (let i = 0; i < 9000; i++) { const l = 140 + Math.random() * 80; c.fillStyle = `rgba(${l},${l},${l - 6},0.5)`; c.fillRect(Math.random() * w, Math.random() * h, 1.5, 1.5); }
-      c.strokeStyle = 'rgba(70,70,65,0.5)'; c.lineWidth = 2; c.beginPath(); c.moveTo(w / 2, 0); c.lineTo(w / 2, h); c.moveTo(0, h / 2); c.lineTo(w, h / 2); c.stroke();
-      c.strokeStyle = '#e8c020'; c.lineWidth = 6; c.beginPath(); c.arc(w / 2, h / 2, w * 0.44, 0, 7); c.stroke();
-    });
-    const pad2 = new THREE.Mesh(new THREE.CircleGeometry(2.8, 32), new THREE.MeshStandardMaterial({ map: concrete, roughness: 0.95 }));
-    pad2.rotation.x = -Math.PI / 2;
-    pad2.receiveShadow = true;
-    pad2.position.set(this.kartSpot.x, this.getHeight(this.kartSpot.x, this.kartSpot.z) + 0.06, this.kartSpot.z);
-    this.group.add(pad2);
   }
 
   // ---------- tuneļi (sacīkšu trasē) ----------
@@ -1272,7 +1280,7 @@ export class World {
         if (this.roadDist(x, z).d < 6 || inPlace(this, x, z) || (this.mode === 'forest' && Math.hypot(x - CAR_SPOT.x, z - CAR_SPOT.z) < 8)) { rnd(); rnd(); continue; }
         if (this.trackIdx) {
           const t = this.tunnelInfo(x, z);
-          if ((t && t.e < 4 && t.d < 16) || Math.hypot(x - this.kartSpot.x, z - this.kartSpot.z) < 16 || Math.hypot(x - this.carSpot.x, z - this.carSpot.z) < 10) { rnd(); rnd(); continue; }
+          if ((t && t.e < 4 && t.d < 16) || inRaceYard(this.raceF, x, z, 6) || this.trackDist(x, z) < 11) { rnd(); rnd(); continue; }
         }
         const f = this.forest(x, z);
         const p = f > 0.12 ? 0.62 : this.mode === 'farm' ? (yardOut(x, z) > 8 ? 0.012 : 0) : f > 0.0 ? 0.08 : 0.02;
@@ -1586,6 +1594,7 @@ export class World {
 
   // Redzamība pēc attāluma: tuvu pilni koki, tālu impostori; sīkas detaļas tikai tuvumā
   updateVisibility(x, z) {
+    if (this.barriers) this.barriers.update(x, z);
     // tāli reljefa gabali ar 2× retāku režģi
     if (this.terrLod) for (const t of this.terrLod) {
       const d = Math.hypot(Math.max(0, Math.abs(x - t.cx) - t.h), Math.max(0, Math.abs(z - t.cz) - t.h));
@@ -1638,7 +1647,7 @@ export class World {
       if (sqDist(x, z) > PLAY_RADIUS - 8 || r < 38) continue;
       const h = this.getHeight(x, z);
       if (h < 0.3) continue;
-      if (this.trackDist(x, z) < TRACK_WIDTH / 2 + 4 || this.roadDist(x, z).d < 4 || inPlace(this, x, z) || (this.mode === 'forest' && Math.hypot(x - CAR_SPOT.x, z - CAR_SPOT.z) < 7)) continue;
+      if (this.trackDist(x, z) < TRACK_WIDTH / 2 + 4 || this.roadDist(x, z).d < 4 || inPlace(this, x, z) || (this.raceF && inRaceYard(this.raceF, x, z, 3)) || (this.mode === 'forest' && Math.hypot(x - CAR_SPOT.x, z - CAR_SPOT.z) < 7)) continue;
       if (this.mode === 'farm' && sqDist(x, z) < 268) continue; // lauku akmeņi ir atsevišķi (novācami)
       if (this.trackIdx) { const t = this.tunnelInfo(x, z); if (t && t.e < 4 && t.d < 16) continue; }
       if (rnd() > (h > 10 ? 0.5 : 0.12)) continue;
@@ -1690,6 +1699,7 @@ export class World {
         let dens = smoothstep(0.55, 1.1, h) * (1 - smoothstep(16, 20, h));
         dens *= smoothstep(2.0, 3.2, this.roadDist(x, z).d);
         dens *= smoothstep(TRACK_WIDTH / 2 + 0.3, TRACK_WIDTH / 2 + 1.6, this.trackDist(x, z));
+        if (this.raceF && inLot(this.raceF, x, z, 0.5)) dens = 0;
         if (Math.hypot(x, z) < 2.2) dens = 0;
         if (this.mode === 'farm' && inYardBuilding(x, z)) dens = 0; // mājiņā un siltumnīcā zāle neaug
         const f = this.forest(x, z);
@@ -1766,7 +1776,7 @@ export class World {
       const x = (rnd() - 0.5) * 2 * (PLAY_RADIUS - 5), z = (rnd() - 0.5) * 2 * (PLAY_RADIUS - 5);
       const h = this.getHeight(x, z);
       if (h < 1 || h > 16) continue;
-      if (this.trackDist(x, z) < TRACK_WIDTH / 2 + 1.5 || this.roadDist(x, z).d < 3) continue;
+      if (this.trackDist(x, z) < TRACK_WIDTH / 2 + 1.5 || this.roadDist(x, z).d < 3 || (this.raceF && inRaceYard(this.raceF, x, z, 1))) continue;
       if (this.mode === 'farm' && plotOf(x, z) >= 0) continue;
       if (this.forest(x, z) > 0.03 || rnd() > 0.3) continue;
       flowers.push({ x, y: h + 0.2 + rnd() * 0.12, z, c: fc[Math.floor(rnd() * fc.length)] });

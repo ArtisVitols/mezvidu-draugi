@@ -3,13 +3,13 @@
 // ja neviens cits ar to nebrauc; izkāpjot tas paliek tur, kur atstāts (arī citā zemē). Saimnieks glabā, kurš ar ko brauc
 // un kur katrs stāv (saimnieka saglabājumā `vehs`). Vehicles — Game papildinājums.
 import * as THREE from 'three';
-import { mat, lerp, clamp, makeBlobShadow, makeTextSprite } from './util.js?v=1.22.0';
-import { optimizeRig, tyreGeo } from './characters.js?v=1.22.0';
-import { $, toast, sfx } from './ui.js?v=1.22.0';
-import { DIRS, neighbour, FARM, FOREST, ZONE_IDS } from './zones.js?v=1.22.0';
-import { WATER_Y, YARD, YARD_IN, rotPlot, rotPlotY, BIKE_RACK } from './world.js?v=1.22.0';
-import { SLED_SPOT } from './winter.js?v=1.22.0';
-import { ZONES } from './zones.js?v=1.22.0';
+import { mat, lerp, clamp, makeBlobShadow, makeTextSprite } from './util.js?v=1.23.0';
+import { optimizeRig, tyreGeo } from './characters.js?v=1.23.0';
+import { $, toast, sfx } from './ui.js?v=1.23.0';
+import { DIRS, neighbour, FARM, FOREST, RACE, ZONE_IDS } from './zones.js?v=1.23.0';
+import { WATER_Y, YARD, YARD_IN, rotPlot, rotPlotY, BIKE_RACK } from './world.js?v=1.23.0';
+import { SLED_SPOT } from './winter.js?v=1.23.0';
+import { ZONES } from './zones.js?v=1.23.0';
 
 // tīkla kods (pos ziņas 6. lauks): 1 = kartings, 2 = mašīna, 3 = sniega motocikls, 5 = velosipēds
 export const VEH_CODE = { car: 2, sled: 3, bike: 5 }; // 4 = pasažieris (p[8] — vadītāja id, p[9] — sēdvieta); p[10] — transporta id
@@ -34,6 +34,9 @@ for (let s = 0; s < 4; s++) {
   const [x, z] = rotPlot(-YARD.gateA + 5.5, -YARD_IN + 2.3, s);
   VEHICLES.push({ id: 'bike' + (s + 1), kind: 'bike', color: BIKE_COL[s][0], name: BIKE_COL[s][1] + ' velosipēds', zone: FARM, x, z, h: Math.PI / 2 + rotPlotY(s) });
 }
+// 2 velosipēdi trases stāvlaukumā (racetrack.js LOT: l = 22,5, a = 9 un 10,3 — aprēķināts no trases rāmja), ar priekšu pret trasi
+VEHICLES.push({ id: 'bike9', kind: 'bike', color: '#222c3a', name: 'Melnais velosipēds', zone: RACE, x: 172.93, z: -28.15, h: -Math.PI / 2 });
+VEHICLES.push({ id: 'bike10', kind: 'bike', color: '#c8c8c8', name: 'Sudraba velosipēds', zone: RACE, x: 172.95, z: -29.45, h: -Math.PI / 2 });
 for (let i = 0; i < 4; i++) {
   VEHICLES.push({ id: 'bike' + (i + 5), kind: 'bike', color: BIKE_COL[i + 4][0], name: BIKE_COL[i + 4][1] + ' velosipēds', zone: FOREST, x: BIKE_RACK.x, z: BIKE_RACK.z + i * 1.25, h: Math.PI / 2 });
 }

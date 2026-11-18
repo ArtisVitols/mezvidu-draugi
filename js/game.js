@@ -1,25 +1,26 @@
 import * as THREE from 'three';
-import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, yardPart, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.22.0';
-import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.22.0';
-import { Controls } from './controls.js?v=1.22.0';
+import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, yardPart, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.23.0';
+import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.23.0';
+import { Controls } from './controls.js?v=1.23.0';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS, TREES, FRUITS, CLOTHES, SLOTS, DECOR } from './data.js?v=1.22.0';
-import { writeSave } from './save.js?v=1.22.0';
-import { VERSION, BUILD_DATE } from './version.js?v=1.22.0';
-import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.22.0';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.22.0';
-import { icon, iconEl, fishSvg } from './icons.js?v=1.22.0';
-import { Activities, makeTeam } from './activities.js?v=1.22.0';
-import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel, statsWanted } from './quality.js?v=1.22.0';
-import { hdrEnvironment } from './gfx.js?v=1.22.0';
-import { buildRod, buildDecor } from './props.js?v=1.22.0';
-import { InstanceField } from './instancing.js?v=1.22.0';
-import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.22.0';
-import { Vehicles } from './vehicles.js?v=1.22.0';
-import { Farm, fmtLeft } from './farm.js?v=1.22.0';
-import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.22.0';
-import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.22.0';
-import { plotOf } from './world.js?v=1.22.0';
+import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS, TREES, FRUITS, CLOTHES, SLOTS, DECOR } from './data.js?v=1.23.0';
+import { writeSave } from './save.js?v=1.23.0';
+import { VERSION, BUILD_DATE } from './version.js?v=1.23.0';
+import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.23.0';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.23.0';
+import { icon, iconEl, fishSvg } from './icons.js?v=1.23.0';
+import { Activities, makeTeam } from './activities.js?v=1.23.0';
+import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel, statsWanted } from './quality.js?v=1.23.0';
+import { hdrEnvironment } from './gfx.js?v=1.23.0';
+import { buildRod, buildDecor } from './props.js?v=1.23.0';
+import { InstanceField } from './instancing.js?v=1.23.0';
+import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.23.0';
+import { Vehicles } from './vehicles.js?v=1.23.0';
+import { Farm, fmtLeft } from './farm.js?v=1.23.0';
+import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.23.0';
+import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.23.0';
+import { plotOf } from './world.js?v=1.23.0';
+import { kartClamp } from './racetrack.js?v=1.23.0';
 
 const ANIM = ['idle', 'walk', 'run', 'jump', 'swim', 'sit', 'pet', 'wave', 'fish', 'ski', 'lift', 'throw'];
 const MUSH_RESPAWN = 120000;
@@ -1207,6 +1208,7 @@ export class Game {
       T.updateClouds(dt, this.camera.position);
       if (T.grassCenter) T.grassCenter.set(this.me.pos.x, this.me.pos.z);
     }
+    if (this.zone === RACE && this.raceW.startFx) this.raceW.startFx(t / 1000);
     if (this.zone === FOREST) {
       this.updateWorldObjects(dt, t);
       this.updateActivities(dt, t);
@@ -1385,6 +1387,9 @@ export class Game {
     me.pos.x += Math.sin(k.heading) * k.speed * dt;
     me.pos.z += Math.cos(k.heading) * k.speed * dt;
     if (W.collide(me.pos, 1.0)) k.speed *= 0.92;
+    // barjeras: ar kartu nevar izbraukt no trases (tikai trase + starta laukums)
+    if (kartClamp(W, me.pos, k.hint)) { k.speed *= 0.82; if (Math.abs(k.speed) > 6 && (k.bumpCd || 0) <= 0) { sfx('splat'); k.bumpCd = 0.6; } }
+    k.bumpCd = Math.max(0, (k.bumpCd || 0) - dt);
     for (const p of W.boostPads) {
       if (k.padCd <= 0 && Math.hypot(p.x - me.pos.x, p.z - me.pos.z) < 2.4) {
         k.boost = 1.6; k.padCd = 1; sfx('boost');
