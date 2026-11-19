@@ -4,13 +4,13 @@
 // sniega pikas (arī ar draugiem), ziemas drēbes.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { ZONE_HALF, GROUND_Y, DIRS, clampSquare, openSides, buildBorderPosts, disposeTree, smoothRoad, ringRoad, RoadIndex, buildRoadMesh, roadMaterial } from './zones.js?v=1.28.0';
-import { makeTextSprite, canvasTexture, mat, smoothstep, lerp, angleLerp, clamp } from './util.js?v=1.28.0';
-import { buildNPC, buildAnimal, flattenStatic } from './characters.js?v=1.28.0';
-import { loadTexture } from './gfx.js?v=1.28.0';
-import { InstanceField } from './instancing.js?v=1.28.0';
-import { makeNoise2D, mulberry32 } from './noise.js?v=1.28.0';
-import { $, toast, sfx } from './ui.js?v=1.28.0';
+import { ZONE_HALF, GROUND_Y, DIRS, clampSquare, openSides, buildBorderPosts, disposeTree, smoothRoad, ringRoad, RoadIndex, buildRoadMesh, roadMaterial } from './zones.js?v=1.29.0';
+import { makeTextSprite, canvasTexture, mat, smoothstep, lerp, angleLerp, clamp } from './util.js?v=1.29.0';
+import { buildNPC, buildAnimal, flattenStatic } from './characters.js?v=1.29.0';
+import { loadTexture } from './gfx.js?v=1.29.0';
+import { InstanceField } from './instancing.js?v=1.29.0';
+import { makeNoise2D, mulberry32 } from './noise.js?v=1.29.0';
+import { $, toast, sfx } from './ui.js?v=1.29.0';
 
 const SEED = 9137;
 const TAU = Math.PI * 2;
@@ -1009,6 +1009,8 @@ export const Winter = {
     if (on && !av.liftChair) {
       const c = new THREE.Mesh(chairGeometry(), chairMaterial());
       c.position.set(0, 0.25, -0.02); c.castShadow = true;
+      // mājdzīvnieks sēž krēslā blakus
+      const ps = new THREE.Group(); ps.position.set(0.4, 0.02, 0.04); ps.scale.setScalar(0.8); c.add(ps); c.petSpots = [ps];
       av.root.add(c); av.liftChair = c;
     } else if (!on && av.liftChair) { av.liftChair.removeFromParent(); av.liftChair = null; }
   },

@@ -1,29 +1,29 @@
 import * as THREE from 'three';
-import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, yardPart, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.28.0';
-import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.28.0';
-import { Controls } from './controls.js?v=1.28.0';
+import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, yardPart, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.29.0';
+import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.29.0';
+import { Controls } from './controls.js?v=1.29.0';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS, TREES, FRUITS, CLOTHES, SLOTS, DECOR } from './data.js?v=1.28.0';
-import { writeSave } from './save.js?v=1.28.0';
-import { VERSION, BUILD_DATE } from './version.js?v=1.28.0';
-import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.28.0';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.28.0';
-import { icon, iconEl, fishSvg } from './icons.js?v=1.28.0';
-import { Activities, makeTeam } from './activities.js?v=1.28.0';
-import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel, statsWanted } from './quality.js?v=1.28.0';
-import { hdrEnvironment } from './gfx.js?v=1.28.0';
-import { buildRod, buildDecor } from './props.js?v=1.28.0';
-import { buildStall, buildBunting } from './market.js?v=1.28.0';
-import { InstanceField } from './instancing.js?v=1.28.0';
-import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.28.0';
-import { Vehicles } from './vehicles.js?v=1.28.0';
-import { Farm, fmtLeft } from './farm.js?v=1.28.0';
-import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.28.0';
-import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.28.0';
-import { plotOf } from './world.js?v=1.28.0';
-import { kartClamp } from './racetrack.js?v=1.28.0';
-import { Bus, BUS_STOPS } from './bus.js?v=1.28.0';
-import { Garden, UNLOCK } from './garden.js?v=1.28.0';
+import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS, TREES, FRUITS, CLOTHES, SLOTS, DECOR } from './data.js?v=1.29.0';
+import { writeSave } from './save.js?v=1.29.0';
+import { VERSION, BUILD_DATE } from './version.js?v=1.29.0';
+import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.29.0';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.29.0';
+import { icon, iconEl, fishSvg } from './icons.js?v=1.29.0';
+import { Activities, makeTeam } from './activities.js?v=1.29.0';
+import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel, statsWanted } from './quality.js?v=1.29.0';
+import { hdrEnvironment } from './gfx.js?v=1.29.0';
+import { buildRod, buildDecor } from './props.js?v=1.29.0';
+import { buildStall, buildBunting } from './market.js?v=1.29.0';
+import { InstanceField } from './instancing.js?v=1.29.0';
+import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.29.0';
+import { Vehicles } from './vehicles.js?v=1.29.0';
+import { Farm, fmtLeft } from './farm.js?v=1.29.0';
+import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.29.0';
+import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.29.0';
+import { plotOf } from './world.js?v=1.29.0';
+import { kartClamp } from './racetrack.js?v=1.29.0';
+import { Bus, BUS_STOPS } from './bus.js?v=1.29.0';
+import { Garden, UNLOCK } from './garden.js?v=1.29.0';
 
 const ANIM = ['idle', 'walk', 'run', 'jump', 'swim', 'sit', 'pet', 'wave', 'fish', 'ski', 'lift', 'throw'];
 const MUSH_RESPAWN = 120000;
@@ -2590,32 +2590,75 @@ export class Game {
     });
   }
 
+  // ☰ izvēlne: lielas flīzes; pamācība un iestatījumi — atsevišķos logos (1.29.0)
   openMenu() {
     showPanel('☰ Izvēlne', (b) => {
-      b.append(el('div', { className: 'sect' }, 'Kā spēlēt'));
-      b.append(el('p', { html: '🕹️ <b>Kreisā puse</b> — velc pirkstu, lai staigātu.<br>🚙 Braucot: kreisajā pusē ⛽ gāze un 🛑 bremze (atpakaļgaita), labajā ◀ ▶ stūre.<br>👆 <b>Labā puse</b> — velc, lai grozītu kameru (2 pirksti — tuvināt).<br>⤒ — lēkt. Dzeltenā poga parādās, kad vari kaut ko darīt.<br>🏡 Centrā ir sēta: katram draugam savs lauks. Nocērt kokus 🪓, novāc akmeņus ⛏️, uzar lauciņus, sēj, aplaisti 💧 un novāc ražu 🧺. Blakus lauciņi ar to pašu kultūru saaug vienā laukā. Augi aug arī tad, kad spēle aizvērta!<br>👥 Draugu sētās var aiziet ciemos (poga 👥 augšā) un aplaistīt viņu laukus.<br>🌲 Austrumos ir Mežvidu mežs: ciems ar tirgu, sēnes, ogas, dzīvnieki.<br>🍄 Mežā lasi sēnes (bet ne sarkanās mušmires!).<br>🧺 Pārdod ražu tirgū un pērc sēklas un cepures.<br>🏎️ Rietumos ir sacīkšu trase ar tuneļiem — sēdies kartā un sacenties!<br>⭐ Kalnu virsotnēs paslēptas 15 zelta zvaigznes — no 🗼 skatu torņa tās redz kartē.<br>🎣 Nopērc makšķeri pie Ūdra Ojāra un makšķerē ezeros; kad pludiņš raustās — spied „VILKT!”.<br>🫐 Mežā lasi mellenes un avenes, purvā — dzērvenes.<br>⛺ Pie ugunskura var izcept sēnes (dārgāk pārdot).<br>🗺️ Atrodi 3 kartes gabalus (ugunskurs, tornis, purvs) un atver dārguma lādi 🏰 Pilsdrupās!<br>🐾 Suns Sprīdis pārdod mājdzīvniekus, Lapsa Liene — dārza rotājumus.<br>🎲 Ar draugiem spēlē ķeramo un paslēpes.<br>🤝 Katru nedēļu jauns kopīgais mērķis visiem draugiem.<br>🧭 Pār robežu var pāriet jebkurā vietā. Minikarte griežas līdzi tev (bulta vienmēr uz augšu, sarkanais N — ziemeļi); pieskaries tai — liela karte ar draugiem un transportu.<br>🚙🚙🚲 Sētas krustojumā stāv 2 mašīnas un velosipēds — ar tiem var braukt ikviens. Kur atstāsi, tur tie paliks (arī citā zemē)!<br>👕 Pūce Paula pārdod drēbes: krekli, brilles, apavi, mugursomas, spārni. Uzvelc tās somā 🎒.<br>🌳 Ūdrs Ojārs pārdod arī augļu koku stādus — tie atkal un atkal dod augļus.<br>🤲 Rotājumus savā sētā var pacelt un pārnest uz citu vietu.<br>🎁 Somā lietas un monētas var uzdāvināt draugiem.<br>🪙 Meža ciemata akā iemet 5🪙 — dažreiz izkrīt kaut kas jauks!' }));
-      b.append(el('div', { className: 'sect' }, 'Iestatījumi'));
-      b.append(el('button', { className: 'pbtn', onclick: () => {
+      const gi = this.gameInfo || {};
+      b.append(el('div', { className: 'menu-hello' }, el('b', {}, `${this.save.name}`), el('span', {}, ` · 🎮 ${gi.name || 'Pirmā spēle'}${gi.id ? ' #' + gi.id : ''} · 🪙 ${this.save.coins}`)));
+      const grid = el('div', { className: 'mgrid' });
+      const tile = (ic, name, sub, cls, fn) => grid.append(el('button', { className: 'mtile ' + cls, onclick: fn }, el('span', { className: 'mi' }, ic), el('span', { className: 'mn' }, name), el('span', { className: 'ms' }, sub)));
+      tile('📖', 'Pamācība', 'Kā spēlēt', 't-blue', () => this.openManual());
+      tile('⚙️', 'Iestatījumi', 'Grafika, ekrāns', 't-grey', () => this.openSettings());
+      tile('🎒', 'Soma', 'Lietas un drēbes', 't-orange', () => this.openBag());
+      tile('📜', 'Uzdevumi', 'Balvas', 't-yellow', () => this.openQuests());
+      tile('🌱', 'Mans dārzs', `${this.gardenLvl()}. līmenis`, 't-green', () => this.openGardenInfo());
+      tile('👥', 'Istaba', this.net.offline ? 'Viens' : `Kods ${this.roomCode}`, 't-purple', () => this.openRoom());
+      tile('🗺️', 'Karte', 'Visas zemes', 't-teal', () => { closePanel(); this.openBigMap(); });
+      tile('🎲', 'Spēles', 'Ar draugiem', 't-pink', () => this.openGames());
+      b.append(grid);
+      const row = el('div', { className: 'mrow' });
+      row.append(el('button', { className: 'mbtn', onclick: () => { this.persist(); toast('💾 Saglabāts!', 'good'); } }, '💾 Saglabāt'));
+      row.append(el('button', { className: 'mbtn red', onclick: () => this.quit() }, '🚪 Saglabāt un iziet'));
+      b.append(row);
+      b.append(el('div', { className: 'mver' }, `Versija ${VERSION} · ${BUILD_DATE}`));
+    });
+  }
+
+  openSettings() {
+    showPanel('⚙️ Iestatījumi', (b) => {
+      const opt = (ic, name, sub, valFn, fn) => {
+        const v = el('span', { className: 'sv' }, valFn());
+        const r = el('button', { className: 'srow', onclick: () => { fn(); v.textContent = valFn(); } },
+          el('span', { className: 'si' }, ic), el('span', { className: 'st' }, el('b', {}, name), el('small', {}, sub)), v);
+        b.append(r);
+      };
+      opt('⛶', 'Pilnekrāns', 'Spēle aizņem visu ekrānu', () => (document.fullscreenElement ? 'Ieslēgts' : 'Izslēgts'), () => {
         try { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); } catch (e) { /* */ }
-      } }, '⛶ Pilnekrāns'));
-      b.append(el('div', { style: 'font-size:12px;opacity:0.65;margin-top:4px' }, '📲 Padoms: pārlūka izvēlnē „Pievienot sākuma ekrānam” — tad spēle atveras pilnekrānā bez Android paziņojuma apakšā.'));
-      b.append(' ');
-      // Auto → Augsta → Vidēja → Zema → Viszemākā; mainās uzreiz
-      const qb = el('button', { className: 'pbtn' }, `🎨 Grafika: ${this.qualityLabel()}`);
-      qb.addEventListener('click', () => {
-        this.setQualityMode(Q_MODES[(Q_MODES.indexOf(this.qMode) + 1) % Q_MODES.length]);
-        qb.textContent = `🎨 Grafika: ${this.qualityLabel()}`;
+        setTimeout(() => this.openSettings(), 400);
       });
-      b.append(qb);
-      b.append(el('div', { style: 'font-size:12px;opacity:0.65;margin-top:4px' }, 'Auto pats izvēlas grafiku pēc tā, cik ātri telefons zīmē.'));
-      const sb = el('button', { className: 'pbtn' }, `📊 Ātruma mērītājs: ${this.statsOn ? 'ieslēgts' : 'izslēgts'}`);
-      sb.addEventListener('click', () => { this.toggleStats(); sb.textContent = `📊 Ātruma mērītājs: ${this.statsOn ? 'ieslēgts' : 'izslēgts'}`; });
-      b.append(' ', sb);
-      b.append(' ');
-      b.append(el('button', { className: 'pbtn', onclick: () => { this.persist(); toast('💾 Saglabāts!', 'good'); } }, '💾 Saglabāt'));
-      b.append(' ');
-      b.append(el('button', { className: 'pbtn', style: 'background:#c94a3a', onclick: () => this.quit() }, '🚪 Saglabāt un iziet'));
-      b.append(el('div', { style: 'margin-top:12px;font-size:12px;opacity:0.6;text-align:center' }, `Versija ${VERSION} · ${BUILD_DATE}`));
+      opt('🎨', 'Grafika', 'Auto pats izvēlas pēc tā, cik ātri telefons zīmē', () => this.qualityLabel(),
+        () => this.setQualityMode(Q_MODES[(Q_MODES.indexOf(this.qMode) + 1) % Q_MODES.length]));
+      opt('📊', 'Ātruma mērītājs', 'Kadri sekundē un zīmēšanas izsaukumi', () => (this.statsOn ? 'Ieslēgts' : 'Izslēgts'), () => this.toggleStats());
+      b.append(el('div', { className: 'stip' }, '📲 Padoms: pārlūka izvēlnē „Pievienot sākuma ekrānam” — tad spēle atveras pilnekrānā bez Android paziņojuma apakšā.'));
+      const row = el('div', { className: 'mrow' });
+      row.append(el('button', { className: 'mbtn', onclick: () => this.openMenu() }, '⬅ Atpakaļ'));
+      row.append(el('button', { className: 'mbtn', onclick: () => { this.persist(); toast('💾 Saglabāts!', 'good'); } }, '💾 Saglabāt'));
+      row.append(el('button', { className: 'mbtn red', onclick: () => this.quit() }, '🚪 Iziet'));
+      b.append(row);
+    });
+  }
+
+  openManual() {
+    const S = [
+      ['🕹️', 'Vadība', ['<b>Kreisā puse</b> — velc pirkstu, lai staigātu.', '<b>Labā puse</b> — velc, lai grozītu kameru (2 pirksti — tuvināt).', '⤒ — lēkt. <b>Dzeltenā poga</b> parādās, kad vari kaut ko darīt.', '🚙 Braucot: kreisajā pusē ⛽ gāze un 🛑 bremze (atpakaļgaita), labajā ◀ ▶ stūre.']],
+      ['🏡', 'Sēta un dārzs', ['Centrā ir sēta — katram draugam savs lauks.', 'Nocērt kokus 🪓, novāc akmeņus ⛏️, uzar, sēj, aplaisti 💧 un novāc ražu 🧺.', 'Augi aug arī tad, kad spēle aizvērta! Blakus vienādie augi saaug vienā laukā.', '🌱 Par darbiem dārzā krājas ⭐ — jauns līmenis atver jaunas sēklas un lielāku dārzu.', '🌳 Augļu koki dod augļus atkal un atkal. 🤲 Rotājumus var pārnest citur.']],
+      ['🌲', 'Mežs un tirgus', ['Austrumos — Mežvidu ciems ar tirgu: pārdod ražu, pērc sēklas, cepures, drēbes, mājdzīvniekus un rotājumus.', '🍄 Lasi sēnes (bet ne sarkanās mušmires!), 🫐 mellenes, avenes, purvā — dzērvenes.', '🎣 Nopērc makšķeri un makšķerē ezeros — kad pludiņš raustās, spied „VILKT!”.', '⛺ Pie ugunskura izcep sēnes. 🪙 Akā iemet 5🪙 — dažreiz izkrīt kaut kas jauks!']],
+      ['⭐', 'Noslēpumi', ['Kalnu virsotnēs paslēptas 15 zelta zvaigznes — no 🗼 skatu torņa tās redz kartē.', '🗺️ Atrodi 3 kartes gabalus (ugunskurs, tornis, purvs) un atver dārguma lādi 🏰 Pilsdrupās!']],
+      ['🚌', 'Transports', ['🚌 Autobuss brauc pa apli: ziema → sēta → trase → tirgus. Iekāp pieturā (2🪙).', '🚙🚲 Mašīnas un velosipēdi — ar tiem var braukt ikviens; kur atstāsi, tur paliks.', '🏎️ Rietumos — sacīkšu trase ar tuneļiem un kartiem.', '🐾 Tavs mājdzīvnieks vienmēr brauc līdzi!']],
+      ['❄️', 'Ziema', ['Ziemeļos — slēpošanas kalns ar pacēlāju 🚡, sniega pikas un ziemas laukums.']],
+      ['🤝', 'Ar draugiem', ['👥 Draugu sētās var aiziet ciemos un aplaistīt viņu laukus.', '🎁 Somā lietas un monētas var uzdāvināt.', '🎲 Spēlē ķeramo un paslēpes. Katru nedēļu — jauns kopīgais mērķis.', '🧭 Pār robežu var pāriet jebkur. Pieskaries minikartei — liela karte ar draugiem un transportu.']],
+    ];
+    showPanel('📖 Pamācība', (b) => {
+      for (const [ic, h, items] of S) {
+        const c = el('details', { className: 'mcard' });
+        c.append(el('summary', {}, el('span', { className: 'mi' }, ic), el('b', {}, h)));
+        const ul = el('ul');
+        for (const t of items) ul.append(el('li', { html: t }));
+        c.append(ul);
+        b.append(c);
+      }
+      b.querySelector('details').open = true;
+      b.append(el('div', { className: 'mrow' }, el('button', { className: 'mbtn', onclick: () => this.openMenu() }, '⬅ Atpakaļ')));
     });
   }
 

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mat, makeBlobShadow, noiseTexture, lerp, canvasTexture } from './util.js?v=1.28.0';
+import { mat, makeBlobShadow, noiseTexture, lerp, canvasTexture } from './util.js?v=1.29.0';
 
 // kažoka/auduma materiāli ar smalku faktūru
 let furTex = null, clothTex = null;
@@ -1412,10 +1412,12 @@ export function buildKart(color = '#e02a2a') {
   g.add(seat);
   g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   optimizeRig(g);
+  // mājdzīvnieks brauc aizmugurē virs motora
+  const petSpot = new THREE.Group(); petSpot.position.set(0, 0.42, -0.95); petSpot.scale.setScalar(0.55); g.add(petSpot);
   const shadow = makeBlobShadow(2.6);
   shadow.position.y = 0.04;
   g.add(shadow);
-  return { root: g, wheels, seat, base, setColor(c) { paint.color.set(c); } };
+  return { root: g, wheels, seat, petSpots: [petSpot], base, setColor(c) { paint.color.set(c); } };
 }
 
 // ---------------- Tirgotāja ratiņi ----------------

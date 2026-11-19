@@ -4,13 +4,13 @@
 // bez tīkla ziņām. Ātrums atkarīgs no līkuma (aplī lēnāk). Iekāpt un izkāpt var tikai pieturās, brauciens maksā BUS_PRICE. Vada kaķis Kārlis.
 // Maršruts — globālās koordinātēs (zemes vietējās + zoneOffset); autobuss redzams tikai tajā zemē, kurā tas ir.
 import * as THREE from 'three';
-import { mat, canvasTexture } from './util.js?v=1.28.0';
-import { buildAnimal, flattenStatic } from './characters.js?v=1.28.0';
-import { $, toast, sfx } from './ui.js?v=1.28.0';
-import { roadNS, roadEW, FOREST_ROAD, FOREST_RING, raceGeo } from './world.js?v=1.28.0';
-import { WINTER_ROAD, WINTER_RING } from './winter.js?v=1.28.0';
-import { zoneOffset, ZONE_HALF, FARM, FOREST, RACE, smoothRoad } from './zones.js?v=1.28.0';
-import { busStopSvg } from './icons.js?v=1.28.0';
+import { mat, canvasTexture } from './util.js?v=1.29.0';
+import { buildAnimal, flattenStatic } from './characters.js?v=1.29.0';
+import { $, toast, sfx } from './ui.js?v=1.29.0';
+import { roadNS, roadEW, FOREST_ROAD, FOREST_RING, raceGeo } from './world.js?v=1.29.0';
+import { WINTER_ROAD, WINTER_RING } from './winter.js?v=1.29.0';
+import { zoneOffset, ZONE_HALF, FARM, FOREST, RACE, smoothRoad } from './zones.js?v=1.29.0';
+import { busStopSvg } from './icons.js?v=1.29.0';
 
 export const BUS_PRICE = 2;
 export const BUS_CODE = 6; // pos p[5]: pasažieris autobusā (p[9] — sēdvieta)
@@ -78,15 +78,22 @@ const route = (() => {
   const sp = curve.getSpacedPoints(n);
   const X = new Float32Array(n + 1), Z = new Float32Array(n + 1);
   sp.forEach((p, i) => { X[i] = p.x; Z[i] = p.z; });
-  return { X, Z, n, step: length / n, len: length };
+  // gluds virziens katrā punktā (pieskare pa ±3 m, slēgtam aplim), starp punktiem — interpolēts, lai stūrēšana neraustās
+  const H = new Float32Array(n + 1), w = 3;
+  for (let i = 0; i <= n; i++) {
+    const a = ((i - w) % n + n) % n, b = (i + w) % n;
+    H[i] = Math.atan2(X[b] - X[a], Z[b] - Z[a]);
+  }
+  return { X, Z, H, n, step: length / n, len: length };
 })();
 
+function angDiff(a, b) { let d = a - b; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; }
 function pathAt(s) {
   s = ((s % route.len) + route.len) % route.len;
   const f = Math.min(route.n - 0.001, s / route.step), i = Math.floor(f), u = f - i;
   const x = route.X[i] + (route.X[i + 1] - route.X[i]) * u, z = route.Z[i] + (route.Z[i + 1] - route.Z[i]) * u;
-  const j = Math.max(0, i - 1), k = Math.min(route.n, i + 2);
-  return { x, z, h: Math.atan2(route.X[k] - route.X[j], route.Z[k] - route.Z[j]) };
+  const h0 = route.H[i], dh = angDiff(route.H[i + 1], h0);
+  return { x, z, h: h0 + dh * u, turn: dh / route.step }; // turn — virziena maiņa uz metru (rad/m)
 }
 // tuvākais maršruta punkts, kurā autobuss brauc virzienā (dx, dz) (sētas pieturām — katrai ceļa pusei sava)
 function nearestS(x, z, dx = 0, dz = 0) {
@@ -290,7 +297,7 @@ export function buildBus() {
   }
   // sēdekļi (2 rindās ar eju vidū) un vadītāja vieta
   const fab = mat('#c23b3b', { roughness: 0.9 }), fab2 = mat('#2a4f9a', { roughness: 0.9 });
-  const seats = [];
+  const seats = [], petSpots = [];
   const rows = [2.2, 1.05, -0.1, -1.25, -2.4, -3.55];
   rows.forEach((z, r) => {
     for (const x of [-0.72, 0.72]) {
@@ -299,6 +306,8 @@ export function buildBus() {
       B(0.56, 0.55, 0.09, f, x, 1.32, z - 0.27);
       B(0.08, 0.36, 0.08, dark, x, 0.8, z);
       const g = new THREE.Group(); g.position.set(x, 0.66, z - 0.02); body.add(g); seats.push(g);
+      // mājdzīvnieka vieta: ejā blakus saimnieka sēdeklim
+      const ps = new THREE.Group(); ps.position.set(Math.sign(x) * 0.26, 0.64, z + 0.12); ps.scale.setScalar(0.75); body.add(ps); petSpots.push(ps);
     }
   });
   // turēšanās stieņi pie griestiem
@@ -360,7 +369,7 @@ export function buildBus() {
   const driver = buildAnimal({ animal: 'kakis', fur: '#e8a24a', shirt: '#1f6fd6', hat: 'nagene' });
   const ds = new THREE.Group(); ds.position.set(0.7, 0.66, 3.83); body.add(ds); ds.add(driver.root);
   driver.shadow.visible = false;
-  return { root, body, seats, wheels, doors, doorZ: DZ, driver };
+  return { root, body, seats, petSpots, wheels, doors, doorZ: DZ, driver };
 }
 
 // pieturas nojume: lokālā +z — pret ceļu
@@ -436,7 +445,13 @@ export const Bus = {
       grp.visible = here;
     }
     const now = this.now();
-    for (const B of this.buses) this.updateOneBus(B, now + busOffset(B.k), dt);
+    for (const B of this.buses) {
+      // gluds pulkstenis: kopīgais laiks (Date.now ar sinhronizācijas lēcieniem) raustās — ejam ar kadra dt un maigi pievelkam
+      const want = now + busOffset(B.k);
+      if (B.clk == null || Math.abs(want - B.clk) > 3000) B.clk = want;
+      else B.clk += dt * 1000 + (want - B.clk - dt * 1000) * Math.min(1, dt * 1.5);
+      this.updateOneBus(B, B.clk, dt);
+    }
     if (this.me.bus) this.busRider(dt);
   },
 
@@ -448,23 +463,26 @@ export const Bus = {
     B.lx = p.x - ox; B.lz = p.z - oz; B.h = h;
     let ds = B.lastS == null ? 0 : st.s - B.lastS;
     if (ds < -route.len / 2) ds += route.len;
-    const speed = Math.abs(ds) / Math.max(dt, 1e-3);
-    B.lastS = st.s; B.speed = speed;
+    const raw = Math.min(30, Math.abs(ds) / Math.max(dt, 1e-3));
+    const speed = B.speed = B.speed == null ? raw : B.speed + (raw - B.speed) * (1 - Math.exp(-dt * 6));
+    B.lastS = st.s;
     const o = B.obj;
     B.vis = zone === this.zone && !!this.terr && !!this.terr.getHeight && !this.zoneBusy;
     o.root.visible = B.vis;
     if (!B.vis) return;
-    const T = this.terr, y = T.getHeight(B.lx, B.lz);
-    const fx = Math.sin(h) * 4, fz = Math.cos(h) * 4;
-    const hf = T.getHeight(B.lx + fx, B.lz + fz), hb = T.getHeight(B.lx - fx, B.lz - fz);
-    o.root.position.set(B.lx, y, B.lz);
+    const T = this.terr;
+    const fx = Math.sin(h) * 3.2, fz = Math.cos(h) * 3.2;
+    const hf = T.getHeight(B.lx + fx, B.lz + fz), hb = T.getHeight(B.lx - fx, B.lz - fz), hc = T.getHeight(B.lx, B.lz);
+    // augstums un slīpums pēc riteņu vietām, mīksti (bez zemes trīcēšanas)
+    const yT = Math.max(hc, (hf + hb) / 2), kk = 1 - Math.exp(-dt * 10);
+    B.y = B.y == null || Math.abs(B.y - yT) > 3 ? yT : B.y + (yT - B.y) * kk;
+    o.root.position.set(B.lx, B.y, B.lz);
     o.root.rotation.order = 'YXZ';
     o.root.rotation.y = h;
-    o.root.rotation.x = lerpA(o.root.rotation.x, -Math.atan2(hf - hb, 8), 0.2);
-    // līkumā autobuss nedaudz sasveras uz āru
-    const dh = B.lastH == null ? 0 : angDiff(h, B.lastH) / Math.max(dt, 1e-3);
-    B.lastH = h;
-    o.body.rotation.z = lerpA(o.body.rotation.z, Math.max(-0.05, Math.min(0.05, -dh * speed * 0.012)), Math.min(1, dt * 3));
+    o.root.rotation.x = lerpA(o.root.rotation.x, -Math.atan2(hf - hb, 6.4), 1 - Math.exp(-dt * 6));
+    // līkumā autobuss nedaudz sasveras uz āru (pēc ceļa izliekuma un ātruma — bez trokšņa)
+    const yawRate = p.turn * speed;
+    o.body.rotation.z = lerpA(o.body.rotation.z, Math.max(-0.05, Math.min(0.05, -yawRate * speed * 0.012)), 1 - Math.exp(-dt * 3));
     for (const w of o.wheels) w.rotation.x += speed * dt / 0.5;
     // durvis atveras pieturā
     const open = st.stop >= 0 && st.left > 1.2 ? 1 : 0;
@@ -602,7 +620,6 @@ export const Bus = {
 };
 
 const lerpA = (a, b, k) => a + (b - a) * k;
-const angDiff = (a, b) => { let d = a - b; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; };
 const fmtEta = (s) => (s < 60 ? `${Math.ceil(s)} s` : `${Math.floor(s / 60)} min ${Math.ceil(s % 60)} s`);
 // izstumj punktu no pagriezta taisnstūra (autobusa)
 function pushOut(pos, cx, cz, h, hw, hl) {

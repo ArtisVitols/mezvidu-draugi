@@ -1,5 +1,13 @@
 # Izmaiņu žurnāls
 
+## 1.29.0 — 2026-11-19
+- 🐾 Mājdzīvnieks tagad brauc līdzi **visos** transportos: autobusā (sēž ejā blakus tavam sēdeklim), kartingā (aizmugurē virs motora)
+  un ziemas pacēlājā (krēslā blakus), tāpat kā mašīnā, ragavās un velosipēdā. Arī draugu mājdzīvnieki.
+- 🚌 Autobusa braukšana gluda kā sviests: virziens tiek interpolēts starp maršruta punktiem (agrāk mainījās lēcienos ik metru),
+  autobusam savs gluds pulkstenis (kopīgā laika trīce vairs neraustī), mīksts augstums, slīpums un sasvēršanās līkumos pēc ceļa izliekuma.
+- ☰ Jauna, skaista izvēlne ar krāsainām flīzēm: 📖 Pamācība (atsevišķs logs ar atveramām sadaļām), ⚙️ Iestatījumi (pilnekrāns,
+  grafika, ātruma mērītājs), 🎒 Soma, 📜 Uzdevumi, 🌱 Mans dārzs, 👥 Istaba, 🗺️ Karte, 🎲 Spēles, 💾 Saglabāt un 🚪 Iziet.
+
 ## 1.28.0 — 2026-11-19
 - 🎮 **Vairākas spēles un „🆕 Jauna spēle visiem”**: istabas veidotājs izvēlas, kuru spēli spēlēt — turpināt kādu iepriekšējo
   vai sākt jaunu (ar nosaukumu). Jaunai spēlei var izvēlēties, ko paturēt: 👕 drēbes, cepures, mājdzīvniekus, kartus (pēc noklusējuma),

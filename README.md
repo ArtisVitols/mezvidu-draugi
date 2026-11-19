@@ -13,6 +13,9 @@ Pašreizējā versija: **1.6.0** (redzama sākuma ekrānā un ☰ izvēlnē). Iz
 4. Draugi ieraksta kodu un spiež **Pievienoties** (vai vienkārši atver saiti).
 5. **Spēlēt vienam** darbojas arī bez interneta.
 
+**Izvēlne ☰:** 📖 pamācība, ⚙️ iestatījumi (pilnekrāns, grafika), soma, uzdevumi, dārzs, istaba, karte, spēles, saglabāt un iziet.
+🐾 Mājdzīvnieks brauc tev līdzi visos transportos — mašīnā, velosipēdā, ragavās, autobusā, kartingā un pacēlājā.
+
 **Vadība:** kreisā ekrāna puse — kursorsvira, labā puse — kamera (2 pirksti — tuvināt), ⤒ — lēkt, dzeltenā poga — darbība.
 **Braucot** (kartings, mašīna, sniega motocikls): kreisajā pusē ⛽ gāze un 🛑 bremze, labajā ◀ ▶ stūre.
 📲 Padoms Android telefonā: pārlūka izvēlnē „Pievienot sākuma ekrānam” — tad spēle atveras pilnekrānā bez paziņojuma apakšā.
