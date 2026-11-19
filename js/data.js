@@ -20,27 +20,28 @@ export const SHIRT_COLORS = ['#d23b3b', '#2f6fd6', '#2fa84f', '#f2c12e', '#9b3bd
 // Lauka kultūras. grow — augšanas laiks sekundēs (pulkstenis iet arī tad, kad spēle aizvērta),
 // sp — attālums starp augiem (m; lauciņš ir 2,5 m, tāpēc sp dala 2,5 bez atlikuma — blakus lauciņi ar to pašu
 // kultūru veido vienu vienmērīgu lauku), yield — raža no viena lauciņa
+// 1.27.0: līdzsvars — ilgāk augošas kultūras dod vairāk peļņas (≈10 · minūtes^0,75 vienā lauciņā) un vairāk ⭐
 export const CROPS = {
-  burkans:   { name: 'Burkāns',    icon: '🥕', seedPrice: 5,  sell: 4,  yield: 4, grow: 60,   sp: 0.5,   color: '#f07b1a' },
-  auzas:     { name: 'Auzas',      icon: '🌾', seedPrice: 6,  sell: 3,  yield: 6, grow: 180,  sp: 0.4167, color: '#d9c27a' },
-  kartupelis:{ name: 'Kartupelis', icon: '🥔', seedPrice: 8,  sell: 5,  yield: 5, grow: 300,  sp: 0.625, color: '#c9a25e' },
-  kviesi:    { name: 'Kvieši',     icon: '🌾', seedPrice: 12, sell: 4,  yield: 9, grow: 600,  sp: 0.4167, color: '#e2b84a' },
-  tomats:    { name: 'Tomāts',     icon: '🍅', seedPrice: 14, sell: 8,  yield: 6, grow: 900,  sp: 0.833, color: '#e0302a' },
-  zemene:    { name: 'Zemene',     icon: '🍓', seedPrice: 18, sell: 7,  yield: 8, grow: 1200, sp: 0.5,   color: '#ff3355' },
-  kaposts:   { name: 'Kāposts',    icon: '🥬', seedPrice: 22, sell: 16, yield: 4, grow: 1800, sp: 0.833, color: '#8fc06a' },
-  saulgrieze:{ name: 'Saulgrieze', icon: '🌻', seedPrice: 30, sell: 12, yield: 6, grow: 2700, sp: 0.625, color: '#f2c12e' },
-  kirbis:    { name: 'Ķirbis',     icon: '🎃', seedPrice: 45, sell: 90, yield: 2, grow: 3600, sp: 1.25,  color: '#f39a1e' },
+  burkans:   { name: 'Burkāns',    icon: '🥕', seedPrice: 4,  sell: 4,  yield: 4, grow: 60,   sp: 0.5,   color: '#f07b1a' },
+  auzas:     { name: 'Auzas',      icon: '🌾', seedPrice: 9,  sell: 5,  yield: 6, grow: 180,  sp: 0.4167, color: '#d9c27a' },
+  kartupelis:{ name: 'Kartupelis', icon: '🥔', seedPrice: 13,  sell: 9,  yield: 5, grow: 300,  sp: 0.625, color: '#c9a25e' },
+  kviesi:    { name: 'Kvieši',     icon: '🌾', seedPrice: 22, sell: 9,  yield: 9, grow: 600,  sp: 0.4167, color: '#e2b84a' },
+  tomats:    { name: 'Tomāts',     icon: '🍅', seedPrice: 30, sell: 18,  yield: 6, grow: 900,  sp: 0.833, color: '#e0302a' },
+  zemene:    { name: 'Zemene',     icon: '🍓', seedPrice: 38, sell: 17,  yield: 8, grow: 1200, sp: 0.5,   color: '#ff3355' },
+  kaposts:   { name: 'Kāposts',    icon: '🥬', seedPrice: 51, sell: 45, yield: 4, grow: 1800, sp: 0.833, color: '#8fc06a' },
+  saulgrieze:{ name: 'Saulgrieze', icon: '🌻', seedPrice: 69, sell: 40, yield: 6, grow: 2700, sp: 0.625, color: '#f2c12e' },
+  kirbis:    { name: 'Ķirbis',     icon: '🎃', seedPrice: 86, sell: 151, yield: 2, grow: 3600, sp: 1.25,  color: '#f39a1e' },
   // 1.21.0 — jaunas kultūras (tikai beigās: saglabājumā kultūra ir indekss šajā sarakstā)
-  redisi:    { name: 'Redīsi',     icon: '🔴', seedPrice: 4,  sell: 3,  yield: 5, grow: 45,    sp: 0.4167, color: '#e0306a' },
-  salati:    { name: 'Salāti',     icon: '🥬', seedPrice: 7,  sell: 5,  yield: 5, grow: 240,   sp: 0.625, color: '#9ad46a' },
-  sipols:    { name: 'Sīpols',     icon: '🧅', seedPrice: 10, sell: 4,  yield: 7, grow: 480,   sp: 0.4167, color: '#d9a85a' },
-  zirni:     { name: 'Zirņi',      icon: '🫛', seedPrice: 11, sell: 5,  yield: 6, grow: 720,   sp: 0.5,   color: '#7ac04a' },
-  biete:     { name: 'Biete',      icon: '🟣', seedPrice: 13, sell: 6,  yield: 6, grow: 1500,  sp: 0.5,   color: '#8a1a3a' },
-  gurkis:    { name: 'Gurķis',     icon: '🥒', seedPrice: 20, sell: 6,  yield: 8, grow: 2400,  sp: 0.833, color: '#3a8a2a' },
-  kukuruza:  { name: 'Kukurūza',   icon: '🌽', seedPrice: 28, sell: 9,  yield: 6, grow: 5400,  sp: 0.625, color: '#f2d040' },
-  paprika:   { name: 'Paprika',    icon: '🫑', seedPrice: 35, sell: 14, yield: 5, grow: 7200,  sp: 0.833, color: '#e8402a' },
-  arbuzs:    { name: 'Arbūzs',     icon: '🍉', seedPrice: 60, sell: 110, yield: 2, grow: 10800, sp: 1.25, color: '#2f7a3a' },
-  lavanda:   { name: 'Lavanda',    icon: '💜', seedPrice: 40, sell: 18, yield: 5, grow: 14400, sp: 0.625, color: '#9a6ad0' },
+  redisi:    { name: 'Redīsi',     icon: '🔴', seedPrice: 3,  sell: 2,  yield: 6, grow: 45,    sp: 0.4167, color: '#e0306a' },
+  salati:    { name: 'Salāti',     icon: '🥬', seedPrice: 11,  sell: 8,  yield: 5, grow: 240,   sp: 0.625, color: '#9ad46a' },
+  sipols:    { name: 'Sīpols',     icon: '🧅', seedPrice: 19, sell: 10,  yield: 7, grow: 480,   sp: 0.4167, color: '#d9a85a' },
+  zirni:     { name: 'Zirņi',      icon: '🫛', seedPrice: 26, sell: 15,  yield: 6, grow: 720,   sp: 0.5,   color: '#7ac04a' },
+  biete:     { name: 'Biete',      icon: '🟣', seedPrice: 45, sell: 26,  yield: 6, grow: 1500,  sp: 0.5,   color: '#8a1a3a' },
+  gurkis:    { name: 'Gurķis',     icon: '🥒', seedPrice: 64, sell: 28,  yield: 8, grow: 2400,  sp: 0.833, color: '#3a8a2a' },
+  kukuruza:  { name: 'Kukurūza',   icon: '🌽', seedPrice: 117, sell: 68,  yield: 6, grow: 5400,  sp: 0.625, color: '#f2d040' },
+  paprika:   { name: 'Paprika',    icon: '🫑', seedPrice: 145, sell: 102, yield: 5, grow: 7200,  sp: 0.833, color: '#e8402a' },
+  arbuzs:    { name: 'Arbūzs',     icon: '🍉', seedPrice: 197, sell: 344, yield: 2, grow: 10800, sp: 1.25, color: '#2f7a3a' },
+  lavanda:   { name: 'Lavanda',    icon: '💜', seedPrice: 244, sell: 171, yield: 5, grow: 14400, sp: 0.625, color: '#9a6ad0' },
 };
 
 // ---------- Augļu koki (stāda no stāda uz uzarta lauciņa; izaug un tad ik pa laikam dod augļus) ----------

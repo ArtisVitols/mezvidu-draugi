@@ -4,14 +4,15 @@
 // dažādām kultūrām starp lauciņiem paliek neliela sprauga. Augšana iet pēc pulksteņa (arī tad, kad spēle aizvērta).
 // Farm — Game papildinājums (mixin).
 import * as THREE from 'three';
-import { World, TILE, plotOf, tileToSlot, tileToCanon, gardenTile, gateSpots, rotPlot, rotPlotY, yardPart, YARD } from './world.js?v=1.26.0';
-import { buildCrop, flattenStatic } from './characters.js?v=1.26.0';
-import { buildFruitTree, buildDecor } from './props.js?v=1.26.0';
-import { WORLD_SEED, CROPS, TREES, FRUITS, DECOR } from './data.js?v=1.26.0';
-import { InstanceField } from './instancing.js?v=1.26.0';
-import { canvasTexture, makeSignBoard } from './util.js?v=1.26.0';
-import { $, toast, sfx, fmtTime } from './ui.js?v=1.26.0';
-import { ZONES, FARM, freeGpu } from './zones.js?v=1.26.0';
+import { World, TILE, plotOf, tileToSlot, tileToCanon, gardenTile, gateSpots, rotPlot, rotPlotY, yardPart, YARD } from './world.js?v=1.27.0';
+import { buildCrop, flattenStatic } from './characters.js?v=1.27.0';
+import { buildFruitTree, buildDecor } from './props.js?v=1.27.0';
+import { WORLD_SEED, CROPS, TREES, FRUITS, DECOR } from './data.js?v=1.27.0';
+import { InstanceField } from './instancing.js?v=1.27.0';
+import { canvasTexture, makeSignBoard } from './util.js?v=1.27.0';
+import { $, toast, sfx, fmtTime } from './ui.js?v=1.27.0';
+import { inLand, cropXp, fruitXp, XP } from './garden.js?v=1.27.0';
+import { ZONES, FARM, freeGpu } from './zones.js?v=1.27.0';
 
 const CROP_IDS = Object.keys(CROPS);
 const TREE_IDS = Object.keys(TREES); // skatā koks ir kods 100 + nr.
@@ -126,6 +127,7 @@ export const Farm = {
       this.renderDecor(prof.slot, prof.decor);
     }
     this.syncFarmViews();
+    this.renderLandBorder();
     this.timers.vis = 0;
     return Promise.resolve();
   },
@@ -448,7 +450,9 @@ export const Farm = {
       const v = this.save.farm.t[this.ckey(tl.key)];
       const blocked = this.farmW.plotObjs.find((o) => o.slot === slot && !this.farmW.cleared.has(o.id) && Math.abs(o.x - tl.cx) < TILE / 2 + 0.8 && Math.abs(o.z - tl.cz) < TILE / 2 + 0.8);
       if (!v) {
+        const [ca, cb] = this.ckey(tl.key).split(',').map(Number);
         if (blocked) consider(9, 10, '🪓 Vispirms notīri šo vietu', () => toast('Šeit aug koks vai ir akmens — vispirms nocērt vai novāc to!'));
+        else if (!inLand(ca, cb, this.save.gd.land)) this.landAction(consider);
         else consider(1.0, 2, '⛏️ Uzart lauciņu', () => this.plowTile(tl));
       } else if (v.tr) {
         const d = TREES[v.tr], p = this.treeProgress(v);
@@ -488,6 +492,7 @@ export const Farm = {
     if (!f.cl.includes(o.id % 100)) f.cl.push(o.id % 100);
     const coins = o.type === 'tree' ? 3 : o.type === 'rock' ? 2 : 1;
     this.addCoins(coins, true);
+    this.gardenXp(XP.clear);
     this.spawnFloat(o.type === 'tree' ? '🪵' : o.type === 'rock' ? '🪨' : '🌿', new THREE.Vector3(o.x, o.y + 1, o.z));
     toast(`${o.type === 'tree' ? '🪵 Koks nocirsts' : o.type === 'rock' ? '🪨 Akmens novākts' : '🌿 Krūms izcirsts'}! +${coins}🪙`);
     this.stat('cleared');
@@ -496,12 +501,15 @@ export const Farm = {
 
   plowTile(tl) {
     const f = this.save.farm;
+    const [ca, cb] = this.ckey(tl.key).split(',').map(Number);
+    if (!inLand(ca, cb, this.save.gd.land)) { toast('🏡 Šī vieta vēl nav tavā dārzā — paplašini dārzu!'); return; }
     if (Object.keys(f.t).length >= MAX_TILES) { toast(`Uzarti jau ${MAX_TILES} lauciņi — vairāk nevar apstrādāt 🙂`); return; }
     f.t[this.ckey(tl.key)] = {};
     this.me.petT = 0.6;
     sfx('plant');
     this.spawnFloat('⛏️', new THREE.Vector3(tl.cx, this.me.pos.y, tl.cz));
     this.stat('plowed');
+    this.gardenXp(XP.plow);
     this.farmChanged();
   },
 
@@ -541,7 +549,9 @@ export const Farm = {
     this.me.petT = 0.6;
     sfx('pick');
     this.spawnFloat(def.icon, this.me.pos);
-    toast(`🧺 Novāci: ${def.icon} ${def.name} ×${def.yield}! Pārdod Āpsim Arnoldam tirgū mežā.`, 'good');
+    const xp = cropXp(v.c);
+    this.gardenXp(xp, new THREE.Vector3(tl.cx, this.me.pos.y + 0.6, tl.cz));
+    toast(`🧺 Novāci: ${def.icon} ${def.name} ×${def.yield}! +${xp}⭐ · Pārdod Āpsim Arnoldam tirgū mežā.`, 'good');
     this.farmChanged();
   },
 
@@ -569,6 +579,7 @@ export const Farm = {
     this.me.petT = 0.8;
     sfx('pick');
     this.spawnFloat('🧺', this.me.pos);
+    this.gardenXp(fruitXp(v.tr), new THREE.Vector3(tl.cx, this.me.pos.y + 0.6, tl.cz));
     toast(`🧺 Salasīji: ${FRUITS[d.fruit].name} ×${d.yield}! Nākamie pēc ${fmtLeft(d.every)}.`, 'good');
     this.farmChanged();
   },
@@ -644,7 +655,7 @@ export const Farm = {
         this.farmChanged();
       }
     }
-    if (m.by === this.myId && m.owner !== this.myId) this.stat('watered');
+    if (m.by === this.myId && m.owner !== this.myId) { this.stat('watered'); this.gardenXp(XP.waterFriend); }
     if (this.zone === FARM && typeof m.plot === 'string') {
       const [ix, iz] = m.plot.split(',').map(Number);
       const x = (ix + 0.5) * TILE, z = (iz + 0.5) * TILE;

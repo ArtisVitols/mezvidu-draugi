@@ -1,5 +1,5 @@
 // Spēlētāja progresa saglabāšana pārlūka atmiņā (localStorage)
-import { FISH } from './data.js?v=1.26.0';
+import { FISH } from './data.js?v=1.27.0';
 const PREFIX = 'mezvidi_save_v1_';
 const LAST = 'mezvidi_last_profile';
 
@@ -14,7 +14,8 @@ export function defaultSave(name) {
     kartColor: 'sarkana',
     ownedKarts: ['sarkana'],
     coins: 20,
-    inv: { burkans_seed: 3, auzas_seed: 4 },
+    inv: { burkans_seed: 3, redisi_seed: 4 },
+    gd: null,         // dārznieka līmenis {xp, land} (garden.js; vecajiem saglabājumiem aprēķina initGarden)
     farm: { t: {}, cl: [], v: 3 }, // sētas dārzs (0. sētas koordinātēs): uzartie lauciņi {"ix,iz": {c, at, w}} un nocirsto koku/akmeņu nr. (0–99)
     layout: 2,        // 2 — sēta centrā, mežs austrumos, trase rietumos (1.14.0)
     stats: {},

@@ -25,6 +25,9 @@ Datorā: WASD / bultiņas, atstarpe, E, peles vilkšana.
   sarkana dārza mājiņa (var ieiet — iekšā galds, plaukts, paklājs), stikla siltumnīca ar tomātu dobēm un pagalms rotājumiem.
   Ceļi pie sētām taisni, tālāk līkumoti ar bērzu rindām; apkārt pļava un mežs.
   - 🪓 Nocērt kokus, ⛏️ novāc akmeņus, ⛏️ uzar 2,5 m lauciņus (līdz 400), 🌱 sēj, 💧 aplaisti, 🧺 novāc ražu un pārdod tirgū
+  - 🌱 **Dārznieka līmenis** (poga 🌱 augšā): ⭐ par ražu, augļiem, uzaršanu un koku/akmeņu novākšanu. Ar katru līmeni — monētas un jaunas sēklas
+    (sākumā burkāni, redīsi, kartupeļi; 12. līmenī lavanda). Dārzs sākas 6 × 4 lauciņos pie vārtiem (iezīmēts ar virvi) un, augot līmenim, to var
+    paplašināt par monētām līdz 20 × 20. Ilgāk augošas kultūras nes daudz vairāk.
   - 🌾 19 kultūras: redīsi, burkāni, auzas, salāti, kartupeļi, sīpoli, kvieši, zirņi, tomāti, zemenes, bietes, kāposti, gurķi, saulgriezes, ķirbji, kukurūza, paprika, arbūzi, lavanda — dārgākās aug ilgāk (līdz 4 stundām), bet nes vairāk
   - 🌳 Augļu koki (ābele, bumbiere, ķirsis, plūme): iestādi stādu, tas izaug un tad atkal un atkal dod augļus
   - 🤲 Rotājumus savā sētā var pacelt, pārnest un novietot jebkur

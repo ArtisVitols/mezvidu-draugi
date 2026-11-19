@@ -1,5 +1,19 @@
 # Izmaiņu žurnāls
 
+## 1.27.0 — 2026-11-19
+- 🌱 **Dārznieka līmenis** (1–12): ⭐ par ražas novākšanu (ilgāk augošas kultūras dod vairāk: burkāns 4⭐, kāposts 13⭐,
+  lavanda 33⭐), augļu lasīšanu, zemes uzaršanu (1⭐), koku/akmeņu novākšanu (2⭐) un draugu lauku aplaistīšanu (2⭐).
+  Katrā jaunā līmenī: līmenis × 10🪙 un jaunas sēklas. Augšā blakus monētām poga 🌱 ar līmeni un progresa joslu → „Mans dārzs”.
+- 🔓 Sēklas atveras pa līmeņiem: 1. burkāns, redīsi, kartupelis · 2. salāti, auzas · 3. sīpols, kvieši · 4. zirņi, tomāts ·
+  5. zemene, biete · 6. kāposts, ābele · 7. gurķis, saulgrieze · 8. ķirbis, plūme · 9. kukurūza, bumbiere · 10. paprika, ķirsis ·
+  11. arbūzs · 12. lavanda. Tirgū neatvērtās redzamas ar 🔒. Somā esošās sēklas var iesēt vienmēr.
+- 🏡 **Dārzs aug**: sākumā 6 × 4 lauciņi pie vārtiem (iezīmēts ar mietiņiem un virvi), tad par monētām 8×6 (2. līm., 30🪙), 10×8 (3., 60🪙),
+  12×10 (4., 100🪙), 14×12 (6., 160🪙), 16×14 (7., 240🪙), 18×17 (9., 350🪙), 20×20 (10., 500🪙). Pie robežas — „🏡 Paplašināt dārzu”.
+- ⚖️ Jauns līdzsvars: ilgāk augošas kultūras dod daudz vairāk peļņas vienā lauciņā (burkāns +12🪙, tomāts +78🪙, ķirbis +216🪙,
+  arbūzs +491🪙, lavanda +611🪙); sēklas dārgākas. Īsās kultūras joprojām labas, ja spēlē bez pārtraukuma, garās — kad spēle aizvērta.
+- 💾 Vecie saglabājumi: līmenis aprēķināts pēc jau novāktās ražas, uzartās zemes un nocirstajiem kokiem; dārzs tik liels, lai visi
+  esošie lauciņi paliek.
+
 ## 1.26.0 — 2026-11-19
 - 🚌🚌 Tagad brauc **divi autobusi** pa to pašu apli — otrais pusapli aiz pirmā, tāpēc pieturā jāgaida ne vairāk kā ~4,5 min
   (agrāk ~9,5 min). Pieturā rāda, pēc cik ilga laika atbrauks tuvākais autobuss; kartē redzami abi 🚌.

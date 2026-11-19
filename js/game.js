@@ -1,28 +1,29 @@
 import * as THREE from 'three';
-import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, yardPart, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.26.0';
-import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.26.0';
-import { Controls } from './controls.js?v=1.26.0';
+import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, yardPart, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.27.0';
+import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.27.0';
+import { Controls } from './controls.js?v=1.27.0';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS, TREES, FRUITS, CLOTHES, SLOTS, DECOR } from './data.js?v=1.26.0';
-import { writeSave } from './save.js?v=1.26.0';
-import { VERSION, BUILD_DATE } from './version.js?v=1.26.0';
-import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.26.0';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.26.0';
-import { icon, iconEl, fishSvg } from './icons.js?v=1.26.0';
-import { Activities, makeTeam } from './activities.js?v=1.26.0';
-import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel, statsWanted } from './quality.js?v=1.26.0';
-import { hdrEnvironment } from './gfx.js?v=1.26.0';
-import { buildRod, buildDecor } from './props.js?v=1.26.0';
-import { buildStall, buildBunting } from './market.js?v=1.26.0';
-import { InstanceField } from './instancing.js?v=1.26.0';
-import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.26.0';
-import { Vehicles } from './vehicles.js?v=1.26.0';
-import { Farm, fmtLeft } from './farm.js?v=1.26.0';
-import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.26.0';
-import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.26.0';
-import { plotOf } from './world.js?v=1.26.0';
-import { kartClamp } from './racetrack.js?v=1.26.0';
-import { Bus, BUS_STOPS } from './bus.js?v=1.26.0';
+import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS, TREES, FRUITS, CLOTHES, SLOTS, DECOR } from './data.js?v=1.27.0';
+import { writeSave } from './save.js?v=1.27.0';
+import { VERSION, BUILD_DATE } from './version.js?v=1.27.0';
+import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.27.0';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.27.0';
+import { icon, iconEl, fishSvg } from './icons.js?v=1.27.0';
+import { Activities, makeTeam } from './activities.js?v=1.27.0';
+import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel, statsWanted } from './quality.js?v=1.27.0';
+import { hdrEnvironment } from './gfx.js?v=1.27.0';
+import { buildRod, buildDecor } from './props.js?v=1.27.0';
+import { buildStall, buildBunting } from './market.js?v=1.27.0';
+import { InstanceField } from './instancing.js?v=1.27.0';
+import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.27.0';
+import { Vehicles } from './vehicles.js?v=1.27.0';
+import { Farm, fmtLeft } from './farm.js?v=1.27.0';
+import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.27.0';
+import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.27.0';
+import { plotOf } from './world.js?v=1.27.0';
+import { kartClamp } from './racetrack.js?v=1.27.0';
+import { Bus, BUS_STOPS } from './bus.js?v=1.27.0';
+import { Garden, UNLOCK } from './garden.js?v=1.27.0';
 
 const ANIM = ['idle', 'walk', 'run', 'jump', 'swim', 'sit', 'pet', 'wave', 'fish', 'ski', 'lift', 'throw'];
 const MUSH_RESPAWN = 120000;
@@ -37,6 +38,7 @@ const PLAYER_DOT = ['#ff4040', '#40a0ff', '#ffd040', '#c060ff'];
 export class Game {
   constructor({ save, net, roomCode }) {
     this.save = save;
+    this.initGarden();
     this.net = net;
     this.roomCode = roomCode;
     this.myId = net.isHost ? 0 : -1;
@@ -165,6 +167,7 @@ export class Game {
     this.bindHud();
     this.setupNet();
     this.updateCoins();
+    this.updateGardenHud();
     this.onResize();
     // šeideru kompilēšana pirms pirmā kadra (citādi pirmais kadrs uz brīdi „sasalst”)
     await step(0.92, 'Gatavojam krāsas un gaismas…');
@@ -823,6 +826,7 @@ export class Game {
     press('btn-emote', () => this.toggleEmotes());
     press('btn-bag', () => this.openBag());
     press('btn-quests', () => this.openQuests());
+    press('btn-glevel', () => this.openGardenInfo());
     press('btn-menu', () => this.openMenu());
     press('btn-room', () => this.openRoom());
     press('btn-exit-kart', () => (this.me.bus ? this.leaveBus() : this.me.ride ? this.leaveRide() : this.me.veh ? this.exitVehicle() : this.exitKart()));
@@ -1190,6 +1194,7 @@ export class Game {
       // vecā vieta jānotīra tikai tad, ja tā nav kāda cita (pirms „welcome” mySlot ir 0 — tas var būt saimnieka lauks!)
       if (this.mySlot !== prof.slot && !this.slotTaken(this.mySlot, id)) { this.renderFarm(this.mySlot, null); this.setGardenSign(this.mySlot, null); }
       this.mySlot = prof.slot;
+      this.renderLandBorder();
       this.setGardenSign(prof.slot, prof.name);
       this.renderFarm(prof.slot, prof.farm || null);
       this.renderDecor(prof.slot, prof.decor);
@@ -2084,8 +2089,15 @@ export class Game {
       b.append(el('p', {}, 'Sveiks! Man ir labākās sēklas visā Mežvidu ciemā, augļu koku stādi un makšķeres. Viena sēkla apsēj vienu lauciņu. Dārgākās aug ilgāk, bet nes vairāk! 🌱🎣'));
       this.coinLine(b);
       this.rodRow(b, build);
-      for (const [k, c] of Object.entries(CROPS)) {
+      const L = this.gardenLvl();
+      b.append(el('p', { style: 'font-size:13px;margin:2px 0' }, `🌱 Tavs dārznieka līmenis: ${L}. Jaunas sēklas atveras, kad novāc ražu un iegūsti ⭐.`));
+      const crops = Object.entries(CROPS).sort((p, q) => (UNLOCK[p[0]] || 1) - (UNLOCK[q[0]] || 1) || p[1].grow - q[1].grow);
+      for (const [k, c] of crops) {
         const have = this.save.inv[k + '_seed'] || 0;
+        if (!this.cropOpen(k)) {
+          b.append(itemRow(iconEl(k + '_seed', 40), `🔒 ${c.name}`, `no ${UNLOCK[k]}. līmeņa · aug ${fmtLeft(c.grow)} · raža ×${c.yield} (${c.yield * c.sell}🪙)${have ? ` · tev: ${have}` : ''}`, []));
+          continue;
+        }
         const buy = (n) => () => {
           if (this.save.coins < c.seedPrice * n) { toast('Nepietiek monētu 🪙', 'bad'); return; }
           this.addCoins(-c.seedPrice * n, true); this.addItem(k + '_seed', n); sfx('coin');
@@ -2098,8 +2110,9 @@ export class Game {
       }
       b.append(el('div', { className: 'sect' }, '🌳 Augļu koki (stādi)'));
       b.append(el('p', { style: 'font-size:13px;opacity:.8;margin:2px 0' }, 'Iestādi uz uzarta lauciņa. Kad koks izaug, tas atkal un atkal dod augļus!'));
-      for (const [k, t] of Object.entries(TREES)) {
+      for (const [k, t] of Object.entries(TREES).sort((p, q) => UNLOCK[p[0]] - UNLOCK[q[0]])) {
         const have = this.save.inv[k + '_sap'] || 0, f = FRUITS[t.fruit];
+        if (!this.cropOpen(k)) { b.append(itemRow(iconEl(k + '_sap', 40), `🔒 ${t.name} — stāds`, `no ${UNLOCK[k]}. līmeņa · ${t.price}🪙`, [])); continue; }
         b.append(itemRow(iconEl(k + '_sap', 40), `${t.name} — stāds`, `${t.price}🪙 · izaug ${fmtLeft(t.grow)} · ${f.name.toLowerCase()} ×${t.yield} ik pa ${fmtLeft(t.every)} (${t.yield * f.sell}🪙) · tev: ${have}`, [
           { label: 'Pirkt', disabled: this.save.coins < t.price, onclick: () => {
             if (this.save.coins < t.price) return;
@@ -2608,5 +2621,5 @@ export class Game {
   }
 }
 
-Object.assign(Game.prototype, Activities, Quality, Winter, Vehicles, Farm, Bus);
+Object.assign(Game.prototype, Activities, Quality, Winter, Vehicles, Farm, Bus, Garden);
 Game.prototype.weeklyIcon = function () { return ({ mushrooms: '🍄', fish: '🐟', berries: '🫐', harvested: '🥕', petted: '🦌', races: '🏎️' })[this.team.stat] || ''; };

@@ -2,9 +2,9 @@
 // karodziņu virtenes starp būdām. Viss statisks — spēle to apvieno ar flattenStatic.
 // Būdas lokālās koordinātes: +z — pret pircējiem (laukuma vidu), pārdevējs stāv aiz letes (z ≈ −0,85).
 import * as THREE from 'three';
-import { mat, canvasTexture, makeSignBoard } from './util.js?v=1.26.0';
-import { buildCart, buildNPC } from './characters.js?v=1.26.0';
-import { buildDecor } from './props.js?v=1.26.0';
+import { mat, canvasTexture, makeSignBoard } from './util.js?v=1.27.0';
+import { buildCart, buildNPC } from './characters.js?v=1.27.0';
+import { buildDecor } from './props.js?v=1.27.0';
 
 let plankT = null;
 function plankTex() {

@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import { ANIMALS, FUR_COLORS, SHIRT_COLORS } from './data.js?v=1.26.0';
-import { loadSave, writeSave, lastProfileName, listProfiles } from './save.js?v=1.26.0';
-import { buildAnimal } from './characters.js?v=1.26.0';
-import { Net, randomCode } from './net.js?v=1.26.0';
-import { Game } from './game.js?v=1.26.0';
-import { $, initAudio } from './ui.js?v=1.26.0';
-import { VERSION, BUILD_DATE } from './version.js?v=1.26.0';
+import { ANIMALS, FUR_COLORS, SHIRT_COLORS } from './data.js?v=1.27.0';
+import { loadSave, writeSave, lastProfileName, listProfiles } from './save.js?v=1.27.0';
+import { buildAnimal } from './characters.js?v=1.27.0';
+import { Net, randomCode } from './net.js?v=1.27.0';
+import { Game } from './game.js?v=1.27.0';
+import { $, initAudio } from './ui.js?v=1.27.0';
+import { VERSION, BUILD_DATE } from './version.js?v=1.27.0';
 
 const EMOJI = { lacis: '🐻', lapsa: '🦊', zakis: '🐰', kakis: '🐱', cuka: '🐷', suns: '🐶', varde: '🐸', pile: '🦆' };
 let save = null;
