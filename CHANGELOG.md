@@ -1,5 +1,10 @@
 # Izmaiņu žurnāls
 
+## 1.26.0 — 2026-11-19
+- 🚌🚌 Tagad brauc **divi autobusi** pa to pašu apli — otrais pusapli aiz pirmā, tāpēc pieturā jāgaida ne vairāk kā ~4,5 min
+  (agrāk ~9,5 min). Pieturā rāda, pēc cik ilga laika atbrauks tuvākais autobuss; kartē redzami abi 🚌.
+- 🏡 Pārbaudīts: sētas pieturu nojumes stāv ~14 m aiz vārtiem gar žogu un neaizsedz ieeju sētā (1.24.0 tās stāvēja tieši pie vārtiem).
+
 ## 1.25.0 — 2026-11-19
 - 🚌 Autobusa maršruts tagad ir liels aplis ar jaunu pieturu **🏁 Sacīkšu trase**: ❄️ Ziemas laukums → 🏡 sēta → 🏁 trase → 🏡 sēta →
   🛒 Mežvidu tirgus → 🏡 sēta → ❄️ Ziema. Jauna pietura arī „Sēta — rietumi”; sētas pieturās nojumes abās ceļa pusēs.

@@ -4,13 +4,13 @@
 // bez tīkla ziņām. Ātrums atkarīgs no līkuma (aplī lēnāk). Iekāpt un izkāpt var tikai pieturās, brauciens maksā BUS_PRICE. Vada kaķis Kārlis.
 // Maršruts — globālās koordinātēs (zemes vietējās + zoneOffset); autobuss redzams tikai tajā zemē, kurā tas ir.
 import * as THREE from 'three';
-import { mat, canvasTexture } from './util.js?v=1.25.0';
-import { buildAnimal, flattenStatic } from './characters.js?v=1.25.0';
-import { $, toast, sfx } from './ui.js?v=1.25.0';
-import { roadNS, roadEW, FOREST_ROAD, FOREST_RING, raceGeo } from './world.js?v=1.25.0';
-import { WINTER_ROAD, WINTER_RING } from './winter.js?v=1.25.0';
-import { zoneOffset, ZONE_HALF, FARM, FOREST, RACE, smoothRoad } from './zones.js?v=1.25.0';
-import { busStopSvg } from './icons.js?v=1.25.0';
+import { mat, canvasTexture } from './util.js?v=1.26.0';
+import { buildAnimal, flattenStatic } from './characters.js?v=1.26.0';
+import { $, toast, sfx } from './ui.js?v=1.26.0';
+import { roadNS, roadEW, FOREST_ROAD, FOREST_RING, raceGeo } from './world.js?v=1.26.0';
+import { WINTER_ROAD, WINTER_RING } from './winter.js?v=1.26.0';
+import { zoneOffset, ZONE_HALF, FARM, FOREST, RACE, smoothRoad } from './zones.js?v=1.26.0';
+import { busStopSvg } from './icons.js?v=1.26.0';
 
 export const BUS_PRICE = 2;
 export const BUS_CODE = 6; // pos p[5]: pasažieris autobusā (p[9] — sēdvieta)
@@ -391,11 +391,22 @@ function buildStop(stop) {
 }
 
 // ---------- spēles daļa (mixin) ----------
+// Divi autobusi pa to pašu apli: otrais brauc pusapli (pusi no grafika laika) aiz pirmā.
+// Tīklā sēdvieta p[9] = autobusa nr. · SEATS + vieta (vecie klienti sūta 0..11 — 1. autobuss).
+export const BUS_COUNT = 2;
+const SEATS = 12;
+const busOffset = (k) => -k * EVENTS.P * 1000 / BUS_COUNT;
 export const Bus = {
   initBus() {
-    const bus = this.bus = { obj: buildBus(), vis: false, lastS: null, stopShown: -2 };
-    bus.obj.root.visible = false;
-    this.stage.add(bus.obj.root);
+    this.buses = [];
+    for (let k = 0; k < BUS_COUNT; k++) {
+      const b = { k, obj: buildBus(), vis: false, lastS: null };
+      b.obj.root.visible = false;
+      this.stage.add(b.obj.root);
+      this.buses.push(b);
+    }
+    this.bus = this.buses[0]; // saderībai (karte u.c.)
+    this.busStopShown = -2;
     // nojumes: katrai zemei sava grupa uz stage (redzama tikai tajā zemē; augstums — kad zeme ielādēta)
     this.busStopGroups = {};
     BUS_STOPS.forEach((s) => {
@@ -409,10 +420,13 @@ export const Bus = {
     for (const z in this.busStopGroups) { this.busStopGroups[z].visible = false; this.stage.add(this.busStopGroups[z]); }
   },
 
-  // katru kadru: autobusa vieta, pieturu redzamība, pasažieris
+  // cik sekundes līdz kāds autobuss stāvēs pieturā i
+  busEtaAny(i) { let e = 1e9; for (let k = 0; k < BUS_COUNT; k++) e = Math.min(e, busEta(this.now() + busOffset(k), i)); return e; },
+  myBus() { return this.me.bus ? this.buses[this.me.bus.b || 0] : null; },
+
+  // katru kadru: autobusu vietas, pieturu redzamība, pasažieris
   updateBus(dt) {
-    const B = this.bus;
-    if (!B) return;
+    if (!this.buses) return;
     for (const z in this.busStopGroups) {
       const grp = this.busStopGroups[z], here = z === this.zone && !this.zoneBusy && !!this.terr && !!this.terr.getHeight;
       if (here && grp.userData.terr !== this.terr) {
@@ -422,6 +436,11 @@ export const Bus = {
       grp.visible = here;
     }
     const now = this.now();
+    for (const B of this.buses) this.updateOneBus(B, now + busOffset(B.k), dt);
+    if (this.me.bus) this.busRider(dt);
+  },
+
+  updateOneBus(B, now, dt) {
     const st = B.st = busState(now);
     const p = pathAt(st.s);
     const zone = B.zone = zoneOfG(p.x, p.z), [ox, oz] = zoneOffset(zone);
@@ -434,77 +453,77 @@ export const Bus = {
     const o = B.obj;
     B.vis = zone === this.zone && !!this.terr && !!this.terr.getHeight && !this.zoneBusy;
     o.root.visible = B.vis;
-    if (B.vis) {
-      const T = this.terr, y = T.getHeight(B.lx, B.lz);
-      const fx = Math.sin(h) * 4, fz = Math.cos(h) * 4;
-      const hf = T.getHeight(B.lx + fx, B.lz + fz), hb = T.getHeight(B.lx - fx, B.lz - fz);
-      o.root.position.set(B.lx, y, B.lz);
-      o.root.rotation.order = 'YXZ';
-      o.root.rotation.y = h;
-      o.root.rotation.x = lerpA(o.root.rotation.x, -Math.atan2(hf - hb, 8), 0.2);
-      // līkumā autobuss nedaudz sasveras uz āru
-      const dh = B.lastH == null ? 0 : angDiff(h, B.lastH) / Math.max(dt, 1e-3);
-      B.lastH = h;
-      o.body.rotation.z = lerpA(o.body.rotation.z, Math.max(-0.05, Math.min(0.05, -dh * speed * 0.012)), Math.min(1, dt * 3));
-      for (const w of o.wheels) w.rotation.x += speed * dt / 0.5;
-      // durvis atveras pieturā
-      const open = st.stop >= 0 && st.left > 1.2 ? 1 : 0;
-      B.door = (B.door || 0) + (open - (B.door || 0)) * Math.min(1, dt * 4);
-      o.doors[0].position.z = o.doorZ[0] - B.door * 0.52; o.doors[1].position.z = o.doorZ[1] + B.door * 0.52;
-      o.doors[0].position.x = o.doors[1].position.x = -1.28 - B.door * 0.08;
-      o.driver.animate(dt, 'sit', 0);
-      o.driver.head.rotation.y = st.stop >= 0 ? Math.sin(now / 900) * 0.5 : 0;
-      // gājēji neiet cauri autobusam
-      if (!this.me.bus && !this.me.veh && !this.me.inKart && !this.me.ride) pushOut(this.me.pos, B.lx, B.lz, h, 1.25 + 0.4, 5.2 + 0.4);
-    }
-    if (this.me.bus) this.busRider(dt);
+    if (!B.vis) return;
+    const T = this.terr, y = T.getHeight(B.lx, B.lz);
+    const fx = Math.sin(h) * 4, fz = Math.cos(h) * 4;
+    const hf = T.getHeight(B.lx + fx, B.lz + fz), hb = T.getHeight(B.lx - fx, B.lz - fz);
+    o.root.position.set(B.lx, y, B.lz);
+    o.root.rotation.order = 'YXZ';
+    o.root.rotation.y = h;
+    o.root.rotation.x = lerpA(o.root.rotation.x, -Math.atan2(hf - hb, 8), 0.2);
+    // līkumā autobuss nedaudz sasveras uz āru
+    const dh = B.lastH == null ? 0 : angDiff(h, B.lastH) / Math.max(dt, 1e-3);
+    B.lastH = h;
+    o.body.rotation.z = lerpA(o.body.rotation.z, Math.max(-0.05, Math.min(0.05, -dh * speed * 0.012)), Math.min(1, dt * 3));
+    for (const w of o.wheels) w.rotation.x += speed * dt / 0.5;
+    // durvis atveras pieturā
+    const open = st.stop >= 0 && st.left > 1.2 ? 1 : 0;
+    B.door = (B.door || 0) + (open - (B.door || 0)) * Math.min(1, dt * 4);
+    o.doors[0].position.z = o.doorZ[0] - B.door * 0.52; o.doors[1].position.z = o.doorZ[1] + B.door * 0.52;
+    o.doors[0].position.x = o.doors[1].position.x = -1.28 - B.door * 0.08;
+    o.driver.animate(dt, 'sit', 0);
+    o.driver.head.rotation.y = st.stop >= 0 ? Math.sin(now / 900) * 0.5 : 0;
+    // gājēji neiet cauri autobusam
+    if (!this.me.bus && !this.me.veh && !this.me.inKart && !this.me.ride) pushOut(this.me.pos, B.lx, B.lz, h, 1.25 + 0.4, 5.2 + 0.4);
   },
 
   busActions(consider, d2) {
-    const B = this.bus;
-    if (!B || this.me.bus) return;
-    const st = B.st;
-    if (B.vis && st && st.stop >= 0 && st.left > 1.5) {
-      consider(d2(B.lx, B.lz) * 0.4, 7.5, `🚌 Iekāpt autobusā (${BUS_PRICE}🪙)`, () => this.boardBus());
+    if (!this.buses || this.me.bus) return;
+    for (const B of this.buses) {
+      const st = B.st;
+      if (B.vis && st && st.stop >= 0 && st.left > 1.5) {
+        consider(d2(B.lx, B.lz) * 0.4, 7.5, `🚌 Iekāpt autobusā (${BUS_PRICE}🪙)`, () => this.boardBus(B.k));
+      }
     }
-    // pie pieturas — cik ilgi jāgaida
+    // pie pieturas — cik ilgi jāgaida (tuvākais no abiem autobusiem)
     for (const s of BUS_STOPS) {
       if (s.zone !== this.zone) continue;
-      const eta = busEta(this.now(), s.i);
-      if (eta > 0) consider(d2(s.lx, s.lz) + 1, 4.5, `🚏 ${s.name}: autobuss pēc ${fmtEta(eta)}`, () => toast(`🚏 ${s.name} — autobuss atbrauks pēc ${fmtEta(busEta(this.now(), s.i))}. Brauciens ${BUS_PRICE}🪙. Maršruts: ❄️ Ziema · 🏡 Sēta · 🏁 Trase · 🛒 Tirgus.`));
+      const eta = this.busEtaAny(s.i);
+      if (eta > 0) consider(d2(s.lx, s.lz) + 1, 4.5, `🚏 ${s.name}: autobuss pēc ${fmtEta(eta)}`, () => toast(`🚏 ${s.name} — autobuss atbrauks pēc ${fmtEta(this.busEtaAny(s.i))}. Brauciens ${BUS_PRICE}🪙. Maršruts: ❄️ Ziema · 🏡 Sēta · 🏁 Trase · 🛒 Tirgus (2 autobusi).`));
     }
   },
 
-  boardBus() {
-    const B = this.bus, me = this.me;
+  boardBus(k = 0) {
+    const B = this.buses[k], me = this.me;
     if (!B.vis || !B.st || B.st.stop < 0) { toast('Autobusā var iekāpt tikai pieturā 🚏'); return; }
     if (this.save.coins < BUS_PRICE) { toast(`Nepietiek monētu — brauciens maksā ${BUS_PRICE}🪙`, 'bad'); return; }
-    const taken = this.busTaken();
+    const taken = this.busTaken(k);
     const seat = B.obj.seats.findIndex((_, i) => !taken.has(i));
     if (seat < 0) { toast('🚌 Autobuss ir pilns!', 'bad'); return; }
     if (this.fishing) this.stopFishing();
     if (me.carry) this.stowCarry();
     this.addCoins(-BUS_PRICE, true);
-    me.bus = { seat };
+    me.bus = { seat, b: k, net: k * SEATS + seat };
     B.obj.seats[seat].add(this.avatar.root);
     this.avatar.root.position.set(0, 0, 0); this.avatar.root.rotation.set(0, 0, 0);
     this.avatar.shadow.visible = false;
     me.state = 'sit';
     $('btn-jump').classList.add('hidden');
     sfx('coin');
-    B.stopShown = B.st.stop;
+    this.busStopShown = B.st.stop;
     const q = BUS_STOPS[(B.st.stop + 1) % BUS_STOPS.length];
     toast(`🐱 Kaķis Kārlis: „Laipni lūdzam! ${BUS_PRICE}🪙, paldies! Nākamā pietura — ${q.icon} ${q.name}.” Izkāpt var tikai pieturā 🚏`, 'good', 5000);
   },
 
-  busTaken() {
+  // aizņemtās sēdvietas autobusā k (pēc draugu ziņām)
+  busTaken(k) {
     const t = new Set();
-    for (const r of this.remotes.values()) if (r.vehCode === BUS_CODE) t.add(r.rideSeat);
+    for (const r of this.remotes.values()) if (r.vehCode === BUS_CODE && Math.floor((r.rideSeat || 0) / SEATS) === k) t.add((r.rideSeat || 0) % SEATS);
     return t;
   },
 
   leaveBus(force = false) {
-    const B = this.bus, me = this.me;
+    const B = this.myBus(), me = this.me;
     if (!me.bus) return;
     if (!force && (!B.st || B.st.stop < 0)) { toast(`Izkāpt var tikai pieturā 🚏 — nākamā: ${nextStopName(B.st)}`); return; }
     me.bus = null;
@@ -530,7 +549,7 @@ export const Bus = {
 
   // pasažieris: sēž savā vietā, pārbrauc uz citu zemi līdz ar autobusu
   busRider(dt) {
-    const B = this.bus, me = this.me;
+    const B = this.myBus(), me = this.me;
     if (B.zone !== this.zone) {
       if (!this.zoneBusy) this.teleport(B.zone, { x: B.lx, z: B.lz }, B.h);
       return;
@@ -538,10 +557,10 @@ export const Bus = {
     if (!B.vis) return;
     // ja draugs ar mazāku id sēž manā vietā — pārsēžamies
     for (const r of this.remotes.values()) {
-      if (r.vehCode === BUS_CODE && r.rideSeat === me.bus.seat && r.id < this.myId) {
-        const taken = this.busTaken(), free = B.obj.seats.findIndex((_, i) => !taken.has(i) && i !== me.bus.seat);
+      if (r.vehCode === BUS_CODE && r.rideSeat === me.bus.net && r.id < this.myId) {
+        const taken = this.busTaken(B.k), free = B.obj.seats.findIndex((_, i) => !taken.has(i) && i !== me.bus.seat);
         if (free < 0) { this.leaveBus(true); toast('🚌 Autobusā vairs nav vietas'); return; }
-        me.bus.seat = free;
+        me.bus.seat = free; me.bus.net = B.k * SEATS + free;
         B.obj.seats[free].add(this.avatar.root);
       }
     }
@@ -556,14 +575,14 @@ export const Bus = {
     // pieturā var izkāpt
     const atStop = B.st.stop >= 0 && B.st.left > 1;
     $('btn-exit-kart').classList.toggle('hidden', !atStop);
-    if (B.st.stop >= 0 && B.stopShown !== B.st.stop) {
-      B.stopShown = B.st.stop;
+    if (B.st.stop >= 0 && this.busStopShown !== B.st.stop) {
+      this.busStopShown = B.st.stop;
       const s = BUS_STOPS[B.st.stop];
       toast(`🚏 Pietura: ${s.icon} ${s.name} — vari izkāpt (🚶 Izkāpt)`, 'good', 4000);
       sfx('beep');
     }
-    if (B.st.stop < 0 && B.stopShown !== -1) {
-      B.stopShown = -1;
+    if (B.st.stop < 0 && this.busStopShown !== -1) {
+      this.busStopShown = -1;
       toast(`🚌 Nākamā pietura: ${nextStopName(B.st)}`, '', 2500);
     }
   },
@@ -571,9 +590,9 @@ export const Bus = {
   // drauga avatārs autobusa sēdvietā; true — apstrādāts
   busRemote(r, here, dt) {
     if (r.vehCode !== BUS_CODE) return false;
-    const B = this.bus;
+    const n = r.rideSeat || 0, B = this.buses && this.buses[Math.floor(n / SEATS)] || (this.buses && this.buses[0]);
     if (!here || !B || !B.vis) { r.avatar.root.visible = false; return true; }
-    const seat = B.obj.seats[r.rideSeat] || B.obj.seats[0];
+    const seat = B.obj.seats[n % SEATS] || B.obj.seats[0];
     if (r.avatar.root.parent !== seat) { seat.add(r.avatar.root); r.avatar.root.position.set(0, 0, 0); r.avatar.root.rotation.set(0, 0, 0); }
     r.avatar.shadow.visible = false;
     r.avatar.root.visible = true;

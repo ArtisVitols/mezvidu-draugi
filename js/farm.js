@@ -4,14 +4,14 @@
 // dažādām kultūrām starp lauciņiem paliek neliela sprauga. Augšana iet pēc pulksteņa (arī tad, kad spēle aizvērta).
 // Farm — Game papildinājums (mixin).
 import * as THREE from 'three';
-import { World, TILE, plotOf, tileToSlot, tileToCanon, gardenTile, gateSpots, rotPlot, rotPlotY, yardPart, YARD } from './world.js?v=1.25.0';
-import { buildCrop, flattenStatic } from './characters.js?v=1.25.0';
-import { buildFruitTree, buildDecor } from './props.js?v=1.25.0';
-import { WORLD_SEED, CROPS, TREES, FRUITS, DECOR } from './data.js?v=1.25.0';
-import { InstanceField } from './instancing.js?v=1.25.0';
-import { canvasTexture, makeSignBoard } from './util.js?v=1.25.0';
-import { $, toast, sfx, fmtTime } from './ui.js?v=1.25.0';
-import { ZONES, FARM, freeGpu } from './zones.js?v=1.25.0';
+import { World, TILE, plotOf, tileToSlot, tileToCanon, gardenTile, gateSpots, rotPlot, rotPlotY, yardPart, YARD } from './world.js?v=1.26.0';
+import { buildCrop, flattenStatic } from './characters.js?v=1.26.0';
+import { buildFruitTree, buildDecor } from './props.js?v=1.26.0';
+import { WORLD_SEED, CROPS, TREES, FRUITS, DECOR } from './data.js?v=1.26.0';
+import { InstanceField } from './instancing.js?v=1.26.0';
+import { canvasTexture, makeSignBoard } from './util.js?v=1.26.0';
+import { $, toast, sfx, fmtTime } from './ui.js?v=1.26.0';
+import { ZONES, FARM, freeGpu } from './zones.js?v=1.26.0';
 
 const CROP_IDS = Object.keys(CROPS);
 const TREE_IDS = Object.keys(TREES); // skatā koks ir kods 100 + nr.

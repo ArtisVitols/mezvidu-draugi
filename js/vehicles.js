@@ -3,14 +3,14 @@
 // ja neviens cits ar to nebrauc; izkāpjot tas paliek tur, kur atstāts (arī citā zemē). Saimnieks glabā, kurš ar ko brauc
 // un kur katrs stāv (saimnieka saglabājumā `vehs`). Vehicles — Game papildinājums.
 import * as THREE from 'three';
-import { mat, lerp, clamp, makeBlobShadow, makeTextSprite } from './util.js?v=1.25.0';
-import { optimizeRig, tyreGeo } from './characters.js?v=1.25.0';
-import { $, toast, sfx } from './ui.js?v=1.25.0';
-import { DIRS, neighbour, FARM, FOREST, RACE, ZONE_IDS } from './zones.js?v=1.25.0';
-import { WATER_Y, YARD, YARD_IN, rotPlot, rotPlotY, BIKE_RACK } from './world.js?v=1.25.0';
-import { SLED_SPOT } from './winter.js?v=1.25.0';
-import { BUS_CODE } from './bus.js?v=1.25.0';
-import { ZONES } from './zones.js?v=1.25.0';
+import { mat, lerp, clamp, makeBlobShadow, makeTextSprite } from './util.js?v=1.26.0';
+import { optimizeRig, tyreGeo } from './characters.js?v=1.26.0';
+import { $, toast, sfx } from './ui.js?v=1.26.0';
+import { DIRS, neighbour, FARM, FOREST, RACE, ZONE_IDS } from './zones.js?v=1.26.0';
+import { WATER_Y, YARD, YARD_IN, rotPlot, rotPlotY, BIKE_RACK } from './world.js?v=1.26.0';
+import { SLED_SPOT } from './winter.js?v=1.26.0';
+import { BUS_CODE } from './bus.js?v=1.26.0';
+import { ZONES } from './zones.js?v=1.26.0';
 
 // tīkla kods (pos ziņas 6. lauks): 1 = kartings, 2 = mašīna, 3 = sniega motocikls, 5 = velosipēds
 export const VEH_CODE = { car: 2, sled: 3, bike: 5 }; // 4 = pasažieris (p[8] — vadītāja id, p[9] — sēdvieta); p[10] — transporta id
@@ -500,7 +500,7 @@ export const Vehicles = {
   vehCode() { return this.me.bus ? BUS_CODE : this.me.veh ? VEH_CODE[this.me.veh.kind] : this.me.ride ? RIDE_CODE : 0; },
   vehIdInfo() { return this.me.veh ? this.me.veh.id : ''; },
   // papildu lauki pos ziņai (pasažierim — vadītājs un sēdvieta)
-  rideInfo() { return this.me.ride ? [this.me.ride.driver, this.me.ride.seat] : this.me.bus ? [-1, this.me.bus.seat] : [-1, 0]; },
+  rideInfo() { return this.me.ride ? [this.me.ride.driver, this.me.ride.seat] : this.me.bus ? [-1, this.me.bus.net] : [-1, 0]; },
 
   // aizņemtās sēdvietas vadītāja mašīnā (0 — vadītājs)
   takenSeats(driverId, exceptId) {
