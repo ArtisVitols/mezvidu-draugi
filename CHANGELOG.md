@@ -1,5 +1,13 @@
 # Izmaiņu žurnāls
 
+## 1.33.0 — 2026-11-19
+- 🏎️ Gludāka kartinga braukšana: maksimālais ātrums vairs nelec 22 ↔ 12 pie trases malas (mainās gludi pēc attāluma), barjera
+  bremzē pēc trieciena leņķa un, slīdot gar malu, kartu maigi pagriež gar trasi (agrāk ātrums kritās katrā kadrā), mīksta stūrēšana,
+  augstums un slīpums bez trīces, kamera bez lēcieniem (arī tuneļos).
+- 🔊 Kartinga skaņa: dzinējs skaļāks ar gāzi, tonis pēc ātruma un turbo; riepu šņākoņa asos pagriezienos un gar barjeru.
+- 🚲 Velosipēds: pēdas precīzi uz pedāļiem visā aplī (kāju IK), bērnu izmēra rāmis (zemāks sēdeklis, augstāki pedāļi), lai kājas sniedzas;
+  riteņi vairs neieiet zemē (kalnā augšup bez nokavēšanās, neliels pacēlums).
+
 ## 1.32.0 — 2026-11-19
 - 🚌 „Iekāpt autobusā” parādās tikai ~4 m no autobusa malas (agrāk līdz ~19 m no tā vidus).
 - 🚶 Pēc izkāpšanas tajā pašā autobusā uzreiz atkal iekāpt nevar — vispirms jāaiziet prom (tālāk par ~4,5 m) un jānāk atpakaļ

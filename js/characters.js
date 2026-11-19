@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mat, makeBlobShadow, noiseTexture, lerp, canvasTexture } from './util.js?v=1.32.0';
+import { mat, makeBlobShadow, noiseTexture, lerp, canvasTexture } from './util.js?v=1.33.0';
 
 // kažoka/auduma materiāli ar smalku faktūru
 let furTex = null, clothTex = null;
@@ -684,8 +684,8 @@ export function buildAnimal({ animal = 'lacis', fur = '#8b5a2b', shirt = '#d23b3
           T.hip[i] = -1.05 + Math.sin(ph) * 0.42;
           T.knee[i] = 1.25 + Math.cos(ph) * 0.42;
         }
-        T.sh = [-1.05, -1.05]; T.shZ = [0.12, -0.12]; T.el = [-0.3, -0.3];
-        T.bY = HIP - 0.16; T.spX = 0.32; T.hX = -0.25;
+        T.sh = [-1.2, -1.2]; T.shZ = [0.12, -0.12]; T.el = [-0.3, -0.3];
+        T.bY = HIP - 0.16; T.spX = 0.28; T.hX = -0.2;
         k = 1 - Math.exp(-dt * 25);
       } else if (state === 'fish') {
         // tur makšķeri ar abām rokām priekšā
@@ -720,7 +720,24 @@ export function buildAnimal({ animal = 'lacis', fur = '#8b5a2b', shirt = '#d23b3
       this.head.rotation.x = pose.hX;
       this.head.rotation.y = pose.hY - pose.spY * 0.8;
       if (this.tail) this.tail.rotation.y = Math.sin(this.t * (state === 'idle' ? 1.5 : 4)) * 0.25;
+      if (state === 'bike' && this.pedal) this.pedalIK();
       if (this.scarf) this.animScarf(dt);
+    },
+    // 1.33.0: pēdas precīzi uz pedāļiem — divu posmu IK (augšstilbs 0,30 m, apakšstilbs līdz pēdai 0,35 m)
+    pedalIK() {
+      const Pd = this.pedal, hy = this.body.position.y;
+      const L1 = 0.3, L2 = Math.hypot(0.35, 0.05), dl = Math.atan2(0.05, 0.35);
+      for (let i = 0; i < 2; i++) {
+        const s = i === 0 ? -1 : 1;
+        const vy = Pd.cy + s * Pd.r * Math.cos(Pd.a) + 0.035 - hy, vz = Pd.cz + s * Pd.r * Math.sin(Pd.a);
+        const D = Math.min(L1 + L2 - 0.004, Math.max(0.08, Math.hypot(vy, vz)));
+        const av = Math.atan2(-vz, -vy);
+        const al = Math.acos(Math.max(-1, Math.min(1, (L1 * L1 + D * D - L2 * L2) / (2 * L1 * D))));
+        const be = Math.PI - Math.acos(Math.max(-1, Math.min(1, (L1 * L1 + L2 * L2 - D * D) / (2 * L1 * L2))));
+        const hip = av - al, knee = be + dl;
+        this.legs[i].hip.rotation.x = hip; this.legs[i].knee.rotation.x = knee;
+        pose.hip[i] = hip; pose.knee[i] = knee;
+      }
     },
     // šalles gali: atsperes, ko velk atpakaļ ātrums un sāņus pagriezieni
     animScarf(dt) {

@@ -3,14 +3,14 @@
 // ja neviens cits ar to nebrauc; izkāpjot tas paliek tur, kur atstāts (arī citā zemē). Saimnieks glabā, kurš ar ko brauc
 // un kur katrs stāv (saimnieka saglabājumā `vehs`). Vehicles — Game papildinājums.
 import * as THREE from 'three';
-import { mat, lerp, clamp, makeBlobShadow, makeTextSprite } from './util.js?v=1.32.0';
-import { optimizeRig, tyreGeo } from './characters.js?v=1.32.0';
-import { $, toast, sfx } from './ui.js?v=1.32.0';
-import { DIRS, neighbour, FARM, FOREST, RACE, ZONE_IDS } from './zones.js?v=1.32.0';
-import { WATER_Y, YARD, YARD_IN, rotPlot, rotPlotY, BIKE_RACK } from './world.js?v=1.32.0';
-import { SLED_SPOT } from './winter.js?v=1.32.0';
-import { BUS_CODE } from './bus.js?v=1.32.0';
-import { ZONES } from './zones.js?v=1.32.0';
+import { mat, lerp, clamp, makeBlobShadow, makeTextSprite } from './util.js?v=1.33.0';
+import { optimizeRig, tyreGeo } from './characters.js?v=1.33.0';
+import { $, toast, sfx } from './ui.js?v=1.33.0';
+import { DIRS, neighbour, FARM, FOREST, RACE, ZONE_IDS } from './zones.js?v=1.33.0';
+import { WATER_Y, YARD, YARD_IN, rotPlot, rotPlotY, BIKE_RACK } from './world.js?v=1.33.0';
+import { SLED_SPOT } from './winter.js?v=1.33.0';
+import { BUS_CODE } from './bus.js?v=1.33.0';
+import { ZONES } from './zones.js?v=1.33.0';
 
 // tīkla kods (pos ziņas 6. lauks): 1 = kartings, 2 = mašīna, 3 = sniega motocikls, 5 = velosipēds
 export const VEH_CODE = { car: 2, sled: 3, bike: 5 }; // 4 = pasažieris (p[8] — vadītāja id, p[9] — sēdvieta); p[10] — transporta id
@@ -183,13 +183,14 @@ export function buildBike(color = '#d23b3b') {
   const dark = darkM(), chrome = chromeM();
   const R = 0.34, wz = 0.56;
   // rāmis (dimanta forma)
-  const bb = [0, 0.32, -0.04], st = [0, 0.86, -0.2], ht = [0, 0.86, 0.36], htL = [0, 0.66, 0.42];
+  // 1.33.0: bērnu izmēra rāmis — dzīvnieku kājas (0,65 m) sniedzas līdz pedāļiem visā aplī
+  const bb = [0, 0.4, -0.04], st = [0, 0.8, -0.2], ht = [0, 0.86, 0.36], htL = [0, 0.66, 0.42];
   tube(bb, st, 0.025, paint); tube(st, ht, 0.022, paint); tube(bb, htL, 0.026, paint);
   tube(bb, [0, R, -wz], 0.016, paint); tube(st, [0, R, -wz], 0.015, paint);
   tube(htL, ht, 0.028, paint);
   // sēdeklis
-  tube(st, [0, 0.95, -0.22], 0.016, chrome);
-  const sad = P(new THREE.CapsuleGeometry(0.06, 0.16, 4, 8), seatM(), 0, 0.97, -0.2, Math.PI / 2, 0, 0); sad.scale.set(1.1, 1, 0.5);
+  tube(st, [0, 0.83, -0.21], 0.016, chrome);
+  const sad = P(new THREE.CapsuleGeometry(0.06, 0.16, 4, 8), seatM(), 0, 0.85, -0.2, Math.PI / 2, 0, 0); sad.scale.set(1.1, 1, 0.5);
   // aizmugures ritenis
   const wheels = [];
   const mkWheel = (z, parent) => {
@@ -216,17 +217,20 @@ export function buildBike(color = '#d23b3b') {
   for (const [x, z, w, d] of [[0, 0.13, 0.34, 0.015], [0, -0.13, 0.34, 0.015], [0.17, 0, 0.015, 0.26], [-0.17, 0, 0.015, 0.26]]) kit(basket).B(w, 0.2, d, wick, x, 0.1, z);
   P(new THREE.CylinderGeometry(0.05, 0.05, 0.03, 10), lightM(), 0, 0.78, 0.62, Math.PI / 2, 0, 0);
   // pedāļi
-  const crank = new THREE.Group(); crank.position.set(0, 0.32, -0.04); body.add(crank);
+  const CR = 0.13; // kloķa garums
+  const crank = new THREE.Group(); crank.position.set(0, 0.4, -0.04); body.add(crank);
   const ck = kit(crank);
   ck.P(new THREE.CylinderGeometry(0.08, 0.08, 0.02, 14), chrome, 0.05, 0, 0, 0, 0, Math.PI / 2);
-  for (const s of [-1, 1]) { ck.B(0.02, 0.17, 0.03, chrome, s * 0.07, s * 0.08, 0); ck.B(0.1, 0.02, 0.06, dark, s * 0.12, s * 0.16, 0); }
-  tube([0.05, 0.32, -0.04], [0.05, R, -wz], 0.006, dark); // ķēde
+  for (const s of [-1, 1]) { ck.B(0.02, CR + 0.03, 0.03, chrome, s * 0.07, s * CR / 2, 0); ck.B(0.1, 0.02, 0.06, dark, s * 0.12, s * CR, 0); }
+  tube([0.05, 0.4, -0.04], [0.05, R, -wz], 0.006, dark); // ķēde
   body.traverse((o) => { if (o.isMesh) o.castShadow = true; });
-  const seat = new THREE.Group(); seat.position.set(0, 0.43, -0.16); body.add(seat);
+  const seat = new THREE.Group(); seat.position.set(0, 0.32, -0.16); body.add(seat);
+  // pedāļu ass sēdekļa (braucēja) koordinātēs — kājām (pedalIK characters.js)
+  const pedal = { cy: 0.4 - 0.32, cz: -0.04 + 0.16, r: CR };
   const petSpot = new THREE.Group(); petSpot.position.set(0, 0.03, 0); basket.add(petSpot);
   petSpot.scale.setScalar(0.6);
   const shadow = makeBlobShadow(1.7); shadow.position.y = 0.04; shadow.scale.set(0.45, 1, 1); root.add(shadow);
-  return { kind: 'bike', root, body, wheels, steer: [steer], seat, seats: [seat], petSpots: [petSpot], wheelR: R, crank };
+  return { kind: 'bike', root, body, wheels, steer: [steer], seat, seats: [seat], petSpots: [petSpot], wheelR: R, crank, pedal };
 }
 
 const buildVeh = (kind, color) => (kind === 'car' ? buildCar(color) : kind === 'bike' ? buildBike(color) : buildSled(color));
@@ -461,7 +465,8 @@ export const Vehicles = {
     // virsbūve seko reljefam, līkumos sasveras (velosipēds — stipri iekšā līkumā)
     const o = v.obj;
     v.visY = v.visY == null ? me.pos.y : lerp(v.visY, me.pos.y, 1 - Math.exp(-dt * 14));
-    o.root.position.set(me.pos.x, v.visY, me.pos.z);
+    if (!v.air) v.visY = Math.max(v.visY, me.pos.y - 0.005); // kalnā augšup — bez nokavēšanās (riteņi neieiet zemē)
+    o.root.position.set(me.pos.x, v.visY + (v.kind === 'bike' ? 0.03 : 0), me.pos.z);
     o.root.rotation.y = v.heading;
     const k = 1 - Math.exp(-dt * (v.air ? 2 : 6));
     const lean = v.kind === 'bike' ? -v.steer * Math.min(1, Math.abs(v.speed) / 6) * 0.3 : -v.steer * Math.min(1, Math.abs(v.speed) / 15) * 0.05;
@@ -470,6 +475,7 @@ export const Vehicles = {
     o.body.rotation.z = lerp(o.body.rotation.z, (v.air || v.kind === 'bike' ? 0 : sl2.roll) + lean, k);
     for (const w of o.wheels) w.rotation.x += v.speed * dt / o.wheelR;
     if (o.crank) o.crank.rotation.x += v.speed * dt / o.wheelR * 0.45;
+    this.avatar.pedal = o.pedal ? { ...o.pedal, a: o.crank.rotation.x } : null;
     for (const s of o.steer) s.rotation.y = v.steer * (v.kind === 'bike' ? 0.35 : 0.45);
     o.root.children[1].position.y = g2 - v.visY + 0.04; // ēna paliek uz zemes
     me.heading = v.heading;
@@ -637,7 +643,8 @@ export const Vehicles = {
     // uz zemes — vidējais augstums zem riteņiem; sniega motocikls lēcienā var būt augstāk
     const ty = kind === 'sled' ? Math.max(sl.y, r.pos.y) : sl.y;
     o.visY = o.visY == null ? ty : lerp(o.visY, ty, 1 - Math.exp(-dt * 14));
-    o.root.position.set(r.pos.x, o.visY, r.pos.z);
+    o.visY = Math.max(o.visY, ty - 0.005);
+    o.root.position.set(r.pos.x, o.visY + (kind === 'bike' ? 0.03 : 0), r.pos.z);
     o.root.rotation.y = r.ry;
     const k = 1 - Math.exp(-dt * 6);
     // stūres leņķis no virziena maiņas ātruma
@@ -652,6 +659,7 @@ export const Vehicles = {
     o.body.rotation.z = lerp(o.body.rotation.z, (kind === 'bike' ? 0 : sl.roll) + lean, k);
     for (const w of o.wheels) w.rotation.x += sp * dt / o.wheelR;
     if (o.crank) o.crank.rotation.x += sp * dt / o.wheelR * 0.45;
+    r.avatar.pedal = o.pedal ? { ...o.pedal, a: o.crank.rotation.x } : null;
     for (const s of o.steer) s.rotation.y = r.steerS * 0.35;
     o.root.children[1].position.y = sl.y - o.visY + 0.04;
     r.avatar.animate(dt, kind === 'bike' ? 'bike' : 'sit', sp);

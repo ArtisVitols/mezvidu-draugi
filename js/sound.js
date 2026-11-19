@@ -1,7 +1,7 @@
 // 🔊 Pastāvīgās skaņas (1.31.0): soļi pēc virsmas, vide pēc zemes (putni, vējš, ūdens, purva sienāži), uguns pie ugunskura,
 // dzinēji (kartings, mašīna, autobuss), velosipēda spieķi, slēpošanas vējš. Mixin uz Game.prototype; updateSound(dt) katru kadru.
-import { loop, loopAt, play, setListener, stopAllLoops } from './audio.js?v=1.32.0';
-import { FOREST, FARM, RACE } from './zones.js?v=1.32.0';
+import { loop, loopAt, play, setListener, stopAllLoops } from './audio.js?v=1.33.0';
+import { FOREST, FARM, RACE } from './zones.js?v=1.33.0';
 
 const STEP = 0.78;   // m starp soļiem ejot (skrienot — garāki)
 const rd = (T, x, z) => { if (!T || !T.roadDist) return 99; const r = T.roadDist(x, z); return typeof r === 'number' ? r : r ? r.d : 99; };
@@ -87,7 +87,15 @@ export const Sound = {
 
     // --- transports ---
     let kart = 0, kartR = 1, car = 0, carR = 1, spokes = 0, slide = 0;
-    if (me.inKart && me.kart) { const v = Math.abs(me.kart.speed || 0); kart = 0.55; kartR = 0.7 + Math.min(1.3, v / 22); }
+    let skid = 0;
+    if (me.inKart && me.kart) {
+      const K = me.kart, v = Math.abs(K.speed || 0), thr = Math.max(0, K.thr || 0);
+      // dzinējs: tukšgaitā klusāks, ar gāzi skaļāks; tonis pēc ātruma (+ turbo)
+      kart = 0.4 + 0.4 * thr + (K.boost > 0 ? 0.15 : 0);
+      kartR = 0.62 + Math.min(1.25, v / 21) + thr * 0.08 + (K.boost > 0 ? 0.12 : 0);
+      // riepas šņāc asos pagriezienos lielā ātrumā un slīdot gar barjeru
+      skid = Math.min(0.45, Math.abs(K.steer || 0) * Math.max(0, (v - 12) / 14) * 0.45) + (K.wall && v > 5 ? 0.3 : 0);
+    }
     else if (me.veh) {
       const v = Math.abs(me.veh.speed || 0), k = me.veh.kind;
       if (k === 'car') { car = 0.6; carR = 0.55 + Math.min(1.1, v / 26); }
@@ -99,6 +107,7 @@ export const Sound = {
     }
     if (me.ski) slide = Math.min(0.8, (me.ski.v || 0) / 16);
     loop('eng_kart', 'eng_kart', kart, kartR, 'sfx');
+    loop('skid', 'skid', skid, 1, 'sfx');
     loop('eng_car', 'eng_car', car, carR, 'sfx');
     loop('spokes', 'spokes', spokes, 1, 'sfx');
     loop('slide', 'amb_wind', slide, 1.6, 'sfx');

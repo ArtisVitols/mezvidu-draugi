@@ -1,31 +1,31 @@
 import * as THREE from 'three';
-import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, yardPart, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.32.0';
-import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.32.0';
-import { Controls } from './controls.js?v=1.32.0';
+import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, yardPart, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.33.0';
+import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.33.0';
+import { Controls } from './controls.js?v=1.33.0';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS, TREES, FRUITS, CLOTHES, SLOTS, DECOR } from './data.js?v=1.32.0';
-import { writeSave } from './save.js?v=1.32.0';
-import { Sound } from './sound.js?v=1.32.0';
-import { getVolume, setVolume } from './audio.js?v=1.32.0';
-import { VERSION, BUILD_DATE } from './version.js?v=1.32.0';
-import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.32.0';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.32.0';
-import { icon, iconEl, fishSvg } from './icons.js?v=1.32.0';
-import { Activities, makeTeam } from './activities.js?v=1.32.0';
-import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel, statsWanted } from './quality.js?v=1.32.0';
-import { hdrEnvironment } from './gfx.js?v=1.32.0';
-import { buildRod, buildDecor } from './props.js?v=1.32.0';
-import { buildStall, buildBunting } from './market.js?v=1.32.0';
-import { InstanceField } from './instancing.js?v=1.32.0';
-import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.32.0';
-import { Vehicles } from './vehicles.js?v=1.32.0';
-import { Farm, fmtLeft } from './farm.js?v=1.32.0';
-import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.32.0';
-import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.32.0';
-import { plotOf } from './world.js?v=1.32.0';
-import { kartClamp } from './racetrack.js?v=1.32.0';
-import { Bus, BUS_STOPS } from './bus.js?v=1.32.0';
-import { Garden, UNLOCK } from './garden.js?v=1.32.0';
+import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS, TREES, FRUITS, CLOTHES, SLOTS, DECOR } from './data.js?v=1.33.0';
+import { writeSave } from './save.js?v=1.33.0';
+import { Sound } from './sound.js?v=1.33.0';
+import { getVolume, setVolume } from './audio.js?v=1.33.0';
+import { VERSION, BUILD_DATE } from './version.js?v=1.33.0';
+import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.33.0';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.33.0';
+import { icon, iconEl, fishSvg } from './icons.js?v=1.33.0';
+import { Activities, makeTeam } from './activities.js?v=1.33.0';
+import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel, statsWanted } from './quality.js?v=1.33.0';
+import { hdrEnvironment } from './gfx.js?v=1.33.0';
+import { buildRod, buildDecor } from './props.js?v=1.33.0';
+import { buildStall, buildBunting } from './market.js?v=1.33.0';
+import { InstanceField } from './instancing.js?v=1.33.0';
+import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.33.0';
+import { Vehicles } from './vehicles.js?v=1.33.0';
+import { Farm, fmtLeft } from './farm.js?v=1.33.0';
+import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.33.0';
+import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.33.0';
+import { plotOf } from './world.js?v=1.33.0';
+import { kartClamp } from './racetrack.js?v=1.33.0';
+import { Bus, BUS_STOPS } from './bus.js?v=1.33.0';
+import { Garden, UNLOCK } from './garden.js?v=1.33.0';
 
 const ANIM = ['idle', 'walk', 'run', 'jump', 'swim', 'sit', 'pet', 'wave', 'fish', 'ski', 'lift', 'throw'];
 const MUSH_RESPAWN = 120000;
@@ -1476,54 +1476,72 @@ export class Game {
     const me = this.me, k = me.kart, W = this.raceW;
     const info = W.nearestTrackIdx(me.pos.x, me.pos.z, k.hint);
     k.hint = info.idx;
-    const onTrack = info.dist < TRACK_WIDTH / 2 + 1.2;
+    // 1.33.0: maksimālais ātrums mainās gludi pēc attāluma no trases vidus (agrāk pie malas lēcienā 22 → 12 — tāpēc „raustījās”)
+    const edge = clamp((info.dist - (TRACK_WIDTH / 2 + 1.0)) / 4, 0, 1);
     const ground = W.getHeight(me.pos.x, me.pos.z);
     const inWater = ground < WATER_Y - 0.4;
     const frozen = this.myRace && this.race.phase === 'run' && this.now() < this.race.startAt;
     k.boost = Math.max(0, k.boost - dt);
     k.padCd = Math.max(0, k.padCd - dt);
-    let max = onTrack ? 22 : 12;
+    let max = 22 - 10 * edge * edge * (3 - 2 * edge);
     if (inWater) max = 5;
     if (k.boost > 0) max = 31;
     if (me.iceCream > 0) max *= 1.1;
+    k.steer = lerp(k.steer || 0, mv.x, 1 - Math.exp(-dt * 10));
     if (frozen) {
       k.speed = 0;
     } else {
       const thr = mv.y;
-      if (thr > 0.1) k.speed += (k.boost > 0 ? 30 : 15) * thr * dt;
+      k.thr = thr;
+      if (thr > 0.1) k.speed += (k.boost > 0 ? 30 : 15) * thr * dt * (k.speed < max ? 1 : 0);
       else if (thr < -0.1) k.speed -= (k.speed > 0.5 ? 26 : 9) * -thr * dt;
-      else k.speed *= 1 - 1.4 * dt;
+      else k.speed *= Math.exp(-1.4 * dt);
       if (k.boost > 0 && k.speed < max) k.speed += 25 * dt;
-      if (k.speed > max) k.speed = lerp(k.speed, max, 1 - Math.exp(-dt * 3));
+      if (k.speed > max) k.speed = lerp(k.speed, max, 1 - Math.exp(-dt * 2));
       k.speed = clamp(k.speed, -7, 34);
       const turn = 2.4 * clamp(k.speed / 5, -1, 1) * (1 - Math.min(0.35, Math.abs(k.speed) / 90));
-      k.heading -= mv.x * turn * dt;
+      k.heading -= k.steer * turn * dt;
     }
     me.pos.x += Math.sin(k.heading) * k.speed * dt;
     me.pos.z += Math.cos(k.heading) * k.speed * dt;
-    if (W.collide(me.pos, 1.0)) k.speed *= 0.92;
-    // barjeras: ar kartu nevar izbraukt no trases (tikai trase + starta laukums)
-    if (kartClamp(W, me.pos, k.hint)) { k.speed *= 0.82; if (Math.abs(k.speed) > 6 && (k.bumpCd || 0) <= 0) { sfx('hit', { vol: 0.8 }); k.bumpCd = 0.6; } }
+    if (W.collide(me.pos, 1.0)) k.speed *= Math.exp(-dt * 4);
+    // barjeras: ar kartu nevar izbraukt no trases. Sitiens bremzē pēc trieciena leņķa, slīdot gar malu ātrums saglabājas
+    if (kartClamp(W, me.pos, k.hint)) {
+      const a = W.trackPts[k.hint], b = W.trackPts[(k.hint + 1) % W.trackPts.length];
+      const td = Math.atan2(b.x - a.x, b.z - a.z);
+      const al = Math.abs(Math.cos(k.heading - td)); // 1 — paralēli malai
+      if (!k.wall) {
+        if (Math.abs(k.speed) > 6 && (k.bumpCd || 0) <= 0) { sfx('hit', { vol: 0.4 + 0.5 * (1 - al) }); k.bumpCd = 0.6; }
+        k.speed *= 0.55 + 0.45 * al;
+      } else k.speed *= Math.exp(-dt * 0.8);
+      // kartu maigi pagriež gar malu
+      const dir = Math.cos(k.heading - td) >= 0 ? td : td + Math.PI;
+      k.heading = angleLerp(k.heading, dir, 1 - Math.exp(-dt * 3));
+      k.wall = true;
+    } else k.wall = false;
     k.bumpCd = Math.max(0, (k.bumpCd || 0) - dt);
     for (const p of W.boostPads) {
       if (k.padCd <= 0 && Math.hypot(p.x - me.pos.x, p.z - me.pos.z) < 2.4) {
         k.boost = 1.6; k.padCd = 1; sfx('boost');
       }
     }
-    const g2 = W.getHeight(me.pos.x, me.pos.z);
-    me.pos.y = inWater ? WATER_Y - 0.3 : g2;
+    // augstums — vidējais zem riteņiem, mīksti (bez trīces no zemes režģa)
+    const fx = Math.sin(k.heading), fz = Math.cos(k.heading);
+    const hf = W.getHeight(me.pos.x + fx, me.pos.z + fz), hb = W.getHeight(me.pos.x - fx, me.pos.z - fz);
+    const gy = inWater ? WATER_Y - 0.3 : Math.max(W.getHeight(me.pos.x, me.pos.z), (hf + hb) / 2);
+    k.y = k.y == null || Math.abs(k.y - gy) > 2 ? gy : Math.max(gy - 0.02, lerp(k.y, gy, 1 - Math.exp(-dt * 18)));
+    me.pos.y = k.y;
     const kr = k.obj.root;
     kr.position.copy(me.pos);
     kr.rotation.order = 'YXZ';
     kr.rotation.y = k.heading;
-    const hf = W.getHeight(me.pos.x + Math.sin(k.heading), me.pos.z + Math.cos(k.heading));
-    const hb = W.getHeight(me.pos.x - Math.sin(k.heading), me.pos.z - Math.cos(k.heading));
-    kr.rotation.x = lerp(kr.rotation.x, -Math.atan2(hf - hb, 2), 0.3);
-    kr.rotation.z = lerp(kr.rotation.z, mv.x * Math.min(1, k.speed / 20) * 0.08, 0.2);
+    const ke = 1 - Math.exp(-dt * 10);
+    kr.rotation.x = lerp(kr.rotation.x, -Math.atan2(hf - hb, 2), ke);
+    kr.rotation.z = lerp(kr.rotation.z, k.steer * Math.min(1, k.speed / 20) * 0.08, ke);
     for (const w of k.obj.wheels) w.rotation.x += k.speed * dt / 0.32;
     me.state = 'sit';
     this.avatar.animate(dt, 'sit', 0);
-    this.avatar.head.rotation.y = -mv.x * 0.3;
+    this.avatar.head.rotation.y = -k.steer * 0.3;
   }
 
   updateCamera(dt) {
@@ -1554,11 +1572,12 @@ export class Game {
     // tunelī kamera paliek zem griestiem
     if (this.terr.ceilingAt && ty < this.terr.ceilingAt(tx, tz)) cy = Math.min(cy, this.terr.ceilingAt(tx, tz), Math.max(gh, this.terr.ceilingAt(cx, cz)));
     const k = 1 - Math.exp(-dt * 12);
-    if (riding && this.camInit) {
+    if ((riding || me.inKart) && this.camInit) {
       // braucot kamera nevelkas pakaļ ar mainīgu nobīdi (tas izskatās pēc raustīšanās) — tikai attālums mainās mīksti
       this.camDistS = lerp(this.camDistS || dist, dist, 1 - Math.exp(-dt * 5));
       const dd = this.camDistS;
       cx = tx + ox * dd; cz = tz + oz * dd; cy = Math.max(ty + oy * dd, Math.max(this.terr.getHeight(cx, cz), WATER_Y) + 0.6);
+      if (this.terr.ceilingAt && ty < this.terr.ceilingAt(tx, tz)) cy = Math.min(cy, this.terr.ceilingAt(tx, tz), Math.max(Math.max(this.terr.getHeight(cx, cz), WATER_Y) + 0.6, this.terr.ceilingAt(cx, cz)));
       this.camera.position.set(cx, cy, cz);
       this.camera.lookAt(tx, ty, tz);
       return;

@@ -28,9 +28,29 @@ export function initSound() {
       });
     }
     if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    if (!buf.skid) buf.skid = [makeSkid()];
     if (!loadP) loadP = loadAll();
   } catch (e) { /* bez skaņas */ }
   return ctx;
+}
+
+// riepu šņākoņa: troksnis ar joslas filtru (~0,8–3 kHz) un nelielu viļņošanos — sintezēts, nav faila
+function makeSkid() {
+  const sr = ctx.sampleRate, n = Math.floor(sr * 1.2), b = ctx.createBuffer(1, n, sr), d = b.getChannelData(0);
+  let lp = 0, hp = 0, prev = 0;
+  const kl = 1 - Math.exp(-2 * Math.PI * 3000 / sr), kh = 1 - Math.exp(-2 * Math.PI * 800 / sr);
+  for (let i = 0; i < n; i++) {
+    const w = Math.random() * 2 - 1;
+    lp += (w - lp) * kl; hp += (lp - hp) * kh;
+    const band = lp - hp;
+    const mod = 0.75 + 0.25 * Math.sin(i / sr * 2 * Math.PI * 11) * Math.sin(i / sr * 2 * Math.PI * 2.5);
+    d[i] = band * mod * 2.2; prev = d[i];
+  }
+  // gludi savieno cilpas galus
+  const F = Math.floor(sr * 0.05);
+  for (let i = 0; i < F; i++) { const t = i / F; d[i] = d[i] * t + d[n - F + i] * (1 - t); }
+  void prev;
+  return b;
 }
 
 async function loadOne(name) {
@@ -141,3 +161,6 @@ export function stopAllLoops() {
   for (const l of loops.values()) { try { l.src.stop(); } catch (e) { /* */ } }
   loops.clear();
 }
+
+// atkļūdošanai: kuras cilpas tagad skan un cik skaļi
+export function loopInfo() { return [...loops.entries()].map(([id, l]) => `${id}:${l.g.gain.value.toFixed(2)}`); }
