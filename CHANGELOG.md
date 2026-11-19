@@ -1,5 +1,9 @@
 # Izmaiņu žurnāls
 
+## 1.30.0 — 2026-11-19
+- ✨ Moderns sākuma ekrāns: zila debess ar sauli un peldošiem mākoņiem, zaļi pakalni ar eglēm, matēta stikla kartīte,
+  jauns logotips, soļu indikators (vārds → tēls → istaba), lielas gradienta pogas, koda lauks un „Pievienoties” vienā rindā.
+
 ## 1.29.0 — 2026-11-19
 - 🐾 Mājdzīvnieks tagad brauc līdzi **visos** transportos: autobusā (sēž ejā blakus tavam sēdeklim), kartingā (aizmugurē virs motora)
   un ziemas pacēlājā (krēslā blakus), tāpat kā mašīnā, ragavās un velosipēdā. Arī draugu mājdzīvnieki.

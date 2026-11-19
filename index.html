@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#2f7d32">
-<meta name="app-version" content="1.29.0">
+<meta name="app-version" content="1.30.0">
 <meta http-equiv="Cache-Control" content="no-cache">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -12,7 +12,7 @@
 <title>Mežvidu Draugi</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="css/style.css?v=1.29.0">
+<link rel="stylesheet" href="css/style.css?v=1.30.0">
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script type="importmap">
 { "imports": {
@@ -85,9 +85,25 @@
 </div>
 
 <div id="menu">
+  <div class="menu-bg" aria-hidden="true">
+    <div class="sun"></div>
+    <div class="cloud c1"></div><div class="cloud c2"></div><div class="cloud c3"></div>
+    <svg class="hills" viewBox="0 0 1200 400" preserveAspectRatio="xMidYMax slice">
+      <path d="M0 250 Q150 170 320 230 T640 210 T960 230 T1200 200 V400 H0Z" fill="#7cc46a" opacity=".55"/>
+      <g fill="#2f7d4a" opacity=".55">
+        <path d="M90 240 l22-70 22 70z"/><path d="M130 236 l18-56 18 56z"/><path d="M840 230 l24-78 24 78z"/><path d="M885 232 l18-58 18 58z"/><path d="M1040 222 l20-64 20 64z"/>
+      </g>
+      <path d="M0 300 Q200 230 420 290 T820 280 T1200 260 V400 H0Z" fill="#4fa456"/>
+      <g fill="#24603a">
+        <path d="M300 300 l26-86 26 86z"/><path d="M345 300 l20-64 20 64z"/><path d="M640 292 l28-92 28 92z"/><path d="M690 296 l20-66 20 66z"/><path d="M1000 286 l24-80 24 80z"/>
+      </g>
+      <path d="M0 350 Q260 300 560 345 T1200 330 V400 H0Z" fill="#357f45"/>
+    </svg>
+  </div>
   <div class="menu-box" id="scr-name">
-    <h1>🌲 Mežvidu Draugi 🦊</h1>
+    <div class="logo"><div class="logo-ic">🦊</div><h1>Mežvidu <span>Draugi</span></h1></div>
     <p class="sub">Kopīga piedzīvojumu pasaule līdz 4 draugiem</p>
+    <div class="steps"><i class="on"></i><i></i><i></i></div>
     <label for="in-name">Tavs vārds</label>
     <input id="in-name" maxlength="14" placeholder="Ieraksti savu vārdu" autocomplete="off">
     <div id="profiles"></div>
@@ -96,6 +112,7 @@
   </div>
 
   <div class="menu-box hidden" id="scr-char">
+    <div class="steps"><i class="done"></i><i class="on"></i><i></i></div>
     <h2>Izvēlies savu tēlu</h2>
     <canvas id="preview" width="300" height="220"></canvas>
     <div class="grid" id="animal-grid"></div>
@@ -110,6 +127,7 @@
   </div>
 
   <div class="menu-box hidden" id="scr-room">
+    <div class="steps"><i class="done"></i><i class="done"></i><i class="on"></i></div>
     <h2>Sveiks, <span id="hello-name"></span>!</h2>
     <p class="sub" id="save-info"></p>
     <div id="game-pick">
@@ -124,9 +142,11 @@
       </div>
     </div>
     <button class="btn primary big" id="btn-host">🏠 Izveidot istabu</button>
-    <div class="or">vai pievienojies draugam</div>
-    <input id="in-code" maxlength="5" placeholder="ISTABAS KODS" autocomplete="off" autocapitalize="characters">
-    <button class="btn big" id="btn-join">🚪 Pievienoties</button>
+    <div class="or"><span>vai pievienojies draugam</span></div>
+    <div class="join-row">
+      <input id="in-code" maxlength="5" placeholder="KODS" autocomplete="off" autocapitalize="characters">
+      <button class="btn big" id="btn-join">🚪 Pievienoties</button>
+    </div>
     <button class="btn small" id="btn-solo">🌲 Spēlēt vienam (bez interneta)</button>
     <div id="room-status"></div>
     <button class="btn small ghost" id="btn-room-back">⬅ Atpakaļ</button>
@@ -137,6 +157,6 @@
 
 <div id="rotate-hint">📱↻ Pagriez telefonu guļus labākai spēlei</div>
 
-<script type="module" src="js/main.js?v=1.29.0"></script>
+<script type="module" src="js/main.js?v=1.30.0"></script>
 </body>
 </html>
