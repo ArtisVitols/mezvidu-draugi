@@ -4,15 +4,16 @@
 // bez tīkla ziņām. Ātrums atkarīgs no līkuma (aplī lēnāk). Iekāpt un izkāpt var tikai pieturās, brauciens maksā BUS_PRICE. Vada kaķis Kārlis.
 // Maršruts — globālās koordinātēs (zemes vietējās + zoneOffset); autobuss redzams tikai tajā zemē, kurā tas ir.
 import * as THREE from 'three';
-import { mat, canvasTexture } from './util.js?v=1.31.0';
-import { buildAnimal, flattenStatic } from './characters.js?v=1.31.0';
-import { $, toast, sfx } from './ui.js?v=1.31.0';
-import { roadNS, roadEW, FOREST_ROAD, FOREST_RING, raceGeo } from './world.js?v=1.31.0';
-import { WINTER_ROAD, WINTER_RING } from './winter.js?v=1.31.0';
-import { zoneOffset, ZONE_HALF, FARM, FOREST, RACE, smoothRoad } from './zones.js?v=1.31.0';
-import { busStopSvg } from './icons.js?v=1.31.0';
+import { mat, canvasTexture } from './util.js?v=1.32.0';
+import { buildAnimal, flattenStatic } from './characters.js?v=1.32.0';
+import { $, toast, sfx } from './ui.js?v=1.32.0';
+import { roadNS, roadEW, FOREST_ROAD, FOREST_RING, raceGeo } from './world.js?v=1.32.0';
+import { WINTER_ROAD, WINTER_RING } from './winter.js?v=1.32.0';
+import { zoneOffset, ZONE_HALF, FARM, FOREST, RACE, smoothRoad } from './zones.js?v=1.32.0';
+import { busStopSvg } from './icons.js?v=1.32.0';
 
 export const BUS_PRICE = 2;
+const BOARD_R = 4; // m no autobusa malas, kur parādās „Iekāpt” (1.32.0)
 export const BUS_CODE = 6; // pos p[5]: pasažieris autobusā (p[9] — sēdvieta)
 const VMAX = 14, ACC = 1.2, DEC = 1.4, ALAT = 1.6, DWELL = 10, TERM = 16; // m/s, m/s², s
 const LANE = 1.5; // labā josla: tik metru pa labi no ceļa vidus
@@ -497,10 +498,17 @@ export const Bus = {
 
   busActions(consider, d2) {
     if (!this.buses || this.me.bus) return;
+    const p = this.me.pos;
     for (const B of this.buses) {
       const st = B.st;
+      // attālums līdz autobusa malai (taisnstūris 2,5 × 10,4 m)
+      const c = Math.cos(B.h || 0), sn = Math.sin(B.h || 0), dx = p.x - B.lx, dz = p.z - B.lz;
+      const lx = dx * c - dz * sn, lz = dx * sn + dz * c;
+      const edge = B.vis ? Math.hypot(Math.max(0, Math.abs(lx) - 1.25), Math.max(0, Math.abs(lz) - 5.2)) : 99;
+      // pēc izkāpšanas šajā autobusā atkal iekāpt var tikai tad, kad esi aizgājis prom un atnācis atpakaļ
+      if (this.busLock && this.busLock[B.k]) { if (edge > BOARD_R + 0.5) this.busLock[B.k] = false; else continue; }
       if (B.vis && st && st.stop >= 0 && st.left > 1.5) {
-        consider(d2(B.lx, B.lz) * 0.4, 7.5, `🚌 Iekāpt autobusā (${BUS_PRICE}🪙)`, () => this.boardBus(B.k));
+        consider(edge * 0.5, BOARD_R * 0.5, `🚌 Iekāpt autobusā (${BUS_PRICE}🪙)`, () => this.boardBus(B.k));
       }
     }
     // pie pieturas — cik ilgi jāgaida (tuvākais no abiem autobusiem)
@@ -544,6 +552,7 @@ export const Bus = {
     const B = this.myBus(), me = this.me;
     if (!me.bus) return;
     if (!force && (!B.st || B.st.stop < 0)) { toast(`Izkāpt var tikai pieturā 🚏 — nākamā: ${nextStopName(B.st)}`); return; }
+    (this.busLock = this.busLock || {})[me.bus.b || 0] = true;
     me.bus = null;
     this.stage.add(this.avatar.root);
     this.avatar.shadow.visible = true;

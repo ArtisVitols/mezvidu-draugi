@@ -1,5 +1,10 @@
 # Izmaiņu žurnāls
 
+## 1.32.0 — 2026-11-19
+- 🚌 „Iekāpt autobusā” parādās tikai ~4 m no autobusa malas (agrāk līdz ~19 m no tā vidus).
+- 🚶 Pēc izkāpšanas tajā pašā autobusā uzreiz atkal iekāpt nevar — vispirms jāaiziet prom (tālāk par ~4,5 m) un jānāk atpakaļ
+  (vai jāgaida nākamais autobuss). Vairs nevar nejauši iekāpt atpakaļ, spiežot dzelteno pogu.
+
 ## 1.31.0 — 2026-11-19
 - 🔊 **Īstas skaņas** (CC0 no OpenGameArt / Kenney, 57 skaņas, 1,5 MB): soļi pēc virsmas (zāle, ceļš, sniegs, koka laipa, ūdens),
   vide (putni sētā un mežā, vējš ziemā un kāpās, ūdens pie ezeriem, sienāži un vardes purvā, uguns pie ugunskura),
