@@ -1,7 +1,7 @@
 // 🔊 Pastāvīgās skaņas (1.31.0): soļi pēc virsmas, vide pēc zemes (putni, vējš, ūdens, purva sienāži), uguns pie ugunskura,
 // dzinēji (kartings, mašīna, autobuss), velosipēda spieķi, slēpošanas vējš. Mixin uz Game.prototype; updateSound(dt) katru kadru.
-import { loop, loopAt, play, setListener, stopAllLoops } from './audio.js?v=1.33.0';
-import { FOREST, FARM, RACE } from './zones.js?v=1.33.0';
+import { loop, loopAt, play, setListener, stopAllLoops, engine } from './audio.js?v=1.34.0';
+import { FOREST, FARM, RACE } from './zones.js?v=1.34.0';
 
 const STEP = 0.78;   // m starp soļiem ejot (skrienot — garāki)
 const rd = (T, x, z) => { if (!T || !T.roadDist) return 99; const r = T.roadDist(x, z); return typeof r === 'number' ? r : r ? r.d : 99; };
@@ -61,6 +61,7 @@ export const Sound = {
     const wind = z === 'n' ? 0.55 : z === 's' ? 0.45 : 0.08;
     loop('amb_birds', 'amb_birds', birds);
     loop('amb_wind', 'amb_wind', wind);
+    loop('air', 'air', z === 'n' ? 0.28 : z === 's' ? 0.22 : 0);
     // ūdens un purvs tuvumā (pārbauda reizi 0,5 s)
     this.sndT = (this.sndT || 0) - dt;
     if (this.sndT <= 0) {
@@ -85,41 +86,40 @@ export const Sound = {
     // putni dažreiz čivina tuvāk
     if (birds && Math.random() < dt * 0.05) play('chirp', { vol: 0.25, jit: 0.2, pan: Math.random() * 1.4 - 0.7 });
 
-    // --- transports ---
-    let kart = 0, kartR = 1, car = 0, carR = 1, spokes = 0, slide = 0;
-    let skid = 0;
+    // --- transports (1.34.0: sintezēti dzinēji, dzirdami telefonā) ---
+    let kart = 0, kartR = 0, kartL = 0, car = 0, carR = 0, carL = 0, whirr = 0, hiss = 0, skid = 0, coast = 0;
     if (me.inKart && me.kart) {
       const K = me.kart, v = Math.abs(K.speed || 0), thr = Math.max(0, K.thr || 0);
-      // dzinējs: tukšgaitā klusāks, ar gāzi skaļāks; tonis pēc ātruma (+ turbo)
-      kart = 0.4 + 0.4 * thr + (K.boost > 0 ? 0.15 : 0);
-      kartR = 0.62 + Math.min(1.25, v / 21) + thr * 0.08 + (K.boost > 0 ? 0.12 : 0);
-      // riepas šņāc asos pagriezienos lielā ātrumā un slīdot gar barjeru
+      kart = 1; kartR = Math.min(1.25, v / 24) + (K.boost > 0 ? 0.15 : 0); kartL = Math.max(thr, K.boost > 0 ? 1 : 0);
       skid = Math.min(0.45, Math.abs(K.steer || 0) * Math.max(0, (v - 12) / 14) * 0.45) + (K.wall && v > 5 ? 0.3 : 0);
-    }
-    else if (me.veh) {
-      const v = Math.abs(me.veh.speed || 0), k = me.veh.kind;
-      if (k === 'car') { car = 0.6; carR = 0.55 + Math.min(1.1, v / 26); }
-      else if (k === 'bike') spokes = Math.min(0.8, v / 8);
-      else if (k === 'sled') slide = Math.min(0.7, v / 14);
+    } else if (me.veh) {
+      const V = me.veh, v = Math.abs(V.speed || 0), thr = Math.max(0, V.thr || 0);
+      if (V.kind === 'car') { car = 1; carR = Math.min(1.2, v / 26); carL = Math.max(thr, 0.15); }
+      else if (V.kind === 'bike') { whirr = Math.min(0.5, v / 12); coast = v; }
+      else if (V.kind === 'sled') hiss = Math.min(0.7, v / 12);
     } else if (me.ride) {
       const v = this.remoteSpeed ? this.remoteSpeed(me.ride.driver) : 0, d = this.remotes.get(me.ride.driver);
-      if (d && d.vehCode === 2) { car = 0.5; carR = 0.55 + Math.min(1.1, v / 26); }
+      if (d && d.vehCode === 2) { car = 0.9; carR = Math.min(1.2, v / 26); carL = 0.4; }
+      else if (d && d.vehCode === 3) hiss = Math.min(0.6, v / 12);
+      else if (d && d.vehCode === 5) whirr = Math.min(0.4, v / 12);
     }
-    if (me.ski) slide = Math.min(0.8, (me.ski.v || 0) / 16);
-    loop('eng_kart', 'eng_kart', kart, kartR, 'sfx');
+    if (me.ski) hiss = Math.max(hiss, Math.min(0.75, (me.ski.v || 0) / 14));
+    engine('my_kart', 'kart', kartR, kartL, kart);
+    engine('my_car', 'car', carR, carL, car);
     loop('skid', 'skid', skid, 1, 'sfx');
-    loop('eng_car', 'eng_car', car, carR, 'sfx');
-    loop('spokes', 'spokes', spokes, 1, 'sfx');
-    loop('slide', 'amb_wind', slide, 1.6, 'sfx');
-    // autobusi: dzinējs (iekšā — klusāk un vienmērīgi), durvis, zvaniņš pieturā
+    loop('whirr', 'whirr', whirr, 0.7 + Math.min(0.8, coast / 14), 'sfx');
+    loop('hiss', 'hiss', hiss, 0.8 + hiss * 0.5, 'sfx');
+    // velosipēds: brīvgaitas klikšķi, kad nemin (ātrumā bez gāzes)
+    if (me.veh && me.veh.kind === 'bike' && coast > 2 && !(me.veh.thr > 0.1)) {
+      this.clickT = (this.clickT || 0) - dt * coast;
+      if (this.clickT <= 0) { this.clickT = 0.55; play('tick', { vol: 0.12, rate: 1.6, jit: 0.05, gap: 30 }); }
+    }
+    // autobusi: dzinējs (iekšā — vienmērīgi), durvis, zvaniņš pieturā
     for (const B of this.buses || []) {
-      const id = 'bus' + B.k;
       const on = B.vis && B.speed != null;
       const mine = me.bus && (me.bus.b || 0) === B.k;
-      const rate = 0.42 + Math.min(0.5, (B.speed || 0) / 30);
-      if (!on) loop(id, 'eng_car', 0);
-      else if (mine) loop(id, 'eng_car', 0.35, rate, 'sfx');
-      else { const dd = Math.hypot(B.lx - cam.position.x, B.lz - cam.position.z); loop(id, 'eng_car', Math.max(0, 1 - dd / 60) * 0.45, rate, 'sfx'); }
+      const rpm = Math.min(1, (B.speed || 0) / 14), load = B.st && B.st.stop >= 0 ? 0.1 : 0.5;
+      engine('bus' + B.k, 'bus', rpm, load, on ? (mine ? 0.7 : 1) : 0, on && !mine ? { x: B.lx, z: B.lz } : null);
       const open = (B.door || 0) > 0.5;
       if (on && B.sndOpen != null && open !== B.sndOpen) {
         const at = mine ? null : { x: B.lx, z: B.lz };
@@ -128,13 +128,16 @@ export const Sound = {
       }
       B.sndOpen = open;
     }
-    // draugu mašīnas un kartingi tuvumā
+    // stāvošā mašīna, kurā sēž cits, un draugu transports tuvumā
     for (const r of this.remotes.values()) {
-      const id = 'rv' + r.id;
-      if ((r.zone || 'c') !== z || !(r.vehCode === 1 || r.vehCode === 2) || !r.pos) { loop(id, 'eng_car', 0); continue; }
-      const dd = Math.hypot(r.pos.x - cam.position.x, r.pos.z - cam.position.z);
-      const v = this.remoteSpeed ? this.remoteSpeed(r.id) : 0;
-      loop(id, r.vehCode === 1 ? 'eng_kart' : 'eng_car', Math.max(0, 1 - dd / 50) * 0.4, 0.6 + Math.min(1.2, v / 24), 'sfx');
+      const here = (r.zone || 'c') === z && r.pos;
+      const v = here && this.remoteSpeed ? this.remoteSpeed(r.id) : 0;
+      const at = here ? { x: r.pos.x, z: r.pos.z } : null;
+      engine('rk' + r.id, 'kart', Math.min(1.2, v / 24), 0.6, here && r.vehCode === 1 ? 1 : 0, at);
+      engine('rc' + r.id, 'car', Math.min(1.2, v / 26), 0.5, here && r.vehCode === 2 ? 1 : 0, at);
+      const dd = here ? Math.hypot(r.pos.x - cam.position.x, r.pos.z - cam.position.z) : 99;
+      loop('rw' + r.id, 'whirr', here && r.vehCode === 5 ? Math.max(0, 1 - dd / 25) * Math.min(0.4, v / 12) : 0, 1, 'sfx');
+      loop('rh' + r.id, 'hiss', here && r.vehCode === 3 ? Math.max(0, 1 - dd / 30) * Math.min(0.5, v / 12) : 0, 1, 'sfx');
     }
   },
 };

@@ -3,14 +3,14 @@
 // ja neviens cits ar to nebrauc; izkāpjot tas paliek tur, kur atstāts (arī citā zemē). Saimnieks glabā, kurš ar ko brauc
 // un kur katrs stāv (saimnieka saglabājumā `vehs`). Vehicles — Game papildinājums.
 import * as THREE from 'three';
-import { mat, lerp, clamp, makeBlobShadow, makeTextSprite } from './util.js?v=1.33.0';
-import { optimizeRig, tyreGeo } from './characters.js?v=1.33.0';
-import { $, toast, sfx } from './ui.js?v=1.33.0';
-import { DIRS, neighbour, FARM, FOREST, RACE, ZONE_IDS } from './zones.js?v=1.33.0';
-import { WATER_Y, YARD, YARD_IN, rotPlot, rotPlotY, BIKE_RACK } from './world.js?v=1.33.0';
-import { SLED_SPOT } from './winter.js?v=1.33.0';
-import { BUS_CODE } from './bus.js?v=1.33.0';
-import { ZONES } from './zones.js?v=1.33.0';
+import { mat, lerp, clamp, makeBlobShadow, makeTextSprite } from './util.js?v=1.34.0';
+import { optimizeRig, tyreGeo } from './characters.js?v=1.34.0';
+import { $, toast, sfx } from './ui.js?v=1.34.0';
+import { DIRS, neighbour, FARM, FOREST, RACE, ZONE_IDS } from './zones.js?v=1.34.0';
+import { WATER_Y, YARD, YARD_IN, rotPlot, rotPlotY, BIKE_RACK } from './world.js?v=1.34.0';
+import { SLED_SPOT } from './winter.js?v=1.34.0';
+import { BUS_CODE } from './bus.js?v=1.34.0';
+import { ZONES } from './zones.js?v=1.34.0';
 
 // tīkla kods (pos ziņas 6. lauks): 1 = kartings, 2 = mašīna, 3 = sniega motocikls, 5 = velosipēds
 export const VEH_CODE = { car: 2, sled: 3, bike: 5 }; // 4 = pasažieris (p[8] — vadītāja id, p[9] — sēdvieta); p[10] — transporta id
@@ -425,7 +425,7 @@ export const Vehicles = {
     // slīpums: kalnā lēnāk, lejā ātrāk
     const sl = slopeAt(H, me.pos.x, me.pos.z, v.heading, D.len, D.wid);
     if (!v.air) {
-      const thr = mv.y;
+      const thr = mv.y; v.thr = thr;
       if (thr > 0.1) v.speed += D.accel * thr * dt * (v.speed < 0 ? 2 : 1);
       else if (thr < -0.1) v.speed -= (v.speed > 0.5 ? D.brake : D.accel * 0.6) * -thr * dt;
       else v.speed *= 1 - (snow && v.kind === 'sled' ? 0.6 : v.kind === 'bike' ? 0.7 : 1.1) * dt;

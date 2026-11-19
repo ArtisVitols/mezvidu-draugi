@@ -1,7 +1,7 @@
 // HUD palīgfunkcijas, paneļi un vienkāršas skaņas
 const $ = (id) => document.getElementById(id);
 export { $ };
-import { initSound, play, audioCtx } from './audio.js?v=1.33.0';
+import { initSound, play, audioCtx } from './audio.js?v=1.34.0';
 
 export function toast(text, kind = '', ms = 2600) {
   const box = $('toasts');
@@ -69,9 +69,9 @@ export function initAudio() {
 }
 // vecie nosaukumi → CC0 paraugi (audio.js); [paraugs, skaļums, ātrums]
 const MAP = {
-  pick: ['pop', 0.7], coin: ['coin', 0.8], star: ['j_star', 0.8], bad: ['ui_error', 0.7], jump: ['swish', 0.35, 1.2],
-  plant: ['leaves', 0.8], beep: ['ui_select', 0.7], go: ['go', 0.9], boost: ['whoosh', 0.8], pet: ['pluck', 0.8],
-  throw: ['swish', 0.6], splat: ['squish', 0.8], win: ['j_win', 0.75],
+  pick: ['pop', 0.7], coin: ['coin', 0.8], star: ['j_star', 0.8], bad: ['ui_error', 0.7], jump: ['cloth', 0.4, 1.3],
+  plant: ['leaves', 0.8], beep: ['ui_select', 0.7], go: ['ding', 0.9, 1.3], boost: ['whoosh', 0.8], pet: ['pluck', 0.8],
+  throw: ['cloth', 0.6, 1.15], splat: ['squish', 0.8], win: ['j_win', 0.75],
 };
 function tone(freq, dur, type = 'sine', vol = 0.15, delay = 0, slide = 0) {
   if (!actx) return;

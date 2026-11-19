@@ -1,5 +1,13 @@
 # Izmaiņu žurnāls
 
+## 1.34.0 — 2026-11-19
+- 🔊 Skaņas visiem transportiem — dzirdamas arī telefona skaļrunī. Ierakstītie dzinēji bija tikai dziļajos basos (< 150 Hz), ko
+  telefons neatskaņo, tāpēc mašīna, kartings un autobuss bija klusi. Tagad dzinēji tiek **sintezēti** (harmonikas, rūkšana,
+  tonis pēc ātruma, skaņa pēc gāzes): 🚙 mašīna, 🏎️ kartings, 🚌 autobuss (arī ārpusē — tālumā klusāk), draugu mašīnas un kartingi.
+  🚲 Velosipēds — riepu/ķēdes šņākoņa un brīvgaitas klikšķi, 🛷 ragavas un ⛷️ slēpes — sniega šņākoņa; vējā arī gaisīga šalkoņa.
+- 🎚️ Visām ierakstītajām skaņām nogriezti dziļie basi un izlīdzināts skaļums — telefonā skaidrākas; lēciens/mešana — gaišāka skaņa,
+  sacīkšu starts — zvans.
+
 ## 1.33.0 — 2026-11-19
 - 🏎️ Gludāka kartinga braukšana: maksimālais ātrums vairs nelec 22 ↔ 12 pie trases malas (mainās gludi pēc attāluma), barjera
   bremzē pēc trieciena leņķa un, slīdot gar malu, kartu maigi pagriež gar trasi (agrāk ātrums kritās katrā kadrā), mīksta stūrēšana,
