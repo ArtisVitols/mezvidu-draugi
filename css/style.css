@@ -206,6 +206,14 @@ body.driving #joy-base { display: none !important; }
 .swatches button.sel { border-color: #222; transform: scale(1.12); }
 #profiles { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
 #profiles button { border: none; background: #e6f5d8; border-radius: 999px; padding: 6px 12px; font-weight: 700; }
+#game-pick { display: flex; flex-direction: column; gap: 6px; background: #f3ecd8; border-radius: 14px; padding: 10px; }
+#sel-game { font-size: 17px; padding: 10px; border-radius: 12px; border: 2px solid #cdbf9a; background: #fff; font-weight: 700; color: var(--ink); max-width: 100%; }
+#new-game { display: flex; flex-direction: column; gap: 6px; }
+#new-game.hidden { display: none; }
+#new-game input[type=text], #in-gname { font-size: 17px; padding: 10px; }
+.menu-box label.chk { display: flex; gap: 8px; align-items: center; font-size: 14px; text-align: left; }
+.menu-box label.chk input { width: 22px; height: 22px; flex: 0 0 22px; margin: 0; }
+.sub.small { font-size: 13px; }
 #room-status { text-align: center; font-weight: 700; min-height: 20px; color: #a33; }
 #room-status.ok { color: var(--green); }
 

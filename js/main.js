@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import { ANIMALS, FUR_COLORS, SHIRT_COLORS } from './data.js?v=1.27.0';
-import { loadSave, writeSave, lastProfileName, listProfiles } from './save.js?v=1.27.0';
-import { buildAnimal } from './characters.js?v=1.27.0';
-import { Net, randomCode } from './net.js?v=1.27.0';
-import { Game } from './game.js?v=1.27.0';
-import { $, initAudio } from './ui.js?v=1.27.0';
-import { VERSION, BUILD_DATE } from './version.js?v=1.27.0';
+import { ANIMALS, FUR_COLORS, SHIRT_COLORS } from './data.js?v=1.28.0';
+import { loadSave, writeSave, lastProfileName, listProfiles, hasSave, carryOver, listGames, rememberGame, lastGameId, newGameId, FIRST_GAME } from './save.js?v=1.28.0';
+import { buildAnimal } from './characters.js?v=1.28.0';
+import { Net, randomCode } from './net.js?v=1.28.0';
+import { Game } from './game.js?v=1.28.0';
+import { $, initAudio, toast } from './ui.js?v=1.28.0';
+import { VERSION, BUILD_DATE } from './version.js?v=1.28.0';
 
 const EMOJI = { lacis: '🐻', lapsa: '🦊', zakis: '🐰', kakis: '🐱', cuka: '🐷', suns: '🐶', varde: '🐸', pile: '🦆' };
 let save = null;
@@ -53,7 +53,9 @@ $('btn-name-ok').onclick = () => {
   initAudio();
   const name = $('in-name').value.trim().replace(/\s+/g, ' ');
   if (name.length < 2) { $('in-name').focus(); $('in-name').placeholder = 'Vismaz 2 burti!'; $('in-name').value = ''; return; }
-  ({ save, isNew } = loadSave(name));
+  // ielādējam pēdējās spēlētās spēles saglabājumu (ja šim vārdam tāds ir), citādi pirmās spēles
+  const lg = lastGameId();
+  ({ save, isNew } = loadSave(name, lg && hasSave(name, lg) ? lg : ''));
   save.name = name;
   buildCharScreen();
   show('scr-char');
@@ -98,8 +100,82 @@ $('btn-char-ok').onclick = () => {
     ? 'Jauns spēlētājs! Tev ir 20🪙 un 3 burkānu sēklas.'
     : `Tavs progress ielādēts: 🪙 ${save.coins} · ⭐ ${save.stars.length}/15`;
   if (urlCode) $('in-code').value = urlCode;
+  buildGamePick();
   show('scr-room');
 };
+
+// ---------- spēles (pasaules) izvēle saimniekam (1.28.0) ----------
+const gameLabel = (g) => (g.id ? `${g.name} · #${g.id}` : g.name);
+function buildGamePick() {
+  const sel = $('sel-game');
+  sel.innerHTML = '';
+  const games = listGames();
+  const want = save.gid || '';
+  for (const g of games) {
+    const o = document.createElement('option');
+    o.value = g.id; o.textContent = '▶ ' + gameLabel(g);
+    if (g.id === want) o.selected = true;
+    sel.append(o);
+  }
+  const o = document.createElement('option');
+  o.value = '__new'; o.textContent = '🆕 Jauna spēle visiem…';
+  sel.append(o);
+  sel.onchange = gamePickChanged;
+  gamePickChanged();
+}
+function gamePickChanged() {
+  const v = $('sel-game').value, nw = v === '__new';
+  $('new-game').classList.toggle('hidden', !nw);
+  $('btn-host').textContent = nw ? '🆕 Sākt jaunu spēli visiem' : '🏠 Izveidot istabu';
+  if (nw) {
+    if (!$('in-gname').value) $('in-gname').placeholder = `Spēle ${new Date().toLocaleDateString('lv-LV')}`;
+    return;
+  }
+  if (v === (save.gid || '') && !isNew) { $('save-info').textContent = `Tavs progress ielādēts: 🪙 ${save.coins} · ⭐ ${save.stars.length}/15`; return; }
+  if (hasSave(save.name, v)) {
+    const s = loadSave(save.name, v).save;
+    $('save-info').textContent = `Šajā spēlē tev ir: 🪙 ${s.coins} · ⭐ ${s.stars.length}/15`;
+  } else $('save-info').textContent = 'Šajā spēlē tu sāksi no sākuma.';
+}
+// saimnieka izvēlētā spēle
+function pickedGame() {
+  const v = $('sel-game').value;
+  if (v !== '__new') return listGames().find((g) => g.id === v) || { ...FIRST_GAME };
+  const ids = new Set(listGames().map((g) => g.id));
+  let id = newGameId(); while (ids.has(id)) id = newGameId();
+  const name = $('in-gname').value.trim().slice(0, 24) || $('in-gname').placeholder;
+  return { id, name, at: Date.now(), keep: { look: $('keep-look').checked, decor: $('keep-decor').checked, coins: $('keep-coins').checked } };
+}
+// pārslēdz `save` uz spēles g saglabājumu; true — ja šajā spēlē sāk no jauna
+function enterGame(g) {
+  rememberGame(g);
+  const prev = save;
+  if ((prev.gid || '') === g.id) { writeSave(prev); return isNew && !!g.id; }
+  let fresh = false;
+  if (hasSave(prev.name, g.id)) {
+    save = loadSave(prev.name, g.id).save;
+    for (const k of ['animal', 'fur', 'shirt']) save[k] = prev[k]; // izskats — kā tikko izvēlēts
+  } else {
+    save = carryOver(prev, loadSave(prev.name, g.id).save, g.keep || {});
+    fresh = true;
+  }
+  save.name = prev.name; save.gid = g.id;
+  isNew = false;
+  writeSave(save);
+  return fresh;
+}
+// klients pajautā saimniekam, kura spēle (vecs saimnieks neatbild → pirmā spēle)
+function askGame(net) {
+  return new Promise((resolve) => {
+    const t = setTimeout(() => { net.onMessage = () => {}; resolve({ ...FIRST_GAME }); }, 4000);
+    net.onMessage = (m) => {
+      if (m.t !== 'gi' || !m.g || typeof m.g.id !== 'string') return;
+      clearTimeout(t); net.onMessage = () => {};
+      resolve({ id: m.g.id.slice(0, 8), name: String(m.g.name || 'Spēle').slice(0, 24), at: m.g.at || 0, keep: m.g.keep || {} });
+    };
+    net.toHost({ t: 'gq' });
+  });
+}
 
 // mazs 3D priekšskatījums
 let pv = null;
@@ -149,7 +225,7 @@ const status = (t, ok = false) => { $('room-status').textContent = t; $('room-st
 const setBusy = (b) => { for (const id of ['btn-host', 'btn-join', 'btn-solo']) $(id).disabled = b; };
 $('btn-room-back').onclick = () => show('scr-char');
 
-async function launch(net, code) {
+async function launch(net, code, game, fresh) {
   $('loading').classList.remove('hidden');
   $('loading').classList.add('busy');
   const progress = (f, t) => {
@@ -161,13 +237,14 @@ async function launch(net, code) {
   progress(0, 'Veidojam pasauli…');
   await new Promise((r) => setTimeout(r, 50));
   try {
-    const game = new Game({ save, net, roomCode: code });
-    await game.init(progress);
+    const g = new Game({ save, net, roomCode: code, game });
+    await g.init(progress);
     $('menu').classList.add('hidden');
     $('loading').classList.add('hidden');
     $('loading').classList.remove('busy');
-    game.start();
-    window.__game = game;
+    g.start();
+    window.__game = g;
+    if (fresh) toast(`🆕 Jauna spēle „${game.name}” — visi sāk no sākuma! Iepriekšējais progress saglabāts.`, 'good', 7000);
     if (code && net.isHost && !net.offline) {
       const url = location.pathname + '?istaba=' + code;
       try { history.replaceState(null, '', url); } catch (e) { /* */ }
@@ -206,7 +283,8 @@ $('btn-host').onclick = async () => {
     try {
       await net.host(code);
       status(`Istaba izveidota: ${code}`, true);
-      await launch(net, code);
+      const game = pickedGame();
+      await launch(net, code, game, enterGame(game));
       return;
     } catch (e) {
       console.warn(e);
@@ -231,7 +309,8 @@ $('btn-join').onclick = async () => {
   try {
     await net.join(code);
     status('Savienots!', true);
-    await launch(net, code);
+    const game = await askGame(net);
+    await launch(net, code, game, enterGame(game));
   } catch (e) {
     console.warn(e);
     net.close();
@@ -246,7 +325,8 @@ $('btn-solo').onclick = async () => {
   setBusy(true);
   const net = new Net();
   await net.startOffline();
-  await launch(net, null);
+  const game = pickedGame();
+  await launch(net, null, game, enterGame(game));
 };
 
 if (urlCode && lastProfileName()) {

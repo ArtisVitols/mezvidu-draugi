@@ -1,5 +1,13 @@
 # Izmaiņu žurnāls
 
+## 1.28.0 — 2026-11-19
+- 🎮 **Vairākas spēles un „🆕 Jauna spēle visiem”**: istabas veidotājs izvēlas, kuru spēli spēlēt — turpināt kādu iepriekšējo
+  vai sākt jaunu (ar nosaukumu). Jaunai spēlei var izvēlēties, ko paturēt: 👕 drēbes, cepures, mājdzīvniekus, kartus (pēc noklusējuma),
+  🌷 dārza rotājumus, 🪙 monētas. Viss pārējais (dārzs, līmenis, soma, zvaigznes, uzdevumi, zivis…) sākas no nulles.
+- 💾 Katram spēlētājam katrai spēlei savs saglabājums; draugi, pievienojoties, automātiski ielādē savu progresu saimnieka izvēlētajai
+  spēlei (ja tajā vēl nav bijuši — sāk no sākuma). Iepriekšējo spēļu progress nekad netiek dzēsts. Spēles nosaukums un #kods — pogā 👥.
+  Kopīgās mašīnu vietas un nedēļas mērķis arī katrai spēlei savi. Saglabājumi pirms 1.28.0 = „Pirmā spēle”.
+
 ## 1.27.0 — 2026-11-19
 - 🌱 **Dārznieka līmenis** (1–12): ⭐ par ražas novākšanu (ilgāk augošas kultūras dod vairāk: burkāns 4⭐, kāposts 13⭐,
   lavanda 33⭐), augļu lasīšanu, zemes uzaršanu (1⭐), koku/akmeņu novākšanu (2⭐) un draugu lauku aplaistīšanu (2⭐).

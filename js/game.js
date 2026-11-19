@@ -1,29 +1,29 @@
 import * as THREE from 'three';
-import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, yardPart, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.27.0';
-import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.27.0';
-import { Controls } from './controls.js?v=1.27.0';
+import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, yardPart, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.28.0';
+import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.28.0';
+import { Controls } from './controls.js?v=1.28.0';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS, TREES, FRUITS, CLOTHES, SLOTS, DECOR } from './data.js?v=1.27.0';
-import { writeSave } from './save.js?v=1.27.0';
-import { VERSION, BUILD_DATE } from './version.js?v=1.27.0';
-import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.27.0';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.27.0';
-import { icon, iconEl, fishSvg } from './icons.js?v=1.27.0';
-import { Activities, makeTeam } from './activities.js?v=1.27.0';
-import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel, statsWanted } from './quality.js?v=1.27.0';
-import { hdrEnvironment } from './gfx.js?v=1.27.0';
-import { buildRod, buildDecor } from './props.js?v=1.27.0';
-import { buildStall, buildBunting } from './market.js?v=1.27.0';
-import { InstanceField } from './instancing.js?v=1.27.0';
-import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.27.0';
-import { Vehicles } from './vehicles.js?v=1.27.0';
-import { Farm, fmtLeft } from './farm.js?v=1.27.0';
-import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.27.0';
-import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.27.0';
-import { plotOf } from './world.js?v=1.27.0';
-import { kartClamp } from './racetrack.js?v=1.27.0';
-import { Bus, BUS_STOPS } from './bus.js?v=1.27.0';
-import { Garden, UNLOCK } from './garden.js?v=1.27.0';
+import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS, TREES, FRUITS, CLOTHES, SLOTS, DECOR } from './data.js?v=1.28.0';
+import { writeSave } from './save.js?v=1.28.0';
+import { VERSION, BUILD_DATE } from './version.js?v=1.28.0';
+import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.28.0';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.28.0';
+import { icon, iconEl, fishSvg } from './icons.js?v=1.28.0';
+import { Activities, makeTeam } from './activities.js?v=1.28.0';
+import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel, statsWanted } from './quality.js?v=1.28.0';
+import { hdrEnvironment } from './gfx.js?v=1.28.0';
+import { buildRod, buildDecor } from './props.js?v=1.28.0';
+import { buildStall, buildBunting } from './market.js?v=1.28.0';
+import { InstanceField } from './instancing.js?v=1.28.0';
+import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.28.0';
+import { Vehicles } from './vehicles.js?v=1.28.0';
+import { Farm, fmtLeft } from './farm.js?v=1.28.0';
+import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.28.0';
+import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.28.0';
+import { plotOf } from './world.js?v=1.28.0';
+import { kartClamp } from './racetrack.js?v=1.28.0';
+import { Bus, BUS_STOPS } from './bus.js?v=1.28.0';
+import { Garden, UNLOCK } from './garden.js?v=1.28.0';
 
 const ANIM = ['idle', 'walk', 'run', 'jump', 'swim', 'sit', 'pet', 'wave', 'fish', 'ski', 'lift', 'throw'];
 const MUSH_RESPAWN = 120000;
@@ -36,8 +36,9 @@ const BOTS = [
 const PLAYER_DOT = ['#ff4040', '#40a0ff', '#ffd040', '#c060ff'];
 
 export class Game {
-  constructor({ save, net, roomCode }) {
+  constructor({ save, net, roomCode, game }) {
     this.save = save;
+    this.gameInfo = game || { id: '', name: 'Pirmā spēle', at: 0, keep: {} }; // kura spēle (pasaule) — 1.28.0
     this.initGarden();
     this.net = net;
     this.roomCode = roomCode;
@@ -955,6 +956,9 @@ export class Game {
     const net = this.net;
     const now = Date.now();
     switch (m.t) {
+      case 'gq': // klients pirms ielādes jautā, kura spēle — tad ielādē savu saglabājumu tai
+        net.sendTo(from, { t: 'gi', g: { ...this.gameInfo, keep: { ...(this.gameInfo.keep || {}) } } });
+        break;
       case 'hello': {
         const used = new Set([...hs.profiles.values()].map((p) => p.slot));
         let slot = 0; while (used.has(slot)) slot++;
@@ -2559,12 +2563,14 @@ export class Game {
 
   openRoom() {
     showPanel('👥 Istaba', (b) => {
+      const gi = this.gameInfo;
+      b.append(el('div', { className: 'sect' }, `🎮 Spēle: ${gi.name}${gi.id ? ' · #' + gi.id : ''}`));
       if (this.net.offline) {
         b.append(el('p', {}, 'Tu spēlē viens bez interneta. Lai spēlētu ar draugiem, izej uz sākumu un izveido istabu.'));
       } else {
         b.append(el('div', { className: 'sect' }, `Istabas kods: ${this.roomCode}`));
         b.append(el('p', {}, this.net.isHost ? 'Tu esi saimnieks 🏠. Draugi var pievienoties ar šo kodu vai saiti. Ja tu aizvērsi spēli, istaba beigsies.' : 'Tu esi pievienojies drauga istabai.'));
-        b.append(el('p', { style: 'font-size:13px;opacity:.75' }, '💾 Katra spēlētāja progress (monētas, dārzs, soma, drēbes) glabājas viņa paša telefonā. Saimnieka telefonā glabājas arī tas, kur stāv kopīgās mašīnas.'));
+        b.append(el('p', { style: 'font-size:13px;opacity:.75' }, '💾 Katra spēlētāja progress (monētas, dārzs, soma, drēbes) glabājas viņa paša telefonā — katrai spēlei atsevišķi. Saimnieks, veidojot istabu, izvēlas spēli (vai „🆕 Jauna spēle visiem”), un katrs draugs ielādē savu progresu tieši šai spēlei. Saimnieka telefonā glabājas arī tas, kur stāv kopīgās mašīnas.'));
         const link = location.origin + location.pathname + '?istaba=' + this.roomCode;
         b.append(el('button', { className: 'pbtn', onclick: async () => {
           try {

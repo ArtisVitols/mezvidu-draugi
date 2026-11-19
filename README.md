@@ -9,7 +9,7 @@ Pašreizējā versija: **1.6.0** (redzama sākuma ekrānā un ☰ izvēlnē). Iz
 ## Kā spēlēt
 1. Atver spēles saiti telefonā (vislabāk guļus).
 2. Ieraksti vārdu un izvēlies dzīvnieku (lācis, lapsa, zaķis, kaķis, cūciņa, suns, varde, pīle) un krāsas.
-3. **Izveidot istabu** — tu kļūsti par saimnieku un saņem 5 burtu kodu. Pogā 👥 ir „Dalīties ar saiti”.
+3. Izvēlies **spēli** (turpināt kādu no iepriekšējām vai „🆕 Jauna spēle visiem”) un spied **Izveidot istabu** — tu kļūsti par saimnieku un saņem 5 burtu kodu. Pogā 👥 ir „Dalīties ar saiti”.
 4. Draugi ieraksta kodu un spiež **Pievienoties** (vai vienkārši atver saiti).
 5. **Spēlēt vienam** darbojas arī bez interneta.
 
@@ -68,6 +68,12 @@ Katra spēlētāja progress (monētas, soma, sētas lauks, koki, zvaigznes, uzde
 **tā telefona pārlūkā** zem spēlētāja vārda — ik pēc 5 sekundēm un aizverot spēli. Nākamreiz ieraksti to pašu vārdu.
 Pasaule visiem ir viena un tā pati, tāpēc nav svarīgi, kurš ir saimnieks: katrs atnāk ar savu progresu un savu dārzu.
 Saimnieka telefons glabā tikai to, kur stāv kopīgās mašīnas.
+
+**Vairākas spēles (1.28.0).** Katram spēlētājam ir atsevišķs saglabājums katrai spēlei. Saimnieks, veidojot istabu, izvēlas,
+kuru spēli spēlēs: turpināt kādu iepriekšējo vai sākt **🆕 Jaunu spēli visiem** (ar nosaukumu un izvēli, ko paturēt:
+👕 drēbes, cepures, mājdzīvniekus un kartus — pēc noklusējuma jā; 🌷 dārza rotājumus; 🪙 monētas). Katrs draugs, pievienojoties,
+automātiski ielādē savu progresu tieši šai spēlei (ja tajā vēl nav spēlējis — sāk no sākuma). Vecās spēles nekad netiek izdzēstas —
+tās var turpināt vēlāk. Spēles nosaukums un kods (#XXXX) redzams pogā 👥. Saglabājumi pirms 1.28.0 ir „Pirmā spēle”.
 
 ## Tehniski
 - Tīrs HTML + JavaScript, [three.js](https://threejs.org) 3D grafikai, [PeerJS](https://peerjs.com) (WebRTC) tiešiem savienojumiem.

@@ -1,11 +1,16 @@
 // Spēlētāja progresa saglabāšana pārlūka atmiņā (localStorage)
-import { FISH } from './data.js?v=1.27.0';
+import { FISH } from './data.js?v=1.28.0';
 const PREFIX = 'mezvidi_save_v1_';
 const LAST = 'mezvidi_last_profile';
+const GAMES = 'mezvidi_games';      // zināmās spēles [{id, name, at, last, keep}] (1.28.0)
+const LAST_GAME = 'mezvidi_last_game';
+// 1.28.0: katrai spēlei (pasaulei) savs saglabājums. Spēle '' = „Pirmā spēle” — vecie saglabājumi bez sufiksa.
+export const FIRST_GAME = { id: '', name: 'Pirmā spēle', at: 0, keep: {} };
 
 export function defaultSave(name) {
   return {
     name,
+    gid: '',          // kurā spēlē šis saglabājums (1.28.0; '' — pirmā spēle)
     animal: 'lacis',
     fur: '#8b5a2b',
     shirt: '#d23b3b',
@@ -44,15 +49,20 @@ export function defaultSave(name) {
   };
 }
 
-function key(name) { return PREFIX + name.trim().toLowerCase(); }
+function key(name, gid = '') { return PREFIX + name.trim().toLowerCase() + (gid ? '@' + gid : ''); }
 
-export function loadSave(name) {
+export function hasSave(name, gid = '') {
+  try { return !!localStorage.getItem(key(name, gid)); } catch (e) { return false; }
+}
+
+export function loadSave(name, gid = '') {
   try {
-    const raw = localStorage.getItem(key(name));
+    const raw = localStorage.getItem(key(name, gid));
     if (raw) {
       const data = JSON.parse(raw);
       const def = defaultSave(name);
       const merged = Object.assign(def, data);
+      merged.gid = gid;
       merged.inv = Object.assign({}, data.inv || {});
       merged.stats = Object.assign({}, data.stats || {});
       // 1.14.0: zemes pārkārtotas — sāk sētā; vecā dārza augi atdoti atpakaļ kā sēklas
@@ -78,12 +88,29 @@ export function loadSave(name) {
       return { save: merged, isNew: false };
     }
   } catch (e) { console.warn('Neizdevās ielādēt', e); }
-  return { save: defaultSave(name), isNew: true };
+  const fresh = defaultSave(name); fresh.gid = gid;
+  return { save: fresh, isNew: true };
+}
+
+// jaunā spēlē paturamās lietas no iepriekšējā saglabājuma (keep: {look, decor, coins})
+export function carryOver(from, to, keep = {}) {
+  for (const k of ['animal', 'fur', 'shirt']) to[k] = from[k];
+  const cp = (v) => (v === undefined ? null : JSON.parse(JSON.stringify(v)));
+  if (keep.look) {
+    for (const k of ['hat', 'ownedHats', 'kartColor', 'ownedKarts', 'wear', 'ownedClothes', 'pet', 'ownedPets', 'rod']) to[k] = cp(from[k]);
+  }
+  if (keep.decor) {
+    to.ownedDecor = cp(from.ownedDecor || []);
+    to.decor = cp(from.decor || []);
+    for (const [k, n] of Object.entries(from.inv || {})) if (k.startsWith('d_')) to.inv[k] = n;
+  }
+  if (keep.coins) to.coins = from.coins;
+  return to;
 }
 
 export function writeSave(save) {
   try {
-    localStorage.setItem(key(save.name), JSON.stringify(save));
+    localStorage.setItem(key(save.name, save.gid || ''), JSON.stringify(save));
     localStorage.setItem(LAST, save.name);
     return true;
   } catch (e) { console.warn('Neizdevās saglabāt', e); return false; }
@@ -99,9 +126,39 @@ export function listProfiles() {
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
       if (k && k.startsWith(PREFIX)) {
-        try { out.push(JSON.parse(localStorage.getItem(k)).name); } catch (e) { /* ignore */ }
+        try { const n = JSON.parse(localStorage.getItem(k)).name; if (n && !out.some((o) => o.toLowerCase() === n.toLowerCase())) out.push(n); } catch (e) { /* ignore */ }
       }
     }
   } catch (e) { /* ignore */ }
   return out;
+}
+
+// ---------- spēļu saraksts ----------
+export function listGames() {
+  let arr = [];
+  try { arr = JSON.parse(localStorage.getItem(GAMES) || '[]'); } catch (e) { arr = []; }
+  if (!Array.isArray(arr)) arr = [];
+  arr = arr.filter((g) => g && typeof g.id === 'string');
+  if (!arr.some((g) => g.id === '')) arr.push({ ...FIRST_GAME });
+  return arr.sort((a, b) => (b.last || 0) - (a.last || 0));
+}
+
+export function rememberGame(g) {
+  try {
+    const arr = listGames().filter((x) => x.id !== g.id);
+    arr.unshift({ id: g.id, name: g.name, at: g.at || 0, keep: g.keep || {}, last: Date.now() });
+    localStorage.setItem(GAMES, JSON.stringify(arr.slice(0, 12)));
+    localStorage.setItem(LAST_GAME, g.id);
+  } catch (e) { /* */ }
+}
+
+export function lastGameId() {
+  try { return localStorage.getItem(LAST_GAME) || ''; } catch (e) { return ''; }
+}
+
+export function newGameId() {
+  const chars = 'ABCDEFGHJKLMNPRSTUVZ23456789';
+  let s = '';
+  for (let i = 0; i < 4; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  return s;
 }
