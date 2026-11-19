@@ -5,12 +5,12 @@
 // Saglabājumā: save.gd = { xp, land } (land — LAND indekss).
 // Garden — Game papildinājums (mixin).
 import * as THREE from 'three';
-import { CROPS, TREES } from './data.js?v=1.34.0';
-import { TILE, GARDEN_T, rotPlot } from './world.js?v=1.34.0';
-import { mat } from './util.js?v=1.34.0';
-import { $, toast, sfx, showPanel, refreshPanel, el, itemRow } from './ui.js?v=1.34.0';
-import { iconEl } from './icons.js?v=1.34.0';
-import { FARM } from './zones.js?v=1.34.0';
+import { CROPS, TREES } from './data.js?v=1.35.0';
+import { TILE, GARDEN_T, rotPlot } from './world.js?v=1.35.0';
+import { mat } from './util.js?v=1.35.0';
+import { $, toast, sfx, showPanel, refreshPanel, el, itemRow } from './ui.js?v=1.35.0';
+import { iconEl } from './icons.js?v=1.35.0';
+import { FARM } from './zones.js?v=1.35.0';
 
 // cik XP vajag, lai sasniegtu līmeni n (1. līmenis — 0)
 export const MAX_LVL = 12;
@@ -20,17 +20,17 @@ export function levelOf(xp) { let n = 1; while (n < MAX_LVL && xp >= xpFor(n + 1
 // kurā līmenī atveras katra kultūra un koks
 export const UNLOCK = {
   burkans: 1, redisi: 1, kartupelis: 1,
-  salati: 2, auzas: 2,
-  sipols: 3, kviesi: 3,
-  zirni: 4, tomats: 4,
-  zemene: 5, biete: 5,
-  kaposts: 6, abele: 6,
-  gurkis: 7, saulgrieze: 7,
-  kirbis: 8, plume: 8,
+  salati: 2, auzas: 2, spinati: 2,
+  sipols: 3, kviesi: 3, kiploks: 3,
+  zirni: 4, tomats: 4, tulpe: 4,
+  zemene: 5, biete: 5, pupas: 5,
+  kaposts: 6, abele: 6, brokolis: 6,
+  gurkis: 7, saulgrieze: 7, kabacis: 7,
+  kirbis: 8, plume: 8, rabarbers: 8,
   kukuruza: 9, bumbiere: 9,
-  paprika: 10, kirsis: 10,
-  arbuzs: 11,
-  lavanda: 12,
+  paprika: 10, kirsis: 10, melone: 10,
+  arbuzs: 11, aprikoze: 11,
+  lavanda: 12, persiks: 12,
 };
 // dārza izmēri (platums × dziļums lauciņos), vajadzīgais līmenis un cena
 export const LAND = [

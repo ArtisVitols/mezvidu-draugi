@@ -1,13 +1,16 @@
 // HUD palīgfunkcijas, paneļi un vienkāršas skaņas
 const $ = (id) => document.getElementById(id);
 export { $ };
-import { initSound, play, audioCtx } from './audio.js?v=1.34.0';
+import { initSound, play, audioCtx } from './audio.js?v=1.35.0';
 
+// 1.35.0: mazi paziņojumi, kas parādās un pamazām izgaist (garākiem tekstiem — mazliet ilgāk)
 export function toast(text, kind = '', ms = 2600) {
   const box = $('toasts');
   const el = document.createElement('div');
   el.className = 'toast ' + kind;
   el.textContent = text;
+  ms = Math.min(ms, 2000 + String(text).length * 35);
+  el.style.setProperty('--out', Math.max(0.6, ms / 1000 - 0.45) + 's');
   box.appendChild(el);
   while (box.children.length > 3) box.removeChild(box.firstChild);
   setTimeout(() => el.remove(), ms);

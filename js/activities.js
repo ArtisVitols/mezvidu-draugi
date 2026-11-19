@@ -1,16 +1,16 @@
 // Jaunās nodarbes, pievienotas Game klasei: makšķerēšana, ogas, mājdzīvnieki, dārza rotājumi,
 // īpašās vietas ar dārgumu, ķeramais un paslēpes, nedēļas kopīgais mērķis.
 import * as THREE from 'three';
-import { WATER_Y, GARDEN_SLOTS, VILLAGE_Y, rotPlot, rotPlotY } from './world.js?v=1.34.0';
-import { buildNPC } from './characters.js?v=1.34.0';
-import { InstanceField } from './instancing.js?v=1.34.0';
-import { berryTemplate, buildDecor, DECOR_SPOTS, buildRod, buildBobber } from './props.js?v=1.34.0';
-import { buildScroll } from './places.js?v=1.34.0';
-import { ZONE_IDS, FOREST } from './zones.js?v=1.34.0';
-import { FISH, ROD_PRICE, BERRIES, COOKED, PETS, DECOR, PLACES, MAP_PIECES, weekNumber, weeklyGoal, WEEKLY_REWARD, rollFish, CROPS, TREES, CLOTHES, HATS, WISH_PRICE } from './data.js?v=1.34.0';
-import { icon, iconEl, fishSvg } from './icons.js?v=1.34.0';
-import { makeTextSprite, angleLerp } from './util.js?v=1.34.0';
-import { $, toast, showPanel, refreshPanel, closePanel, el, itemRow, sfx, fmtTime } from './ui.js?v=1.34.0';
+import { WATER_Y, GARDEN_SLOTS, VILLAGE_Y, rotPlot, rotPlotY } from './world.js?v=1.35.0';
+import { buildNPC } from './characters.js?v=1.35.0';
+import { InstanceField } from './instancing.js?v=1.35.0';
+import { berryTemplate, buildDecor, DECOR_SPOTS, buildRod, buildBobber } from './props.js?v=1.35.0';
+import { buildScroll } from './places.js?v=1.35.0';
+import { ZONE_IDS, FOREST } from './zones.js?v=1.35.0';
+import { FISH, ROD_PRICE, BERRIES, COOKED, PETS, DECOR, PLACES, MAP_PIECES, weekNumber, weeklyGoal, WEEKLY_REWARD, rollFish, CROPS, TREES, CLOTHES, HATS, WISH_PRICE } from './data.js?v=1.35.0';
+import { icon, iconEl, fishSvg } from './icons.js?v=1.35.0';
+import { makeTextSprite, makeTag, angleLerp } from './util.js?v=1.35.0';
+import { $, toast, showPanel, refreshPanel, closePanel, el, itemRow, sfx, fmtTime } from './ui.js?v=1.35.0';
 
 const BERRY_RESPAWN = 150000;
 const MG_NAMES = { tag: '🏃 Ķeramais', hide: '🙈 Paslēpes' };
@@ -347,8 +347,8 @@ export const Activities = {
     const def = PETS[id];
     const m = buildNPC(def.npc);
     m.root.scale.multiplyScalar(def.scale);
-    const ns = makeTextSprite(`🐾 ${def.name}`, { fontSize: 34, bg: 'rgba(120,70,20,0.6)' });
-    ns.position.y = 1.0 / m.root.scale.y + 0.2;
+    const ns = makeTag(def.name, { height: 0.15, color: '#ffe8c0' });
+    ns.position.y = (1.0 + 0.1) / m.root.scale.y;
     ns.scale.multiplyScalar(1 / m.root.scale.y);
     m.root.add(ns);
     void ownerName;

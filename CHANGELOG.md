@@ -1,5 +1,12 @@
 # Izmaiņu žurnāls
 
+## 1.35.0 — 2026-11-19
+- 🏷️ Vārdi virs spēlētājiem, robotiem un mājdzīvniekiem — mazi, vienkārši uzraksti (balts teksts ar tumšu apmali, bez burbuļa);
+  arī lidojošie "+🪙" uzraksti mazāki.
+- 💬 Paziņojumi — mazs teksts, caurspīdīgs fons; parādās un pamazām izgaist (īsiem tekstiem ātrāk), netraucē pieskārieniem.
+- 🌱 Dārzā vairāk ko audzēt: 8 jaunas kultūras — spināti (2. līm.), ķiploks (3.), tulpe (4.), pupas (5.), brokolis (6.), kabacis (7.),
+  rabarbers (8.), melone (10.) — katrai savs 3D augs un attēls; 2 jauni augļu koki — aprikoze (11.) un persiks (12.) ar saviem augļiem.
+
 ## 1.34.0 — 2026-11-19
 - 🔊 Skaņas visiem transportiem — dzirdamas arī telefona skaļrunī. Ierakstītie dzinēji bija tikai dziļajos basos (< 150 Hz), ko
   telefons neatskaņo, tāpēc mašīna, kartings un autobuss bija klusi. Tagad dzinēji tiek **sintezēti** (harmonikas, rūkšana,

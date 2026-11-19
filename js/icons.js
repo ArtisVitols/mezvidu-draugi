@@ -87,6 +87,40 @@ const CROP = {
   lavanda: () => `${shadow(32, 60, 12)}${[-14, -5, 4, 13].map((dx, i) => `<path d="M32 60 C${32 + dx * 0.3} 44 ${32 + dx * 0.7} 30 ${32 + dx} ${12 + (i % 2) * 4}" stroke="#6a8a4a" stroke-width="1.6" fill="none"/>
     ${Array.from({ length: 6 }, (_, j) => `<ellipse cx="${32 + dx + (j % 2 ? 1.6 : -1.6)}" cy="${13 + (i % 2) * 4 + j * 3.2}" rx="2" ry="2.8" fill="${j % 2 ? '#9a6ad0' : '#b088e0'}"/>`).join('')}`).join('')}
     <path d="M24 52 C28 54 36 54 40 52" stroke="#8a5ac0" stroke-width="3" fill="none"/>`,
+  spinati: () => `${shadow(32, 58, 22)}${[[-150, 1.5], [-120, 1.6], [-90, 1.7], [-60, 1.6], [-30, 1.5]].map(([r, sc], i) => leaf(32, 54, r, sc, i % 2 ? '#2f7a2a' : '#3f8f32')).join('')}
+    <path d="M32 54 L18 34 M32 54 L32 28 M32 54 L46 34" stroke="#9ad06a" stroke-width="1" opacity=".7"/>`,
+  kiploks: () => `<defs>${rg('ki', '#ffffff', '#d8ccb8')}</defs>${shadow(32, 59, 18)}
+    <path d="M32 18 C26 26 12 32 14 44 C16 54 26 58 32 58 C38 58 48 54 50 44 C52 32 38 26 32 18Z" fill="url(#ki)" stroke="#a89a80" stroke-width="1.2"/>
+    <path d="M32 20 C28 32 26 46 30 57 M32 20 C36 32 38 46 34 57 M32 22 C22 32 18 44 22 54 M32 22 C42 32 46 44 42 54" stroke="#c8b8a0" stroke-width="1" fill="none"/>
+    <path d="M30 18 C30 10 32 6 31 2 M34 18 C34 10 33 6 35 2" stroke="#9aa870" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+    <path d="M26 58 l-2 3 M32 58 v4 M38 58 l2 3" stroke="#b8a88a" stroke-width="1.1"/>${shine(22, 40, 3.5, 6, -10)}`,
+  tulpe: () => `<defs>${lg('tu', '#ff7a9a', '#d01a4a')}</defs>${shadow(32, 61, 12)}
+    <path d="M32 60 V26" stroke="#4a8a32" stroke-width="2.6"/>
+    <path d="M32 58 C22 52 16 40 18 30 C24 38 28 46 32 54Z" fill="#5aa040" stroke="#2f6a1e"/><path d="M32 58 C42 52 48 42 46 32 C40 40 36 48 32 54Z" fill="#6ab04a" stroke="#2f6a1e"/>
+    <path d="M20 10 C22 4 26 12 28 14 C30 4 34 4 36 14 C38 12 42 4 44 10 C46 20 42 28 32 28 C22 28 18 20 20 10Z" fill="url(#tu)" stroke="#9a0a30" stroke-width="1.2"/>
+    <path d="M28 14 C28 22 30 26 32 28 M36 14 C36 22 34 26 32 28" stroke="#b01040" stroke-width="1" fill="none"/>${shine(25, 16, 2, 5, -10)}`,
+  pupas: () => `<defs>${lg('pu', '#a8d870', '#5a9a32')}</defs>${shadow(32, 58, 24)}
+    <path d="M8 22 C20 26 44 40 56 54 C58 56 56 58 54 57 C40 46 18 34 6 26 C4 24 6 21 8 22Z" fill="url(#pu)" stroke="#3a6a1e" stroke-width="1.2"/>
+    <path d="M14 14 C26 18 44 30 54 42 C56 44 54 46 52 45 C40 36 24 24 12 18 C10 16 12 13 14 14Z" fill="url(#pu)" stroke="#3a6a1e" stroke-width="1.2"/>
+    ${[[16, 27], [26, 33], [36, 40], [46, 47], [22, 19], [32, 25], [42, 33]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="3" ry="2" fill="#c8eca0" opacity=".7" transform="rotate(35 ${x} ${y})"/>`).join('')}
+    <path d="M8 22 C6 18 4 16 2 16 M14 14 C12 10 10 8 8 8" stroke="#3a6a1e" stroke-width="1.6" fill="none"/>`,
+  brokolis: () => `<defs>${rg('br', '#6ab05a', '#2a6a2a')}</defs>${shadow(32, 60, 16)}
+    <path d="M26 58 L28 36 L36 36 L38 58Z" fill="#9ac878" stroke="#4a7a3a" stroke-width="1.2"/><path d="M28 40 L18 30 M36 40 L46 30" stroke="#8ab868" stroke-width="4" stroke-linecap="round"/>
+    ${[[18, 26, 10], [46, 26, 10], [32, 18, 12], [24, 32, 9], [40, 32, 9], [32, 30, 9]].map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="url(#br)" stroke="#1f4a1f"/>`).join('')}
+    ${[[16, 22], [30, 12], [44, 22], [34, 26], [22, 30]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.4" fill="#9ad88a" opacity=".8"/>`).join('')}`,
+  kabacis: () => `<defs>${lg('kb', '#ffe25a', '#d8a018', 0, 1)}</defs>${shadow(32, 54, 24)}
+    <path d="M8 40 C6 30 16 24 32 22 C48 20 58 24 58 32 C58 40 48 44 32 46 C18 48 10 46 8 40Z" fill="url(#kb)" stroke="#9a7008" stroke-width="1.2" transform="rotate(-12 32 34)"/>
+    <path d="M14 34 C26 30 42 28 54 28" stroke="#f8f0a0" stroke-width="1.4" fill="none" opacity=".8" transform="rotate(-12 32 34)"/>
+    <path d="M56 24 l5 -4" stroke="#5a7a2a" stroke-width="3.4" stroke-linecap="round"/>${shine(22, 30, 7, 2, -12)}`,
+  rabarbers: () => `${shadow(32, 60, 16)}
+    ${[[24, -8], [32, 0], [40, 8]].map(([x, r]) => `<path d="M${x} 60 L${x + r * 0.4} 22" stroke="#c8304a" stroke-width="5" stroke-linecap="round"/><path d="M${x} 60 L${x + r * 0.4} 22" stroke="#f07a8a" stroke-width="1.4" opacity=".7"/>`).join('')}
+    <path d="M10 22 C10 6 26 2 32 10 C38 2 54 6 54 22 C48 28 16 28 10 22Z" fill="#4a8a32" stroke="#2f6a1e" stroke-width="1.2"/>
+    <path d="M32 10 V24 M32 16 L20 10 M32 16 L44 10 M32 20 L16 20 M32 20 L48 20" stroke="#8ac05a" stroke-width="1" fill="none"/>`,
+  melone: () => `<defs>${rg('me', '#fff0a0', '#c8a830')}</defs>${shadow(32, 59, 24)}
+    <ellipse cx="32" cy="36" rx="25" ry="21" fill="url(#me)" stroke="#8a7010" stroke-width="1.2"/>
+    ${[-14, -7, 0, 7, 14].map((d) => `<path d="M${32 + d} 15 C${32 + d * 1.8} 26 ${32 + d * 1.8} 46 ${32 + d} 57" stroke="#d8c070" stroke-width="1" fill="none" opacity=".9"/>`).join('')}
+    ${[22, 30, 38, 46].map((y) => `<path d="M10 ${y} C24 ${y + 3} 40 ${y + 3} 54 ${y}" stroke="#d8c070" stroke-width=".9" fill="none" opacity=".7"/>`).join('')}
+    <path d="M32 15 C32 10 34 7 37 6" stroke="#5a7a2a" stroke-width="2.4" fill="none" stroke-linecap="round"/>${shine(22, 26, 5, 7, -20)}`,
 };
 
 // ---------------- augļi ----------------
@@ -108,6 +142,14 @@ const FRUIT = {
     <path d="M32 18 C28 28 28 46 32 56" stroke="#3a1a5a" stroke-width="1.2" fill="none"/>
     <ellipse cx="32" cy="37" rx="17" ry="20" fill="#c8b8e8" opacity=".18"/>
     <path d="M32 18 C32 12 34 8 36 5" stroke="#5a3a1a" stroke-width="2.2" fill="none" stroke-linecap="round"/>${shine(24, 30, 3, 6, -10)}`,
+  aprikozes: () => `<defs>${rg('ap', '#ffc86a', '#e0701a')}</defs>${shadow(32, 59, 20)}
+    <circle cx="24" cy="40" r="15" fill="url(#ap)" stroke="#a04a0a" stroke-width="1.2"/><circle cx="42" cy="36" r="13" fill="url(#ap)" stroke="#a04a0a" stroke-width="1.2"/>
+    <path d="M24 26 C22 34 22 46 24 54 M42 24 C40 30 40 42 42 48" stroke="#d8701a" stroke-width="1" fill="none"/>
+    <path d="M40 23 C40 18 42 14 44 12" stroke="#5a3a1a" stroke-width="2.2" fill="none" stroke-linecap="round"/>${leaf(44, 12, -30, .8, '#4a9a32')}${shine(18, 34, 3, 5, -20)}${shine(37, 30, 2.5, 4, -20)}`,
+  persiki: () => `<defs>${rg('pe', '#ffd08a', '#e0405a', 0.3, 0.3)}</defs>${shadow(32, 59, 18)}
+    <path d="M32 18 C20 14 10 24 10 36 C10 50 20 58 32 58 C44 58 54 50 54 36 C54 24 44 14 32 18Z" fill="url(#pe)" stroke="#a02a2a" stroke-width="1.2"/>
+    <path d="M32 19 C26 30 26 46 32 57" stroke="#c83a4a" stroke-width="1.2" fill="none"/>
+    <path d="M32 18 C32 12 34 8 36 5" stroke="#5a3a1a" stroke-width="2.2" fill="none" stroke-linecap="round"/>${leaf(35, 8, -20, 1, '#4a9a32')}${shine(20, 30, 3.5, 7, -15)}`,
 };
 
 // ---------------- sēnes, ogas ----------------
@@ -364,7 +406,7 @@ function packet(inner, color = '#e8d8a8') {
 
 // ---------------- publiskā daļa ----------------
 const PET_KEYS = { ezitis: 1, zakitis: 1, vaverite: 1, sivens: 1, stirnens: 1 };
-const TREE_FRUIT = { abele: 'abols', bumbiere: 'bumbieris', kirsis: 'kirsi', plume: 'plumes' };
+const TREE_FRUIT = { abele: 'abols', bumbiere: 'bumbieris', kirsis: 'kirsi', plume: 'plumes', aprikoze: 'aprikozes', persiks: 'persiki' };
 const cache = new Map();
 // katram ievietotajam attēlam savi id (gradientiem/izgriezumiem): vienādi id dokumentā salūzt, ja pirmais ir paslēptā panelī
 let uid = 0;

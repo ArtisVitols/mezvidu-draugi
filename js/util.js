@@ -29,6 +29,31 @@ export function makeTextSprite(text, opts = {}) {
   return sprite;
 }
 
+// 1.35.0: vienkāršs, mazs vārda uzraksts virs spēlētāja/mājdzīvnieka — bez burbuļa, balts teksts ar tumšu apmali.
+// height — teksta augstums metros; color — burtu krāsa.
+export function makeTag(text, opts = {}) {
+  const fs = 40, pad = 6;
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  const font = `600 ${fs}px system-ui, sans-serif`;
+  ctx.font = font;
+  const w = Math.ceil(ctx.measureText(text).width) + pad * 2, h = fs + pad * 2;
+  canvas.width = w; canvas.height = h;
+  ctx.font = font; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.lineJoin = 'round'; ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+  ctx.strokeText(text, w / 2, h / 2 + 2);
+  ctx.fillStyle = opts.color || '#fff';
+  ctx.fillText(text, w / 2, h / 2 + 2);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.minFilter = THREE.LinearFilter;
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false, transparent: true }));
+  const k = (opts.height || 0.2) / fs;
+  sprite.scale.set(w * k, h * k, 1);
+  sprite.renderOrder = 10;
+  return sprite;
+}
+
 function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
