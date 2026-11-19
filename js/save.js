@@ -1,5 +1,5 @@
 // Spēlētāja progresa saglabāšana pārlūka atmiņā (localStorage)
-import { FISH } from './data.js?v=1.24.0';
+import { FISH } from './data.js?v=1.25.0';
 const PREFIX = 'mezvidi_save_v1_';
 const LAST = 'mezvidi_last_profile';
 

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mat, makeBlobShadow, noiseTexture, lerp, canvasTexture } from './util.js?v=1.24.0';
+import { mat, makeBlobShadow, noiseTexture, lerp, canvasTexture } from './util.js?v=1.25.0';
 
 // kažoka/auduma materiāli ar smalku faktūru
 let furTex = null, clothTex = null;
@@ -1434,11 +1434,13 @@ function planks() {
   plankTex.wrapS = plankTex.wrapT = THREE.RepeatWrapping;
   return plankTex;
 }
-export function buildCart(color = '#3c9a4a', iceCream = false, goodsKind = 'veg') {
+// goodsOnly — tikai preces (tirgus būdām), augšas līmenis y 1,49 kā ratiņiem
+export function buildCart(color = '#3c9a4a', iceCream = false, goodsKind = 'veg', goodsOnly = false) {
   const g = new THREE.Group();
   const wood = new THREE.MeshStandardMaterial({ color: '#ffffff', map: planks(), roughness: 0.9 });
   const darkWood = mat('#5a3e26', { roughness: 0.9 });
   const P = (geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); g.add(o); return o; };
+  if (!goodsOnly) {
   // kaste ar rāmja malām
   P(new THREE.BoxGeometry(2.6, 0.9, 1.4), wood, 0, 1.0, 0);
   for (const [x, z] of [[-1.3, -0.7], [1.3, -0.7], [-1.3, 0.7], [1.3, 0.7]]) P(new THREE.BoxGeometry(0.1, 1.0, 0.1), darkWood, x, 1.0, z);
@@ -1471,6 +1473,7 @@ export function buildCart(color = '#3c9a4a', iceCream = false, goodsKind = 'veg'
   for (const s of [-1, 1]) for (let i = 0; i < 12; i++) {
     const fl = P(new THREE.ConeGeometry(0.12, 0.16, 3), mat(i % 2 ? '#f6f2e8' : color, { roughness: 0.95 }), -1.37 + i * 0.25, 2.76, s * 0.96);
     fl.rotation.x = Math.PI; fl.scale.set(1, 1, 0.15);
+  }
   }
   // preces
   if (iceCream) {

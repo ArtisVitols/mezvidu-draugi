@@ -3,14 +3,14 @@
 // ja neviens cits ar to nebrauc; izkāpjot tas paliek tur, kur atstāts (arī citā zemē). Saimnieks glabā, kurš ar ko brauc
 // un kur katrs stāv (saimnieka saglabājumā `vehs`). Vehicles — Game papildinājums.
 import * as THREE from 'three';
-import { mat, lerp, clamp, makeBlobShadow, makeTextSprite } from './util.js?v=1.24.0';
-import { optimizeRig, tyreGeo } from './characters.js?v=1.24.0';
-import { $, toast, sfx } from './ui.js?v=1.24.0';
-import { DIRS, neighbour, FARM, FOREST, RACE, ZONE_IDS } from './zones.js?v=1.24.0';
-import { WATER_Y, YARD, YARD_IN, rotPlot, rotPlotY, BIKE_RACK } from './world.js?v=1.24.0';
-import { SLED_SPOT } from './winter.js?v=1.24.0';
-import { BUS_CODE } from './bus.js?v=1.24.0';
-import { ZONES } from './zones.js?v=1.24.0';
+import { mat, lerp, clamp, makeBlobShadow, makeTextSprite } from './util.js?v=1.25.0';
+import { optimizeRig, tyreGeo } from './characters.js?v=1.25.0';
+import { $, toast, sfx } from './ui.js?v=1.25.0';
+import { DIRS, neighbour, FARM, FOREST, RACE, ZONE_IDS } from './zones.js?v=1.25.0';
+import { WATER_Y, YARD, YARD_IN, rotPlot, rotPlotY, BIKE_RACK } from './world.js?v=1.25.0';
+import { SLED_SPOT } from './winter.js?v=1.25.0';
+import { BUS_CODE } from './bus.js?v=1.25.0';
+import { ZONES } from './zones.js?v=1.25.0';
 
 // tīkla kods (pos ziņas 6. lauks): 1 = kartings, 2 = mašīna, 3 = sniega motocikls, 5 = velosipēds
 export const VEH_CODE = { car: 2, sled: 3, bike: 5 }; // 4 = pasažieris (p[8] — vadītāja id, p[9] — sēdvieta); p[10] — transporta id
@@ -24,8 +24,8 @@ export const DEF = {
 };
 // visi transportlīdzekļi pasaulē (sākuma vietas). Sētas krustojums: ceļi x≈0 un z≈0, sētas sākas 9 m no ceļa
 export const VEHICLES = [
-  { id: 'car1', kind: 'car', color: '#3a7d44', name: 'Zaļā mašīna', zone: FARM, x: -15, z: 4.2, h: Math.PI / 2 },
-  { id: 'car2', kind: 'car', color: '#2f6fd6', name: 'Zilā mašīna', zone: FARM, x: 15, z: -4.2, h: -Math.PI / 2 },
+  { id: 'car1', kind: 'car', color: '#3a7d44', name: 'Zaļā mašīna', zone: FARM, x: -15, z: 5.4, h: Math.PI / 2 },
+  { id: 'car2', kind: 'car', color: '#2f6fd6', name: 'Zilā mašīna', zone: FARM, x: 15, z: -5.4, h: -Math.PI / 2 },
   { id: 'sled1', kind: 'sled', color: '#d8262a', name: 'Sniega motocikls', zone: 'n', x: SLED_SPOT.x, z: SLED_SPOT.z, h: SLED_SPOT.heading },
 ];
 // velosipēdi: pa vienam pie katras sētas vārtiem (ceļmalā starp ceļu un žogu) un 4 statīvā meža ciemata tirgū

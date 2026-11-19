@@ -3,8 +3,8 @@
 // Katrai zemei ir savas lokālās koordinātas (centrs 0,0); kopējā kartē zeme ir nobīdīta par ZONE_SIZE.
 // Uz kaimiņu zemi var aiziet pa jebkuru robežas vietu.
 import * as THREE from 'three';
-import { canvasTexture } from './util.js?v=1.24.0';
-import { loadTexture } from './gfx.js?v=1.24.0';
+import { canvasTexture } from './util.js?v=1.25.0';
+import { loadTexture } from './gfx.js?v=1.25.0';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 export const ZONE_HALF = 315;              // spēles laukuma puse (kvadrāts 630 × 630 m)
@@ -149,6 +149,13 @@ export const ROAD_HW = 3.6; // ceļa puse platuma (≈7 m — divas riepu sliede
 export function smoothRoad(pts, step = 1.5) {
   const c = new THREE.CatmullRomCurve3(pts.map(([x, z]) => new THREE.Vector3(x, 0, z)), false, 'centripetal');
   return c.getSpacedPoints(Math.max(2, Math.ceil(c.getLength() / step))).map((v) => ({ x: v.x, z: v.z }));
+}
+
+// apļveida ceļš (autobusa apgriešanās loks): [x, z] punkti pa visu apli + neliela pārklāšanās (bez šuves); smoothRoad tos izlīdzina
+export function ringRoad(cx, cz, R, step = 1.5) {
+  const n = Math.ceil(2 * Math.PI * R / step), out = [];
+  for (let i = 0; i <= n + 1; i++) { const a = i / n * 2 * Math.PI; out.push([cx + Math.cos(a) * R, cz + Math.sin(a) * R]); }
+  return out;
 }
 
 // attālums līdz tuvākajam ceļam (ātrai pārbaudei — rupjš režģis ar līniju punktiem)

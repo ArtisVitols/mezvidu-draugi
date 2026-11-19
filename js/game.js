@@ -1,27 +1,28 @@
 import * as THREE from 'three';
-import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, yardPart, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.24.0';
-import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.24.0';
-import { Controls } from './controls.js?v=1.24.0';
+import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, yardPart, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.25.0';
+import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.25.0';
+import { Controls } from './controls.js?v=1.25.0';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS, TREES, FRUITS, CLOTHES, SLOTS, DECOR } from './data.js?v=1.24.0';
-import { writeSave } from './save.js?v=1.24.0';
-import { VERSION, BUILD_DATE } from './version.js?v=1.24.0';
-import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.24.0';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.24.0';
-import { icon, iconEl, fishSvg } from './icons.js?v=1.24.0';
-import { Activities, makeTeam } from './activities.js?v=1.24.0';
-import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel, statsWanted } from './quality.js?v=1.24.0';
-import { hdrEnvironment } from './gfx.js?v=1.24.0';
-import { buildRod, buildDecor } from './props.js?v=1.24.0';
-import { InstanceField } from './instancing.js?v=1.24.0';
-import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.24.0';
-import { Vehicles } from './vehicles.js?v=1.24.0';
-import { Farm, fmtLeft } from './farm.js?v=1.24.0';
-import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.24.0';
-import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.24.0';
-import { plotOf } from './world.js?v=1.24.0';
-import { kartClamp } from './racetrack.js?v=1.24.0';
-import { Bus, BUS_STOPS } from './bus.js?v=1.24.0';
+import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS, TREES, FRUITS, CLOTHES, SLOTS, DECOR } from './data.js?v=1.25.0';
+import { writeSave } from './save.js?v=1.25.0';
+import { VERSION, BUILD_DATE } from './version.js?v=1.25.0';
+import { makeTextSprite, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.25.0';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.25.0';
+import { icon, iconEl, fishSvg } from './icons.js?v=1.25.0';
+import { Activities, makeTeam } from './activities.js?v=1.25.0';
+import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel, statsWanted } from './quality.js?v=1.25.0';
+import { hdrEnvironment } from './gfx.js?v=1.25.0';
+import { buildRod, buildDecor } from './props.js?v=1.25.0';
+import { buildStall, buildBunting } from './market.js?v=1.25.0';
+import { InstanceField } from './instancing.js?v=1.25.0';
+import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.25.0';
+import { Vehicles } from './vehicles.js?v=1.25.0';
+import { Farm, fmtLeft } from './farm.js?v=1.25.0';
+import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.25.0';
+import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.25.0';
+import { plotOf } from './world.js?v=1.25.0';
+import { kartClamp } from './racetrack.js?v=1.25.0';
+import { Bus, BUS_STOPS } from './bus.js?v=1.25.0';
 
 const ANIM = ['idle', 'walk', 'run', 'jump', 'swim', 'sit', 'pet', 'wave', 'fish', 'ski', 'lift', 'throw'];
 const MUSH_RESPAWN = 120000;
@@ -311,36 +312,36 @@ export class Game {
   buildVendors() {
     const market = new THREE.Group(); // visi tirgotāji kopā — kopīgie izskati (kažoks, koks, drēbes) apvienojas
     this.vendors = VENDORS.map((v) => {
-      const cart = buildCart(v.cart, false, v.id === 'hats' ? 'hats' : v.id === 'seeds' ? 'seeds' : v.id === 'buyer' ? 'veg' : 'none');
-      if (v.id === 'pets') {
-        [['ezis', -0.7, 0.9], ['zakis', 0.1, 0.55], ['vavere', 0.8, 1.0]].forEach(([k, x, s]) => {
-          const n = buildNPC(k); n.root.scale.multiplyScalar(s * 0.8); n.root.position.set(x, 1.5, 0.05); n.root.rotation.y = Math.PI / 2; cart.add(n.root);
-        });
-      } else if (v.id === 'decor') {
-        [['rukis', -0.85, 0.75], ['pukupods', 0, 0.7], ['laterna', 0.85, 0.42]].forEach(([k, x, s]) => {
-          const d = buildDecor(k); d.scale.setScalar(s); d.position.set(x, 1.5, 0.05); d.rotation.y = Math.PI / 2; cart.add(d);
-        });
-      }
-      const face = Math.atan2(-v.x, -v.z);
-      cart.position.set(v.x, VILLAGE_Y, v.z);
-      cart.rotation.y = face;
-      const vg = new THREE.Group();
-      vg.add(cart);
+      const face = Math.atan2(-v.x, -v.z); // būdas priekša pret laukuma vidu
+      const stall = buildStall(v);
+      stall.position.set(v.x, VILLAGE_Y, v.z);
+      stall.rotation.y = face;
+      market.add(stall);
+      // pārdevējs aiz letes
       const av = buildAnimal({ animal: v.animal, fur: v.fur, shirt: v.shirt, hat: v.id === 'hats' ? 'cilindrs' : v.id === 'seeds' ? 'salmu' : v.id === 'decor' ? 'vainags' : null });
-      av.root.position.set(v.x - Math.sin(face) * 1.4, VILLAGE_Y, v.z - Math.cos(face) * 1.4);
+      av.root.position.set(v.x - Math.sin(face) * 0.85, VILLAGE_Y + 0.36, v.z - Math.cos(face) * 0.85);
       av.root.rotation.y = face;
       for (let k = 0; k < 30; k++) av.animate(0.05, 'idle', 0);
-      vg.add(av.root);
       const n = makeTextSprite(v.name, { fontSize: 36 });
       n.position.set(0, 2.2, 0);
       av.root.add(n);
-      market.add(vg);
-      const t = makeTextSprite(v.title, { fontSize: 48, bg: 'rgba(255,255,255,0.85)', color: '#333' });
-      t.position.set(v.x, VILLAGE_Y + 3.6, v.z);
-      this.scene.add(t);
-      this.world.addCollider(v.x, v.z, 1.5);
+      market.add(av.root);
+      // lete un būdas sienas — šķērslis (pircēji stāv priekšā)
+      const rx = Math.cos(face), rz = -Math.sin(face);
+      for (const k of [-1.3, 0, 1.3]) this.world.addCollider(v.x + rx * k - Math.sin(face) * 0.3, v.z + rz * k - Math.cos(face) * 0.3, 0.95);
       return { def: v };
     });
+    // karodziņu virtenes starp blakus būdām (ap laukuma ziemeļu un austrumu pusi)
+    const top = (v, side) => {
+      const f = Math.atan2(-v.x, -v.z), rx = Math.cos(f), rz = -Math.sin(f);
+      return { x: v.x + rx * side * 1.75 + Math.sin(f) * 0.6, y: VILLAGE_Y + 2.9, z: v.z + rz * side * 1.75 + Math.cos(f) * 0.6 };
+    };
+    const byAng = [...VENDORS].sort((p, q) => p.ang - q.ang);
+    for (let i = 0; i + 1 < byAng.length; i++) {
+      const p = byAng[i], q = byAng[i + 1];
+      if (q.ang - p.ang > 70) continue;
+      market.add(buildBunting(top(p, 1), top(q, -1), 0.6));
+    }
     this.scene.add(flattenStatic(market));
     // saldējuma ratiņi, kas brauc pa apli
     this.ice = { cart: flattenStatic(buildCart('#ff8fb0', true)), av: buildAnimal({ animal: 'bebrs', fur: '#7a5230', shirt: '#ffffff', hat: null }) };
@@ -363,16 +364,18 @@ export class Game {
     $('minimap').addEventListener('click', () => this.openBigMap());
   }
 
-  mapBase(W, MS = 360) {
+  // b — apgabals vietējās koordinātēs {x0, z0, x1, z1} (tuvinātai kartei); citādi visa zeme
+  mapBase(W, MS = 360, b = null) {
     const R = ZONE_HALF;
+    b = b || { x0: -R, z0: -R, x1: R, z1: R };
     const c = document.createElement('canvas');
     c.width = c.height = MS;
     const g = c.getContext('2d');
     const img = g.createImageData(MS, MS);
     const farm = W.mode === 'farm';
-    const st = 2 * R / MS;
+    const st = (b.x1 - b.x0) / MS;
     for (let py = 0; py < MS; py++) for (let px = 0; px < MS; px++) {
-      const x = -R + (px + 0.5) / MS * 2 * R, z = -R + (py + 0.5) / MS * 2 * R;
+      const x = b.x0 + (px + 0.5) / MS * (b.x1 - b.x0), z = b.z0 + (py + 0.5) / MS * (b.z1 - b.z0);
       const h = W.getHeight(x, z);
       let col;
       const tun = W.trackIdx && W.inTunnel(x, z);
@@ -495,7 +498,11 @@ export class Game {
     }
     // autobuss un pieturas (globālās koordinātēs)
     if (this.bus && this.bus.zone) {
-      if (zoom > 0) for (const s of BUS_STOPS) { const [px, py] = toPx0(s.x, s.z); this.mapIcon(g, '🚏', px, py, zoom === 1 ? 14 : 10, 'rgba(255,255,255,0.9)'); }
+      const named = new Set();
+      if (zoom > 0) for (const s of BUS_STOPS) {
+        const [px, py] = toPx0(s.x, s.z); this.mapIcon(g, '🚏', px, py, zoom === 1 ? 14 : 10, 'rgba(255,255,255,0.9)');
+        if ((this.mapK || 1) >= 2.5 && !named.has(s.name)) { named.add(s.name); this.mapLabel(g, s.name, px, py + 16, 11, '#cfe4ff'); }
+      }
       const [ox, oz] = zoneOffset(this.bus.zone), [px, py] = toPx0(this.bus.lx + ox, this.bus.lz + oz);
       this.mapIcon(g, '🚌', px, py, zoom === 1 ? 19 : zoom === 2 ? 14 : 12, '#1f6fd6');
     }
@@ -538,7 +545,7 @@ export class Game {
 
   // liela karte: vispirms zeme, kurā esi (detalizēti), poga — visas zemes; pieskaroties zemei visu zemju skatā — tuvāk
   openBigMap() {
-    const view = { all: false, zone: this.zone };
+    const view = { all: false, zone: this.zone, k: 1, cx: 0, cy: 0 }; // k — tuvinājums (ar diviem pirkstiem), cx/cy — skata centrs
     const box = $('panel').querySelector('.panel-box');
     let timer = null;
     showPanel('🗺️ Karte', (b) => {
@@ -553,24 +560,58 @@ export class Game {
       const btn = el('button', { className: 'pbtn' }, '');
       const back = el('button', { className: 'pbtn', style: 'background:#7a8a6a' }, '');
       row.append(btn, back);
+      const zin = el('button', { className: 'pbtn', style: 'min-width:44px' }, '➕'), zout = el('button', { className: 'pbtn', style: 'min-width:44px' }, '➖');
+      row.prepend(zout); row.prepend(zin);
       const legend = el('div', { style: 'text-align:center;font-size:13px;margin-top:6px;opacity:0.8' }, '');
-      let toPxNow = null;
+      let toPxNow = null, detail = null, detailT = null;
+      view.cx = view.cy = css / 2;
+      const clampView = () => {
+        view.k = Math.min(8, Math.max(1, view.k));
+        const h = css / (2 * view.k);
+        view.cx = Math.min(css - h, Math.max(h, view.cx)); view.cy = Math.min(css - h, Math.max(h, view.cy));
+      };
+      const resetZoom = () => { view.k = 1; view.cx = view.cy = css / 2; detail = null; };
+      // tuvinātai zemes kartei — detalizēts attēls redzamajam apgabalam (uzzīmē, kad pirksti apstājas)
+      const wantDetail = () => {
+        clearTimeout(detailT);
+        if (view.all || view.k < 2.2) return;
+        detailT = setTimeout(() => {
+          const W = this.landWorld(view.zone);
+          if (!W || view.all || view.k < 2.2 || !c.isConnected) return;
+          const [ox, oz] = zoneOffset(view.zone), R = this.mapR, span = 2 * R / view.k * 1.25;
+          const mx = (view.cx / css) * 2 * R - R, mz = (view.cy / css) * 2 * R - R;
+          const b = { x0: mx - span / 2, z0: mz - span / 2, x1: mx + span / 2, z1: mz + span / 2 };
+          try { detail = { zone: view.zone, b, c: this.mapBase(W, Math.min(420, Math.round(css * dpr * 0.8)), b) }; } catch (e) { console.warn(e); }
+          void ox; void oz;
+          draw();
+        }, 350);
+      };
+      let raf = 0;
+      const redraw = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; draw(); }); };
       const draw = () => {
         const S = css;
         g.setTransform(dpr, 0, 0, dpr, 0, 0);
-        let toPx;
+        let toPx0;
         if (view.all) {
           const E = ZONE_HALF * 3; // visas 5 zemes krusta formā
-          toPx = (x, z) => [(x + E) / (2 * E) * S, (z + E) / (2 * E) * S];
+          toPx0 = (x, z) => [(x + E) / (2 * E) * S, (z + E) / (2 * E) * S];
         } else {
           const [ox, oz] = zoneOffset(view.zone), R = this.mapR;
-          toPx = (x, z) => [(x - ox + R) / (2 * R) * S, (z - oz + R) / (2 * R) * S];
+          toPx0 = (x, z) => [(x - ox + R) / (2 * R) * S, (z - oz + R) / (2 * R) * S];
         }
+        const toPx = (x, z) => { const [px, py] = toPx0(x, z); return [(px - view.cx) * view.k + S / 2, (py - view.cy) * view.k + S / 2]; };
         toPxNow = toPx;
         g.fillStyle = '#2e3a2a'; g.fillRect(0, 0, S, S);
         g.imageSmoothingEnabled = true;
         this.drawLands(g, toPx, view.all ? 'all' : false, view.all ? null : view.zone);
+        if (detail && !view.all && detail.zone === view.zone && view.k >= 2.2) {
+          const [ox, oz] = zoneOffset(view.zone), [x0, y0] = toPx(detail.b.x0 + ox, detail.b.z0 + oz), [x1, y1] = toPx(detail.b.x1 + ox, detail.b.z1 + oz);
+          g.drawImage(detail.c, x0, y0, x1 - x0, y1 - y0);
+        }
+        this.mapK = view.k;
         this.mapMarkers(g, toPx, view.all ? 2 : 1, 0);
+        this.mapK = 1;
+        if (view.k > 1.01) this.mapLabel(g, `🔍 ×${view.k.toFixed(1)}`, 34, S - 14, 12);
         // ziemeļi
         this.mapLabel(g, '⬆ N', S - 26, 16, 13);
         const Z = ZONES[view.zone], ZH = ZONES[this.zone];
@@ -579,17 +620,57 @@ export class Game {
         back.style.display = !view.all && view.zone !== this.zone ? '' : 'none';
         back.textContent = `📍 Kur esmu: ${ZH.icon} ${ZH.name}`;
         legend.textContent = view.all
-          ? 'Pieskaries zemei, lai to redzētu tuvāk · bultas — spēlētāji · 🚙🚲🛷 — transports'
-          : `${view.zone === FOREST ? '🌱🧺🎩🐾🏡 tirgotāji · 🪙 vēlēšanās aka · ' : ''}${this.save.revealed ? '⭐ zvaigznes · ' : ''}bultas — spēlētāji · 🚙🚲🛷 — transports`;
+          ? 'Pieskaries zemei, lai to redzētu tuvāk · 2 pirksti — tuvināt · bultas — spēlētāji · 🚙🚲🛷 — transports'
+          : `${view.zone === FOREST ? '🌱🧺🎩🐾🏡 tirgotāji · 🪙 vēlēšanās aka · ' : ''}${this.save.revealed ? '⭐ zvaigznes · ' : ''}bultas — spēlētāji · 🚙🚲🛷 — transports · 🚌🚏 autobuss · 2 pirksti — tuvināt`;
       };
-      btn.addEventListener('click', () => { view.all = !view.all; if (!view.all) view.zone = this.zone; ensureHi(); draw(); });
-      back.addEventListener('click', () => { view.all = false; view.zone = this.zone; ensureHi(); draw(); });
+      btn.addEventListener('click', () => { view.all = !view.all; if (!view.all) view.zone = this.zone; resetZoom(); ensureHi(); draw(); });
+      back.addEventListener('click', () => { view.all = false; view.zone = this.zone; resetZoom(); ensureHi(); draw(); });
+      const zoomAt = (f, px = css / 2, py = css / 2) => {
+        const mx = view.cx + (px - css / 2) / view.k, my = view.cy + (py - css / 2) / view.k;
+        view.k *= f; clampView();
+        view.cx = mx - (px - css / 2) / view.k; view.cy = my - (py - css / 2) / view.k; clampView();
+        redraw(); wantDetail();
+      };
+      zin.addEventListener('click', () => zoomAt(1.6));
+      zout.addEventListener('click', () => zoomAt(1 / 1.6));
+      // pirksti: viens — bīdīt, divi — tuvināt/tālināt (pinch); pele — ritenītis
+      const ptrs = new Map();
+      let gest = null, dragged = false;
+      const loc = (e) => { const rc = c.getBoundingClientRect(); return [e.clientX - rc.left, e.clientY - rc.top]; };
+      const startGest = () => {
+        const p = [...ptrs.values()];
+        if (p.length === 1) gest = { pan: true, p: p[0], cx: view.cx, cy: view.cy };
+        else if (p.length >= 2) {
+          const [a, b] = p, m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+          gest = { pan: false, d: Math.max(10, Math.hypot(a[0] - b[0], a[1] - b[1])), m, k: view.k, mx: view.cx + (m[0] - css / 2) / view.k, my: view.cy + (m[1] - css / 2) / view.k };
+        } else gest = null;
+      };
+      c.addEventListener('pointerdown', (e) => { try { c.setPointerCapture(e.pointerId); } catch (_) { /* nav */ } ptrs.set(e.pointerId, loc(e)); if (ptrs.size === 1) dragged = false; startGest(); });
+      c.addEventListener('pointermove', (e) => {
+        if (!ptrs.has(e.pointerId) || !gest) return;
+        ptrs.set(e.pointerId, loc(e));
+        const p = [...ptrs.values()];
+        if (gest.pan) {
+          const dx = p[0][0] - gest.p[0], dy = p[0][1] - gest.p[1];
+          if (Math.hypot(dx, dy) > 6) dragged = true;
+          if (view.k > 1) { view.cx = gest.cx - dx / view.k; view.cy = gest.cy - dy / view.k; clampView(); redraw(); }
+        } else if (p.length >= 2) {
+          dragged = true;
+          const [a, b] = p, m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+          view.k = gest.k * Math.max(10, Math.hypot(a[0] - b[0], a[1] - b[1])) / gest.d; clampView();
+          view.cx = gest.mx - (m[0] - css / 2) / view.k; view.cy = gest.my - (m[1] - css / 2) / view.k; clampView();
+          redraw();
+        }
+      });
+      const up = (e) => { if (!ptrs.delete(e.pointerId)) return; startGest(); wantDetail(); };
+      c.addEventListener('pointerup', up); c.addEventListener('pointercancel', up);
+      c.addEventListener('wheel', (e) => { e.preventDefault(); const [px, py] = loc(e); zoomAt(e.deltaY < 0 ? 1.25 : 0.8, px, py); }, { passive: false });
       c.addEventListener('click', (e) => {
-        if (!view.all || !toPxNow) return;
+        if (dragged || !view.all || !toPxNow) return;
         const rc = c.getBoundingClientRect(), px = e.clientX - rc.left, py = e.clientY - rc.top;
         for (const id of ZONE_IDS) {
           const [ox, oz] = zoneOffset(id), [x0, y0] = toPxNow(ox - ZONE_HALF, oz - ZONE_HALF), [x1, y1] = toPxNow(ox + ZONE_HALF, oz + ZONE_HALF);
-          if (px >= x0 && px <= x1 && py >= y0 && py <= y1) { view.all = false; view.zone = id; ensureHi(); draw(); return; }
+          if (px >= x0 && px <= x1 && py >= y0 && py <= y1) { view.all = false; view.zone = id; resetZoom(); ensureHi(); draw(); return; }
         }
       });
       // detalizētāks zemes attēls (uzzīmē vienreiz, kad pirmoreiz atver tuvāk)

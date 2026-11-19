@@ -1,5 +1,19 @@
 # Izmaiņu žurnāls
 
+## 1.25.0 — 2026-11-19
+- 🚌 Autobusa maršruts tagad ir liels aplis ar jaunu pieturu **🏁 Sacīkšu trase**: ❄️ Ziemas laukums → 🏡 sēta → 🏁 trase → 🏡 sēta →
+  🛒 Mežvidu tirgus → 🏡 sēta → ❄️ Ziema. Jauna pietura arī „Sēta — rietumi”; sētas pieturās nojumes abās ceļa pusēs.
+- 🔄 Autobuss vairs negriežas uz vietas: pie Ziemas laukuma, pie sacīkšu trases (blakus stāvlaukumam) un ap Mežvidu tirgu ir
+  apļveida grants ceļš — autobuss to apbrauc un brauc atpakaļ pa to pašu ceļu (pa labo pusi). Līkumos tas brauc lēnāk, taisnēs ātrāk.
+- 🚌 Skaistāks autobuss: riteņu arkas, noapaļots jumts, melna logu josla, balta un dzeltena līnija, priekšā reste, lukturi, numurs,
+  spoguļi, stikla durvis ar rāmjiem, riteņu diski. Uzraksts „MEŽVIDU AUTOBUSS” tagad ir starp riteņiem (vairs nekarājas pāri riteņiem).
+  Priekšā tablo „1 · Ziema · Sēta · Trase · Tirgus”. Autobusā rāda nākamo pieturu.
+- 🛒 Mežvidu tirgus pārbūvēts: bruģēts laukums ar aku, ap to 5 koka tirgus būdas ar svītrainiem jumtiem, koka izkārtnēm, precēm uz
+  letes, plauktiem, mucām un kastēm, starp būdām karodziņu virtenes. Pārdevēji stāv aiz letes. Ap tirgu apļveida ceļš ar pieturu,
+  guļbūves pārceltas aiz tā, ciemata koka zīme pie ceļa (peldošie uzraksti noņemti).
+- 🗺️ Lielo karti var tuvināt ar diviem pirkstiem (līdz 8×) vai pogām ➕ ➖ un bīdīt ar vienu pirkstu; tuvinot zemes karte kļūst
+  detalizētāka, redzami pieturu nosaukumi.
+
 ## 1.24.0 — 2026-11-18
 - 🚌 Zilais Mežvidu autobuss visu laiku brauc no ❄️ Ziemas laukuma pa ceļu caur sētu līdz 🛒 Mežvidu tirgum, tur apgriežas
   un brauc atpakaļ — un tā bez apstājas. Vada 🐱 kaķis Kārlis ar beisbola cepuri. Autobusam caurspīdīgi logi (redz pasažierus),

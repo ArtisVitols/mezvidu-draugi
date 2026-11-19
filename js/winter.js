@@ -4,13 +4,13 @@
 // sniega pikas (arī ar draugiem), ziemas drēbes.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { ZONE_HALF, GROUND_Y, DIRS, clampSquare, openSides, buildBorderPosts, disposeTree, smoothRoad, RoadIndex, buildRoadMesh, roadMaterial } from './zones.js?v=1.24.0';
-import { makeTextSprite, canvasTexture, mat, smoothstep, lerp, angleLerp, clamp } from './util.js?v=1.24.0';
-import { buildNPC, buildAnimal, flattenStatic } from './characters.js?v=1.24.0';
-import { loadTexture } from './gfx.js?v=1.24.0';
-import { InstanceField } from './instancing.js?v=1.24.0';
-import { makeNoise2D, mulberry32 } from './noise.js?v=1.24.0';
-import { $, toast, sfx } from './ui.js?v=1.24.0';
+import { ZONE_HALF, GROUND_Y, DIRS, clampSquare, openSides, buildBorderPosts, disposeTree, smoothRoad, ringRoad, RoadIndex, buildRoadMesh, roadMaterial } from './zones.js?v=1.25.0';
+import { makeTextSprite, canvasTexture, mat, smoothstep, lerp, angleLerp, clamp } from './util.js?v=1.25.0';
+import { buildNPC, buildAnimal, flattenStatic } from './characters.js?v=1.25.0';
+import { loadTexture } from './gfx.js?v=1.25.0';
+import { InstanceField } from './instancing.js?v=1.25.0';
+import { makeNoise2D, mulberry32 } from './noise.js?v=1.25.0';
+import { $, toast, sfx } from './ui.js?v=1.25.0';
 
 const SEED = 9137;
 const TAU = Math.PI * 2;
@@ -32,9 +32,13 @@ const HERDS = [{ x: 190, z: 140, r: 30, n: 4 }, { x: -230, z: 30, r: 24, n: 2 },
 export const WINTER_CAR = { x: 45, z: 288, heading: Math.PI / 2 };
 export const SLED_SPOT = { x: 84, z: 118, heading: Math.PI };
 // grants ceļi: no Mežvidu robežas līdz laukumam un no laukuma līdz pacēlājam
+// laukumu apbrauc apļveida ceļš (autobusa apgriešanās loks)
+export const WINTER_RING = { x: PLAZA.x, z: PLAZA.z, r: 27 };
+const ringPt = (deg) => [WINTER_RING.x + Math.cos(deg * Math.PI / 180) * WINTER_RING.r, WINTER_RING.z + Math.sin(deg * Math.PI / 180) * WINTER_RING.r];
 const ROADS = [
-  [[0, 380], [0, 315], [0, 290], [27, 274], [62, 264], [89, 246]],
-  [[82, 209], [76, 180], [69, 145], [64, 112], [62, 94]],
+  [[0, 380], [0, 315], [0, 290], [27, 274], [62, 266], [86, 262], ringPt(95)],
+  [ringPt(-110), [80, 180], [69, 145], [64, 112], [62, 94]],
+  ringRoad(WINTER_RING.x, WINTER_RING.z, WINTER_RING.r, 3),
 ];
 export const WINTER_ROAD = ROADS[0]; // autobusa maršrutam (bus.js)
 let roadLines = null, roadIdx = null;
@@ -65,7 +69,7 @@ export function winterHeight(x, z) {
   if (!stationH) stationH = { b: rawHeight(LIFT.x, LIFT.zB), t: rawHeight(LIFT.x, LIFT.zT) };
   let h = rawHeight(x, z);
   h = lerp(h, GROUND_Y + 0.15, flatMask(x, z, ARENA.x, ARENA.z, ARENA.hw + 5, ARENA.hd + 5, 14));
-  h = lerp(h, GROUND_Y + 0.2, flatMask(x, z, PLAZA.x, PLAZA.z, 18, 18, 14));
+  h = lerp(h, GROUND_Y + 0.2, flatMask(x, z, PLAZA.x, PLAZA.z, 31, 31, 14));
   h = lerp(h, stationH.b, flatMask(x, z, LIFT.x, LIFT.zB, 7, 8, 8));
   h = lerp(h, stationH.t, flatMask(x, z, LIFT.x, LIFT.zT, 7, 7, 7));
   return h;
@@ -92,7 +96,7 @@ export function winterTrees() {
       // brīvas vietas: trase, pacēlājs, laukumi, ierašanās josla
       if (x > PISTE.x0 - 6 && x < PISTE.x1 + 6 && z > PISTE.z0 && z < PISTE.z1 + 10) continue;
       if (Math.abs(x - LIFT.x) < 11 && z > LIFT.zT - 14 && z < LIFT.zB + 14) continue;
-      if (inRect(x, z, ARENA, 14) || Math.hypot(x - PLAZA.x, z - PLAZA.z) < 34) continue;
+      if (inRect(x, z, ARENA, 14) || Math.hypot(x - PLAZA.x, z - PLAZA.z) < 44) continue;
       if (Math.hypot(x - HILL.x, z - HILL.z) < 24 || Math.hypot(x - CABIN.x, z - CABIN.z) < 14) continue;
       if (z > ZONE_HALF - 12 || Math.abs(x) > ZONE_HALF - 3 || z < -ZONE_HALF + 3 || roadIdx.near(x, z).d < 7) continue;
       if (Math.hypot(x - WINTER_CAR.x, z - WINTER_CAR.z) < 8 || Math.hypot(x - SLED_SPOT.x, z - SLED_SPOT.z) < 7) continue;

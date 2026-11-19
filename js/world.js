@@ -1,13 +1,13 @@
 import * as THREE from 'three';
-import { makeNoise2D, mulberry32 } from './noise.js?v=1.24.0';
-import { MUSHROOMS } from './data.js?v=1.24.0';
+import { makeNoise2D, mulberry32 } from './noise.js?v=1.25.0';
+import { MUSHROOMS } from './data.js?v=1.25.0';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mat, smoothstep, lerp, makeTextSprite, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.24.0';
-import { optimizeRig, flattenStatic } from './characters.js?v=1.24.0';
-import { ZONE_HALF, ZONES, DIRS, GROUND_Y, sqDist, clampSquare, buildBorderPosts, smoothRoad, RoadIndex, buildRoadMesh, ROAD_HW, FOREST, neighbour, openSides, buildTerrainFence, wood } from './zones.js?v=1.24.0';
-import { buildGardenHouse, buildGreenhouse, buildGateArch, buildFingerpost, buildRoadSign, HOUSE } from './farmyard.js?v=1.24.0';
-import { findPlaces, placeHeight, inPlace, buildPlaces, updatePlaces, placeBerries } from './places.js?v=1.24.0';
-import { raceFrame, yardWeight, inRaceYard, inLot, buildBarriers, buildStartPad, buildRaceYard, ROAD_END } from './racetrack.js?v=1.24.0';
+import { mat, smoothstep, lerp, makeTextSprite, makeSignBoard, signWood, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.25.0';
+import { optimizeRig, flattenStatic } from './characters.js?v=1.25.0';
+import { ZONE_HALF, ZONES, DIRS, GROUND_Y, sqDist, clampSquare, buildBorderPosts, smoothRoad, ringRoad, RoadIndex, buildRoadMesh, ROAD_HW, FOREST, neighbour, openSides, buildTerrainFence, wood } from './zones.js?v=1.25.0';
+import { buildGardenHouse, buildGreenhouse, buildGateArch, buildFingerpost, buildRoadSign, HOUSE } from './farmyard.js?v=1.25.0';
+import { findPlaces, placeHeight, inPlace, buildPlaces, updatePlaces, placeBerries } from './places.js?v=1.25.0';
+import { raceFrame, yardWeight, inRaceYard, inLot, buildBarriers, buildStartPad, buildRaceYard, ROAD_END } from './racetrack.js?v=1.25.0';
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
@@ -37,11 +37,40 @@ const TUNNELS = [[60, 125], [505, 560]];
 export const TUN_W = 9.4;       // tuneļa sienas attālums no trases vidus
 const TUN_WALL = 4.2, TUN_TOP = 7.8, TUN_H = 9.5, TUN_CUT = 12.6;
 
+// trases līnija un tās apkārtnes rāmis bez zemes būvēšanas (vajag arī autobusa maršrutam, pirms trases zeme ielādēta)
+// RACE_RING — autobusa apgriešanās loks ceļa galā pie stāvlaukuma (l — no trases uz austrumiem, a — gar trasi)
+export const RACE_RING = { l: 63, a: 0, r: 13 };
+let raceGeoC = null;
+export function raceGeo() {
+  if (raceGeoC) return raceGeoC;
+  const curve = new THREE.CatmullRomCurve3(TRACK_PTS.map(([x, z]) => new THREE.Vector3(x, TRACK_Y, z)), true, 'centripetal');
+  const sp = curve.getSpacedPoints(TRACK_N);
+  sp.pop();
+  sp.forEach((p, i) => { p.i = i; });
+  const tan = sp.map((p, i) => {
+    const a = sp[(i - 1 + TRACK_N) % TRACK_N], b = sp[(i + 1) % TRACK_N];
+    return new THREE.Vector3(b.x - a.x, 0, b.z - a.z).normalize();
+  });
+  const F = raceFrame(sp, tan, 30);
+  const C = F.toW(RACE_RING.l, RACE_RING.a), R = RACE_RING.r;
+  const east = F.toW(RACE_RING.l + R, RACE_RING.a), e2 = F.toW(RACE_RING.l + R + 14, RACE_RING.a);
+  const west = F.toW(RACE_RING.l - R, RACE_RING.a), re = F.toW(ROAD_END.l - 3, ROAD_END.a);
+  const main = [[380, 0], [318, 0], [285, 0], [245, 1], [e2.x, e2.z], [east.x, east.z]];
+  const ring = { x: C.x, z: C.z, r: R, east, west };
+  const roads = [main, ringRoad(C.x, C.z, R, 3), [[west.x, west.z], [re.x, re.z]]];
+  return (raceGeoC = { curve, sp, tan, len: curve.getLength(), F, ring, roads, main });
+}
+
 // grants ceļi (katras robežas vidū — tur turpinās kaimiņu zemes ceļš)
+// meža ciemata tirgus: apļveida ceļš ap tirgus laukumu (autobuss to apbrauc un brauc atpakaļ pa to pašu ceļu)
+export const FOREST_RING = { x: 0, z: 0, r: 26 };
 const ROADS = {
-  forest: [[[-42, 4], [-130, -14], [-210, 10], [-260, 0], [-285, 0], [-318, 0], [-380, 0]]], // no ciemata uz rietumiem (sētu)
+  forest: [
+    [[-26, 0], [-40, 2], [-80, -6], [-130, -14], [-210, 10], [-260, 0], [-285, 0], [-318, 0], [-380, 0]], // no ciemata uz rietumiem (sētu)
+    ringRoad(FOREST_RING.x, FOREST_RING.z, FOREST_RING.r, 3),
+  ],
   farm: null, // līkumoti ceļi — pēc roadNS / roadEW (zemāk)
-  race: null, // pēc kartinga vietas (buildTrackCurve)
+  race: null, // pēc kartinga vietas (raceGeo)
 };
 export const FOREST_ROAD = ROADS.forest[0]; // autobusa maršrutam (bus.js)
 // mašīnas stāvvieta meža ciemata malā un sētas pagalmā
@@ -109,13 +138,17 @@ export function gateSpots(slot) {
   });
 }
 
+// tirgus: 5 tirgotāju būdas aplī ap aku (ang — leņķis atan2(z, x) grādos), skatās uz laukuma vidu.
+// Rietumos (180°) — ieeja no ceļa un velosipēdu statīvs, dienvidos (90°) — autobusa pietura
+export const PLAZA_R = 19; // bruģētā laukuma rādiuss
+const STALL_R = 15.5;
 export const VENDORS = [
-  { id: 'seeds', name: 'Ūdrs Ojārs', title: '🌱 Sēklas', x: 14, z: -12, animal: 'udrs', fur: '#6b4a2e', shirt: '#2fa84f', cart: '#3c9a4a' },
-  { id: 'buyer', name: 'Āpsis Arnolds', title: '🧺 Uzpērku', x: 18, z: 0, animal: 'apsis', fur: '#7d7d7d', shirt: '#2f6fd6', cart: '#2f6fd6' },
-  { id: 'hats', name: 'Pūce Paula', title: '🎩 Drēbes', x: 14, z: 12, animal: 'puce', fur: '#9a7348', shirt: '#9b3bd2', cart: '#b04ad2' },
-  { id: 'pets', name: 'Suns Sprīdis', title: '🐾 Mājdzīvnieki', x: -9, z: -15, animal: 'suns', fur: '#c89b5e', shirt: '#f07b2a', cart: '#e0902a' },
-  { id: 'decor', name: 'Lapsa Liene', title: '🏡 Dārzam', x: -9, z: 15, animal: 'lapsa', fur: '#e8742a', shirt: '#2fa84f', cart: '#3a9a9a' },
-];
+  { id: 'seeds', name: 'Ūdrs Ojārs', title: '🌱 Sēklas', ang: -90, animal: 'udrs', fur: '#6b4a2e', shirt: '#2fa84f', cart: '#3c9a4a' },
+  { id: 'buyer', name: 'Āpsis Arnolds', title: '🧺 Uzpērku', ang: -30, animal: 'apsis', fur: '#7d7d7d', shirt: '#2f6fd6', cart: '#2f6fd6' },
+  { id: 'hats', name: 'Pūce Paula', title: '🎩 Drēbes', ang: 30, animal: 'puce', fur: '#9a7348', shirt: '#9b3bd2', cart: '#b04ad2' },
+  { id: 'pets', name: 'Suns Sprīdis', title: '🐾 Mājdzīvnieki', ang: -150, animal: 'suns', fur: '#c89b5e', shirt: '#f07b2a', cart: '#e0902a' },
+  { id: 'decor', name: 'Lapsa Liene', title: '🏡 Dārzam', ang: 150, animal: 'lapsa', fur: '#e8742a', shirt: '#2fa84f', cart: '#3a9a9a' },
+].map((v) => { const a = v.ang * Math.PI / 180; return { ...v, x: Math.cos(a) * STALL_R, z: Math.sin(a) * STALL_R }; });
 
 export const SPAWN = { x: 5, z: 5 };
 
@@ -186,17 +219,12 @@ export class World {
 
   // ---------- trase ----------
   buildTrackCurve() {
-    const pts = TRACK_PTS.map(([x, z]) => new THREE.Vector3(x, TRACK_Y, z));
-    this.trackCurve = new THREE.CatmullRomCurve3(pts, true, 'centripetal');
-    const sp = this.trackCurve.getSpacedPoints(TRACK_N);
-    sp.pop();
+    const RG = raceGeo();
+    this.trackCurve = RG.curve;
+    const sp = RG.sp;
     this.trackPts = sp;
-    this.trackLen = this.trackCurve.getLength();
-    this.trackTan = sp.map((p, i) => {
-      const a = sp[(i - 1 + TRACK_N) % TRACK_N], b = sp[(i + 1) % TRACK_N];
-      return new THREE.Vector3(b.x - a.x, 0, b.z - a.z).normalize();
-    });
-    sp.forEach((p, i) => { p.i = i; });
+    this.trackLen = RG.len;
+    this.trackTan = RG.tan;
     this.trackIdx = new RoadIndex([sp], 20, 3); // attālums līdz trasei (precīzs līdz 60 m)
     // cik metrus aiz tuneļa (gar trasi) ir katrs trases punkts (0 — tunelī)
     const step = this.trackLen / TRACK_N;
@@ -214,9 +242,8 @@ export class World {
     this.kartSpot = { ...(a1.x > a2.x ? a1 : a2), heading: Math.atan2(tk.x, tk.z) };
     this.carSpot = { x: this.kartSpot.x + 10, z: this.kartSpot.z + 6, heading: Math.PI / 2 };
     // trases apkārtnes rāmis (stāvlaukums, starta laukums, pjedestāls — racetrack.js); ceļš no sētas beidzas stāvlaukumā
-    this.raceF = raceFrame(sp, this.trackTan, k);
-    const re = this.raceF.toW(ROAD_END.l, ROAD_END.a), re2 = this.raceF.toW(ROAD_END.l + 16, ROAD_END.a);
-    ROADS.race = [[[380, 0], [318, 0], [285, 0], [245, 1], [re2.x, re2.z], [re.x, re.z]]];
+    this.raceF = RG.F;
+    ROADS.race = RG.roads;
   }
 
   trackDist(x, z) {
@@ -332,7 +359,7 @@ export class World {
     if (this.mode === 'farm') return lerp(this.farmHeight(x, z), VILLAGE_Y, 1 - smoothstep(4, 22, yardOut(x, z))); // sētas un krustojums līdzeni
     let h = this.naturalHeight(x, z);
     if (this.mode === 'race') h += 2.6; // trasē mazāk ezeru
-    if (this.mode === 'forest') return lerp(h, VILLAGE_Y, 1 - smoothstep(34, 62, d));
+    if (this.mode === 'forest') return lerp(h, VILLAGE_Y, 1 - smoothstep(44, 70, d)); // ciemats ar tirgu un apli līdzens
     // trase: līdzena josla ap trasi + pakalni virs tuneļiem
     const td = this.trackDist(x, z);
     h = lerp(h, TRACK_Y - 0.05, 1 - smoothstep(TRACK_WIDTH / 2 + 3, TRACK_WIDTH / 2 + 16, td));
@@ -1199,7 +1226,11 @@ export class World {
         g.fillStyle = 'rgba(30,20,12,0.9)'; g.fillRect(i * w / 6 + w / 6 - 2, 0, 2, h);
       }
     });
-    const houses = [[4, -30, 0.2], [20, -25, -0.4], [6, 30, 3.0], [-10, 32, 2.8], [-34, -32, 0.8]];
+    // mājas aiz tirgus apļa ceļa, durvis pret laukumu
+    const houses = [[-118, 40], [-66, 39], [-14, 41], [62, 40], [114, 39]].map(([a, r]) => {
+      const t = a * Math.PI / 180, x = Math.cos(t) * r, z = Math.sin(t) * r;
+      return [x, z, Math.atan2(-x, -z)];
+    });
     const tints = ['#ffffff', '#e6dccf', '#d6cbbd', '#f2e8dc', '#cfc3b3'];
     const frameM = mat('#e9e4da', { roughness: 0.7 });
     const glassM = new THREE.MeshStandardMaterial({ color: '#1d2a33', roughness: 0.08, metalness: 0.4 });
@@ -1261,10 +1292,44 @@ export class World {
 
     // ceļa zīme
     g.traverse((o) => { if (o.isMesh && !o.isInstancedMesh && !this.terrainTiles.includes(o) && o !== this.water) { o.castShadow = true; o.receiveShadow = true; } });
-    const sign = makeTextSprite('🏡 Mežvidu ciems · 🛒 tirgus', { fontSize: 52, bg: 'rgba(60,120,40,0.85)' });
-    sign.position.set(30, VILLAGE_Y + 3, -4);
-    g.add(sign);
+    // ciemata zīme pie ceļa (koka dēlis uz diviem stabiem), ar seju pret atbraucējiem no rietumiem
+    {
+      const sg = new THREE.Group(), sx = -40, sz = -7.5;
+      const bd = makeSignBoard('🏡 Mežvidu ciems · 🛒 tirgus', { h: 0.62, back: '🏡 Mežvidu sēta' });
+      bd.obj.position.y = 2.1; sg.add(bd.obj);
+      for (const px of [-bd.w / 2 + 0.25, bd.w / 2 - 0.25]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 2.6, 8), signWood()); p.position.set(px, 1.3, -0.06); sg.add(p); }
+      sg.position.set(sx, this.getHeight(sx, sz), sz); sg.rotation.y = -Math.PI / 2;
+      g.add(sg);
+      this.addCollider(sx, sz, 0.6);
+    }
+    this.buildPlaza(g);
     this.group.add(flattenStatic(g));
+  }
+
+  // bruģēts tirgus laukums ap aku ar akmens apmali
+  buildPlaza(g) {
+    const tex = canvasTexture(256, 256, (c, w, h) => {
+      c.fillStyle = '#6d665c'; c.fillRect(0, 0, w, h);
+      const n = 8, cs = w / n;
+      for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+        const off = (j % 2) * cs / 2, x = i * cs + off, y = j * cs, l = 120 + Math.random() * 60, t = Math.random() * 14;
+        c.fillStyle = `rgb(${l + t | 0},${l * 0.95 + t | 0},${l * 0.86 | 0})`;
+        c.beginPath();
+        const r = 4 + Math.random() * 2;
+        c.roundRect ? c.roundRect(x + 2, y + 2, cs - 4, cs - 4, r) : c.rect(x + 2, y + 2, cs - 4, cs - 4);
+        c.fill();
+        if (off) { c.beginPath(); c.roundRect ? c.roundRect(x - w + 2, y + 2, cs - 4, cs - 4, r) : c.rect(x - w + 2, y + 2, cs - 4, cs - 4); c.fill(); }
+        c.fillStyle = 'rgba(255,255,255,0.08)'; c.fillRect(x + 4, y + 4, cs - 10, 3);
+      }
+      for (let k = 0; k < 2500; k++) { c.fillStyle = `rgba(0,0,0,${Math.random() * 0.12})`; c.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+    });
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(9, 9); tex.anisotropy = 8;
+    const pave = new THREE.Mesh(new THREE.CircleGeometry(PLAZA_R, 64).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 }));
+    pave.position.set(0, VILLAGE_Y + 0.03, 0); pave.receiveShadow = true;
+    g.add(pave);
+    const curb = new THREE.Mesh(new THREE.TorusGeometry(PLAZA_R, 0.16, 5, 96).rotateX(Math.PI / 2), mat('#9a958a', { roughness: 1 }));
+    curb.scale.y = 0.6; curb.position.set(0, VILLAGE_Y + 0.04, 0); curb.receiveShadow = true;
+    g.add(curb);
   }
 
   buildTrees() {
@@ -1275,13 +1340,13 @@ export class World {
       for (let gz = -HALF; gz < HALF; gz += step) {
         const x = gx + (rnd() - 0.5) * step * 0.9, z = gz + (rnd() - 0.5) * step * 0.9;
         const r = Math.hypot(x, z), e = sqDist(x, z);
-        if (e > PLAY_RADIUS + 2 || r < 42) { rnd(); rnd(); continue; } // aiz robežas — kaimiņu zemes līdzenums
+        if (e > PLAY_RADIUS + 2 || r < (this.mode === 'forest' ? 50 : 42)) { rnd(); rnd(); continue; } // aiz robežas — kaimiņu zemes līdzenums
         const h = this.getHeight(x, z);
         if (h < 1.2 || h > 45) { rnd(); rnd(); continue; }
         if (this.roadDist(x, z).d < 6 || inPlace(this, x, z) || (this.mode === 'forest' && Math.hypot(x - CAR_SPOT.x, z - CAR_SPOT.z) < 8)) { rnd(); rnd(); continue; }
         if (this.trackIdx) {
           const t = this.tunnelInfo(x, z);
-          if ((t && t.e < 4 && t.d < 16) || inRaceYard(this.raceF, x, z, 6) || this.trackDist(x, z) < 11) { rnd(); rnd(); continue; }
+          if ((t && t.e < 4 && t.d < 16) || inRaceYard(this.raceF, x, z, 6) || this.trackDist(x, z) < 11 || Math.hypot(x - raceGeo().ring.x, z - raceGeo().ring.z) < RACE_RING.r + 9) { rnd(); rnd(); continue; }
         }
         const f = this.forest(x, z);
         const p = f > 0.12 ? 0.62 : this.mode === 'farm' ? (yardOut(x, z) > 8 ? 0.012 : 0) : f > 0.0 ? 0.08 : 0.02;
@@ -1701,7 +1766,7 @@ export class World {
         dens *= smoothstep(2.0, 3.2, this.roadDist(x, z).d);
         dens *= smoothstep(TRACK_WIDTH / 2 + 0.3, TRACK_WIDTH / 2 + 1.6, this.trackDist(x, z));
         if (this.raceF && inLot(this.raceF, x, z, 0.5)) dens = 0;
-        if (Math.hypot(x, z) < 2.2) dens = 0;
+        if (Math.hypot(x, z) < (this.mode === 'forest' ? PLAZA_R + 0.4 : 2.2)) dens = 0; // bruģētais tirgus laukums
         if (this.mode === 'farm' && inYardBuilding(x, z)) dens = 0; // mājiņā un siltumnīcā zāle neaug
         const f = this.forest(x, z);
         dens *= 1 - Math.min(0.6, Math.max(0, f) * 2.5);
