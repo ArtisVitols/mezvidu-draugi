@@ -1,3 +1,3 @@
 // Spēles versija — palielini katru reizi pirms publicēšanas (sk. CLAUDE.md)
-export const VERSION = '1.35.0';
+export const VERSION = '1.36.0';
 export const BUILD_DATE = '2026-11-19';

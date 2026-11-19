@@ -30,10 +30,10 @@ Datorā: WASD / bultiņas, atstarpe, E, peles vilkšana.
   Ceļi pie sētām taisni, tālāk līkumoti ar bērzu rindām; apkārt pļava un mežs.
   - 🪓 Nocērt kokus, ⛏️ novāc akmeņus, ⛏️ uzar 2,5 m lauciņus (līdz 400), 🌱 sēj, 💧 aplaisti, 🧺 novāc ražu un pārdod tirgū
   - 🌱 **Dārznieka līmenis** (poga 🌱 augšā): ⭐ par ražu, augļiem, uzaršanu un koku/akmeņu novākšanu. Ar katru līmeni — monētas un jaunas sēklas
-    (sākumā burkāni, redīsi, kartupeļi; 12. līmenī lavanda). Dārzs sākas 6 × 4 lauciņos pie vārtiem (iezīmēts ar virvi) un, augot līmenim, to var
+    (sākumā burkāni, redīsi, kartupeļi; 24 līmeņi — 24. līmenī zvaigžņu auglis). Dārzs sākas 6 × 4 lauciņos pie vārtiem (iezīmēts ar virvi) un, augot līmenim, to var
     paplašināt par monētām līdz 20 × 20. Ilgāk augošas kultūras nes daudz vairāk.
-  - 🌾 27 kultūras: redīsi, burkāni, spināti, auzas, salāti, kartupeļi, sīpoli, ķiploki, kvieši, zirņi, tulpes, tomāti, pupas, zemenes, bietes, kāposti, brokoļi, gurķi, kabači, saulgriezes, rabarberi, ķirbji, kukurūza, paprika, melones, arbūzi, lavanda — dārgākās aug ilgāk (līdz 4 stundām), bet nes vairāk
-  - 🌳 Augļu koki (ābele, bumbiere, ķirsis, plūme, aprikoze, persiks): iestādi stādu, tas izaug un tad atkal un atkal dod augļus
+  - 🌾 39 kultūras: redīsi, burkāni, spināti, auzas, salāti, kartupeļi, sīpoli, ķiploki, kvieši, zirņi, tulpes, tomāti, pupas, zemenes, bietes, kāposti, brokoļi, gurķi, kabači, saulgriezes, rabarberi, ķirbji, kukurūza, paprika, melones, arbūzi, lavanda, sparģeļi, baklažāni, rozes, ananāsi, zemesrieksti, čili pipari, magones, vīnogas, zelta burkāni, milzu ķirbji, varavīksnes ziedi, zvaigžņu augļi — dārgākās aug ilgāk (līdz 8 stundām), bet nes vairāk
+  - 🌳 Augļu koki (ābele, bumbiere, ķirsis, plūme, aprikoze, persiks, valrieksts, citronkoks, apelsīnkoks, zelta ābele): iestādi stādu, tas izaug un tad atkal un atkal dod augļus
   - 🤲 Rotājumus savā sētā var pacelt, pārnest un novietot jebkur
   - Blakus lauciņi ar to pašu kultūru saaug vienā vienmērīgā laukā; dažādām kultūrām starp lauciņiem paliek sprauga
   - ⏰ Augi aug pēc pulksteņa — arī tad, kad spēle aizvērta

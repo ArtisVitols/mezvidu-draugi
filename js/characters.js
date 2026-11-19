@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mat, makeBlobShadow, noiseTexture, lerp, canvasTexture } from './util.js?v=1.35.0';
+import { mat, makeBlobShadow, noiseTexture, lerp, canvasTexture } from './util.js?v=1.36.0';
 
 // kažoka/auduma materiāli ar smalku faktūru
 let furTex = null, clothTex = null;
@@ -1617,7 +1617,7 @@ export function buildCrop(crop, stage, color) {
   const big = stage === 2;
   const k = big ? 1 : 0.65;
   switch (crop) {
-    case 'burkans': // plūksnaini lakstiņi
+    case 'zeltaburkans': case 'burkans': // plūksnaini lakstiņi
       for (let i = 0; i < 7; i++) {
         const a = i / 7 * Math.PI * 2, tip = stem(0, 0, Math.cos(a) * 0.1 * k, 0.35 * k, Math.sin(a) * 0.1 * k, 0.006);
         for (let j = 0; j < 4; j++) leaf(tip.x * (0.5 + j * 0.15), tip.y * (0.55 + j * 0.13), tip.z * (0.5 + j * 0.15), -a + Math.PI / 2 + (j % 2 ? 0.8 : -0.8), -0.8, 0.45 * k, '#3f8a2a');
@@ -1843,7 +1843,113 @@ export function buildCrop(crop, stage, color) {
       }
       if (big) { const m = new THREE.Mesh(S(0.2, 20, 14), new THREE.MeshStandardMaterial({ color, roughness: 0.8, map: cachedTex('stone', 32) })); m.scale.set(1.15, 0.9, 1); m.position.set(0, 0.17, 0.04); g.add(m); }
       break;
-    case 'kirbis': { // lielas apaļas lapas uz stīgām, rievots ķirbis
+    case 'spargelis': // zaļi dzinumi ar violetiem galiņiem; jauns — plūksnaini zariņi
+      for (let i = 0; i < (big ? 7 : 4); i++) {
+        const a = i * 2.4, r0 = 0.03 + (i % 3) * 0.03, h = (0.22 + (i % 3) * 0.06) * k;
+        const sp = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.012, h, 6), mat(color, { roughness: 0.6 })); sp.position.set(Math.cos(a) * r0, h / 2, Math.sin(a) * r0); g.add(sp);
+        const tip = new THREE.Mesh(new THREE.ConeGeometry(0.014, 0.04, 6), mat('#7a4a8a', { roughness: 0.6 })); tip.position.set(Math.cos(a) * r0, h + 0.015, Math.sin(a) * r0); g.add(tip);
+      }
+      if (!big) for (let i = 0; i < 4; i++) leaf(0, 0.12, 0, i * 1.6, -0.3, 0.5, '#9ad070');
+      break;
+    case 'baklazans': // krūms ar platām lapām un tumši violetiem baklažāniem
+      for (let i = 0; i < 6; i++) {
+        const a = i / 6 * Math.PI * 2, tip = stem(0, 0, Math.cos(a) * 0.14 * k, 0.42 * k, Math.sin(a) * 0.14 * k, 0.011);
+        leaf(tip.x, tip.y, tip.z, -a + Math.PI / 2, -0.5, 1.1 * k, '#4a7a3a', OAK);
+      }
+      if (big) for (let i = 0; i < 3; i++) {
+        const e = new THREE.Mesh(new THREE.CapsuleGeometry(0.045, 0.12, 4, 10), mat(color, { roughness: 0.18 }));
+        e.position.set(Math.cos(i * 2.1) * 0.12, 0.17, Math.sin(i * 2.1) * 0.12); e.rotation.z = Math.cos(i * 2.1) * 0.3; g.add(e);
+        const cx = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.04, 6), stemM); cx.position.set(e.position.x, 0.26, e.position.z); g.add(cx);
+      }
+      break;
+    case 'roze': { // krūmiņš ar robainām lapām un sarkaniem ziediem
+      for (let i = 0; i < 5; i++) {
+        const a = i / 5 * Math.PI * 2, tip = stem(0, 0, Math.cos(a) * 0.1 * k, 0.5 * k, Math.sin(a) * 0.1 * k, 0.008);
+        for (let j = 0; j < 3; j++) leaf(tip.x * (0.4 + j * 0.25), tip.y * (0.4 + j * 0.25), tip.z * (0.4 + j * 0.25), -a + j * 1.7, -0.5, 0.55 * k, '#2f6a26', OAK);
+        if (big) {
+          const fl = new THREE.Group(); fl.position.copy(tip); g.add(fl);
+          for (let j = 0; j < 7; j++) { const pt = new THREE.Mesh(S(0.03, 8, 6), mat(j < 3 ? '#a00a24' : color, { roughness: 0.4 })); const r0 = j < 3 ? 0.008 : 0.025, aa = j * 2.2; pt.position.set(Math.cos(aa) * r0, j < 3 ? 0.02 : 0.005, Math.sin(aa) * r0); pt.scale.set(0.9, j < 3 ? 1.1 : 0.7, 0.9); fl.add(pt); }
+        }
+      }
+      break;
+    }
+    case 'ananass': { // dzeloņainu lapu rozete; nobriedis — ananāss ar zaļu cekulu
+      const bladeG = (h) => { const b = new THREE.PlaneGeometry(0.05, h, 1, 3); b.translate(0, h / 2, 0); const p = b.attributes.position; for (let i = 0; i < p.count; i++) { const y = p.getY(i); p.setX(i, p.getX(i) * (1 - y / h)); p.setZ(i, (y / h) * (y / h) * 0.18); } return b; };
+      for (let i = 0; i < 12; i++) { const b = new THREE.Mesh(bladeG((0.4 + (i % 3) * 0.08) * k), leafM(i % 2 ? '#4a7a4a' : '#5a8a5a')); b.rotation.y = i * 2.4; g.add(b); }
+      if (big) {
+        const f = new THREE.Mesh(S(0.1, 14, 12), new THREE.MeshStandardMaterial({ color, roughness: 0.75, map: cachedTex('stone', 32) })); f.scale.set(1, 1.45, 1); f.position.y = 0.34; g.add(f);
+        for (let i = 0; i < 8; i++) { const b = new THREE.Mesh(bladeG(0.14), leafM('#3f7a3a')); b.position.y = 0.46; b.rotation.y = i * 2.4; g.add(b); }
+      }
+      break;
+    }
+    case 'zemesrieksti': // zems kuplis ar sīkām pāra lapiņām un dzelteniem ziediņiem; rieksti zemē
+      for (let i = 0; i < 8; i++) {
+        const a = i / 8 * Math.PI * 2, tip = stem(0, 0, Math.cos(a) * 0.15 * k, 0.16 * k, Math.sin(a) * 0.15 * k, 0.006);
+        for (const s2 of [-1, 1]) leaf(tip.x, tip.y, tip.z, -a + s2 * 0.6, -1.0, 0.4 * k, '#4f9a3a');
+      }
+      if (big) {
+        for (let i = 0; i < 4; i++) { const f = new THREE.Mesh(S(0.016, 6, 5), mat('#f8d020')); f.position.set(Math.cos(i * 1.6) * 0.1, 0.18, Math.sin(i * 1.6) * 0.1); g.add(f); }
+        for (let i = 0; i < 3; i++) { const n = new THREE.Mesh(new THREE.CapsuleGeometry(0.02, 0.04, 3, 6), mat(color, { roughness: 0.95 })); n.rotation.set(Math.PI / 2, 0, i * 2); n.position.set(Math.cos(i * 2 + 0.5) * 0.16, 0.02, Math.sin(i * 2 + 0.5) * 0.16); g.add(n); }
+      }
+      break;
+    case 'cili': // krūmiņš ar sīkām lapām un sarkaniem, smailiem pipariem
+      for (let i = 0; i < 6; i++) {
+        const a = i / 6 * Math.PI * 2, tip = stem(0, 0, Math.cos(a) * 0.1 * k, 0.36 * k, Math.sin(a) * 0.1 * k, 0.008);
+        for (let j = 0; j < 2; j++) leaf(tip.x * (0.6 + j * 0.4), tip.y * (0.6 + j * 0.4), tip.z * (0.6 + j * 0.4), -a + j * 1.4, -0.5, 0.5 * k, '#3a7a28');
+      }
+      if (big) for (let i = 0; i < 8; i++) {
+        const a = i * 2.3, c = new THREE.Mesh(new THREE.ConeGeometry(0.014, 0.08, 7), mat(i % 3 ? color : '#f06a10', { roughness: 0.25 }));
+        c.rotation.x = Math.PI; c.position.set(Math.cos(a) * 0.1, 0.18 + (i % 3) * 0.06, Math.sin(a) * 0.1); g.add(c);
+      }
+      break;
+    case 'magone': // tievi kāti ar sarkaniem kausveida ziediem un melnu vidu
+      for (let i = 0; i < 4; i++) {
+        const a = i * 1.7, x = Math.cos(a) * 0.05, z = Math.sin(a) * 0.05, h = (0.42 + (i % 2) * 0.1) * k;
+        stem(0, 0, x, h, z, 0.005);
+        leaf(0, 0.02, 0, a, -0.6, 0.6 * k, '#6a9a5a', OAK);
+        if (big) {
+          for (let j = 0; j < 4; j++) { const pt = new THREE.Mesh(new THREE.CircleGeometry(0.04, 8), leafM(color)); const aa = j / 4 * Math.PI * 2; pt.position.set(x + Math.cos(aa) * 0.025, h + 0.02, z + Math.sin(aa) * 0.025); pt.rotation.set(-0.5, -aa + Math.PI / 2, 0, 'YXZ'); g.add(pt); }
+          const c = new THREE.Mesh(S(0.012, 6, 5), mat('#111')); c.position.set(x, h + 0.02, z); g.add(c);
+        } else { const bud = new THREE.Mesh(S(0.02, 6, 5), mat('#7aa060')); bud.position.set(x, h, z); bud.scale.y = 1.4; g.add(bud); }
+      }
+      break;
+    case 'vinogas': { // koka režģis, vīnstīgas ar lapām un ķekariem
+      const wood = mat('#8a6a42', { roughness: 0.9 });
+      for (const sx of [-0.35, 0.35]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.85, 0.035), wood); p.position.set(sx, 0.42, 0); g.add(p); }
+      for (const y of [0.4, 0.75]) { const w = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.7, 4), mat('#aaa')); w.rotation.z = Math.PI / 2; w.position.y = y; g.add(w); }
+      for (let i = 0; i < (big ? 9 : 5); i++) { const x = -0.3 + (i % 5) * 0.15, y = (i < 5 ? 0.42 : 0.77) * (big ? 1 : 0.9); leaf(x, y, 0.01, (i % 2 ? 0.3 : -0.3), -0.2, 0.75, i % 2 ? '#4a8a32' : '#5a9a3a', OAK); }
+      if (big) for (let c = 0; c < 4; c++) {
+        const cx = -0.24 + c * 0.16, cy = c % 2 ? 0.62 : 0.3;
+        for (let j = 0; j < 10; j++) { const b = new THREE.Mesh(S(0.016, 6, 5), mat(color, { roughness: 0.25 })); const row = Math.floor(j / 3); b.position.set(cx + ((j % 3) - 1) * 0.022 * (1 - row * 0.2), cy - row * 0.026, 0.03); g.add(b); }
+      }
+      break;
+    }
+    case 'varaviksne': { // pasakains zieds — ziedlapiņas visās varavīksnes krāsās
+      const cols = ['#ff3040', '#ff9020', '#ffe020', '#40c040', '#3080ff', '#8040e0'];
+      const hh = big ? 0.5 : 0.3;
+      stem(0, 0, 0, hh, 0, 0.01);
+      for (const s2 of [-1, 1]) leaf(0, hh * 0.4, 0, s2 * Math.PI / 2, -0.5, 1.0 * k, '#4a9a3a');
+      if (big) {
+        const head = new THREE.Group(); head.position.y = hh; head.rotation.x = 0.4; g.add(head);
+        cols.forEach((c, j) => { const a = j / 6 * Math.PI * 2; const pt = new THREE.Mesh(S(0.05, 10, 8), mat(c, { roughness: 0.4 })); pt.scale.set(0.5, 1, 0.2); pt.position.set(Math.cos(a) * 0.06, Math.sin(a) * 0.06, 0); pt.rotation.z = a - Math.PI / 2; head.add(pt); });
+        const ctr = new THREE.Mesh(S(0.025, 8, 6), new THREE.MeshStandardMaterial({ color: '#fff', emissive: '#ffe0f0', emissiveIntensity: 0.6 })); head.add(ctr);
+      }
+      break;
+    }
+    case 'zvaigzne': { // maģisks krūmiņš ar mirdzošiem zvaigžņu augļiem
+      for (let i = 0; i < 6; i++) {
+        const a = i / 6 * Math.PI * 2, tip = stem(0, 0, Math.cos(a) * 0.14 * k, 0.45 * k, Math.sin(a) * 0.14 * k, 0.01);
+        for (let j = 0; j < 2; j++) leaf(tip.x * (0.6 + j * 0.4), tip.y * (0.6 + j * 0.4), tip.z * (0.6 + j * 0.4), -a + j * 1.4, -0.5, 0.75 * k, '#2f7a5a');
+      }
+      if (big) {
+        const sh = new THREE.Shape(); for (let j = 0; j < 10; j++) { const r0 = j % 2 ? 0.025 : 0.06, a = j / 10 * Math.PI * 2 + Math.PI / 2; j ? sh.lineTo(Math.cos(a) * r0, Math.sin(a) * r0) : sh.moveTo(Math.cos(a) * r0, Math.sin(a) * r0); }
+        const geo = new THREE.ExtrudeGeometry(sh, { depth: 0.025, bevelEnabled: false }); geo.center();
+        const sm = new THREE.MeshStandardMaterial({ color, emissive: '#ffb000', emissiveIntensity: 0.7, roughness: 0.3 });
+        for (let i = 0; i < 4; i++) { const st = new THREE.Mesh(geo, sm); st.position.set(Math.cos(i * 1.6) * 0.13, 0.3 + (i % 2) * 0.1, Math.sin(i * 1.6) * 0.13); st.rotation.y = -i * 1.6; g.add(st); }
+      }
+      break;
+    }
+    case 'milzkirbis': case 'kirbis': { // lielas apaļas lapas uz stīgām, rievots ķirbis
       for (let i = 0; i < 5; i++) {
         const a = i / 5 * Math.PI * 2 + 0.3, tip = stem(0, 0, Math.cos(a) * 0.3 * k, 0.18 * k, Math.sin(a) * 0.3 * k, 0.012);
         const l = new THREE.Mesh(new THREE.CircleGeometry(0.13 * k, 10), leafM('#3d7a28')); l.position.copy(tip); l.rotation.set(-1.25, -a, 0, 'YXZ'); g.add(l);
@@ -1862,6 +1968,11 @@ export function buildCrop(crop, stage, color) {
       }
       break;
     }
+  }
+  if (crop === 'milzkirbis') g.scale.setScalar(big ? 1.8 : 1.3);
+  if (crop === 'zeltaburkans' && big) for (let i = 0; i < 5; i++) { // zelta dzirksteles
+    const sp = new THREE.Mesh(new THREE.OctahedronGeometry(0.018), new THREE.MeshStandardMaterial({ color: '#fff4a0', emissive: '#ffd040', emissiveIntensity: 1.2 }));
+    sp.position.set(Math.cos(i * 1.3) * 0.12, 0.2 + i * 0.05, Math.sin(i * 1.3) * 0.12); g.add(sp);
   }
   g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   optimizeRig(g);

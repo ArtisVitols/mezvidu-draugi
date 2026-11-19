@@ -1,5 +1,11 @@
 # Izmaiņu žurnāls
 
+## 1.36.0 — 2026-11-19
+- 🌱 Dārznieka līmeņi divreiz vairāk: 24 (bija 12). Katrā jaunajā līmenī jauna kultūra ar savu 3D augu un attēlu:
+  13. sparģelis, 14. baklažāns, 15. roze, 16. ananāss, 17. zemesrieksti, 18. čili pipari, 19. magone, 20. vīnogas (uz režģa),
+  21. ✨ zelta burkāns (mirdz), 22. 🎃 milzu ķirbis, 23. 🌈 varavīksnes zieds, 24. ⭐ zvaigžņu auglis.
+- 🌳 4 jauni augļu koki: valrieksts (15.), citronkoks (17.), apelsīnkoks (19.), zelta ābele (22.) — ar saviem augļiem tirgū.
+
 ## 1.35.0 — 2026-11-19
 - 🏷️ Vārdi virs spēlētājiem, robotiem un mājdzīvniekiem — mazi, vienkārši uzraksti (balts teksts ar tumšu apmali, bez burbuļa);
   arī lidojošie "+🪙" uzraksti mazāki.

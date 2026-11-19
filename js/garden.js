@@ -5,15 +5,15 @@
 // Saglabājumā: save.gd = { xp, land } (land — LAND indekss).
 // Garden — Game papildinājums (mixin).
 import * as THREE from 'three';
-import { CROPS, TREES } from './data.js?v=1.35.0';
-import { TILE, GARDEN_T, rotPlot } from './world.js?v=1.35.0';
-import { mat } from './util.js?v=1.35.0';
-import { $, toast, sfx, showPanel, refreshPanel, el, itemRow } from './ui.js?v=1.35.0';
-import { iconEl } from './icons.js?v=1.35.0';
-import { FARM } from './zones.js?v=1.35.0';
+import { CROPS, TREES } from './data.js?v=1.36.0';
+import { TILE, GARDEN_T, rotPlot } from './world.js?v=1.36.0';
+import { mat } from './util.js?v=1.36.0';
+import { $, toast, sfx, showPanel, refreshPanel, el, itemRow } from './ui.js?v=1.36.0';
+import { iconEl } from './icons.js?v=1.36.0';
+import { FARM } from './zones.js?v=1.36.0';
 
 // cik XP vajag, lai sasniegtu līmeni n (1. līmenis — 0)
-export const MAX_LVL = 12;
+export const MAX_LVL = 24;  // 1.36.0: bija 12
 export const xpFor = (n) => (n <= 1 ? 0 : Math.round(20 * Math.pow(n - 1, 1.6)));
 export function levelOf(xp) { let n = 1; while (n < MAX_LVL && xp >= xpFor(n + 1)) n++; return n; }
 
@@ -31,6 +31,18 @@ export const UNLOCK = {
   paprika: 10, kirsis: 10, melone: 10,
   arbuzs: 11, aprikoze: 11,
   lavanda: 12, persiks: 12,
+  spargelis: 13,
+  baklazans: 14,
+  roze: 15, valrieksts: 15,
+  ananass: 16,
+  zemesrieksti: 17, citronkoks: 17,
+  cili: 18,
+  magone: 19, apelsinkoks: 19,
+  vinogas: 20,
+  zeltaburkans: 21,
+  milzkirbis: 22, zeltabele: 22,
+  varaviksne: 23,
+  zvaigzne: 24,
 };
 // dārza izmēri (platums × dziļums lauciņos), vajadzīgais līmenis un cena
 export const LAND = [

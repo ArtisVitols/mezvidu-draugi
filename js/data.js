@@ -51,6 +51,19 @@ export const CROPS = {
   kabacis:   { name: 'Kabacis',    icon: '🥒', seedPrice: 75,  sell: 34,  yield: 7, grow: 3000,  sp: 0.833, color: '#e8c83a' },
   rabarbers: { name: 'Rabarbers',  icon: '🌿', seedPrice: 100, sell: 50,  yield: 6, grow: 4500,  sp: 1.25,  color: '#c8304a' },
   melone:    { name: 'Melone',     icon: '🍈', seedPrice: 170, sell: 250, yield: 2, grow: 9000,  sp: 1.25,  color: '#e8d070' },
+  // 1.36.0 — 13.–24. līmeņa kultūras (tikai beigās!)
+  spargelis:   { name: 'Sparģelis',      icon: '🌱', seedPrice: 260, sell: 140, yield: 7,  grow: 12600, sp: 0.4167, color: '#8ab85a' },
+  baklazans:   { name: 'Baklažāns',      icon: '🍆', seedPrice: 280, sell: 165, yield: 6,  grow: 13500, sp: 0.833, color: '#4a2060' },
+  roze:        { name: 'Roze',           icon: '🌹', seedPrice: 300, sell: 120, yield: 9,  grow: 14400, sp: 0.625, color: '#d81a3a' },
+  ananass:     { name: 'Ananāss',        icon: '🍍', seedPrice: 340, sell: 450, yield: 2,  grow: 16200, sp: 1.25,  color: '#e0a020' },
+  zemesrieksti:{ name: 'Zemesrieksti',   icon: '🥜', seedPrice: 360, sell: 75,  yield: 14, grow: 16200, sp: 0.5,   color: '#c8945a' },
+  cili:        { name: 'Čili pipari',    icon: '🌶️', seedPrice: 380, sell: 95,  yield: 12, grow: 18000, sp: 0.625, color: '#e01a10' },
+  magone:      { name: 'Magone',         icon: '🌺', seedPrice: 400, sell: 115, yield: 11, grow: 18000, sp: 0.4167, color: '#e8281e' },
+  vinogas:     { name: 'Vīnogas',        icon: '🍇', seedPrice: 430, sell: 80,  yield: 18, grow: 19800, sp: 0.833, color: '#6a2a8a' },
+  zeltaburkans:{ name: 'Zelta burkāns',  icon: '✨', seedPrice: 480, sell: 320, yield: 5,  grow: 21600, sp: 0.5,   color: '#ffc820' },
+  milzkirbis:  { name: 'Milzu ķirbis',   icon: '🎃', seedPrice: 520, sell: 1400, yield: 1, grow: 25200, sp: 2.5,   color: '#f07010' },
+  varaviksne:  { name: 'Varavīksnes zieds', icon: '🌈', seedPrice: 560, sell: 210, yield: 10, grow: 25200, sp: 0.5, color: '#ff50b0' },
+  zvaigzne:    { name: 'Zvaigžņu auglis', icon: '⭐', seedPrice: 650, sell: 480, yield: 6,  grow: 28800, sp: 0.833, color: '#ffe040' },
 };
 
 // ---------- Augļu koki (stāda no stāda uz uzarta lauciņa; izaug un tad ik pa laikam dod augļus) ----------
@@ -63,6 +76,11 @@ export const TREES = {
   // 1.35.0 (tikai beigās!)
   aprikoze: { name: 'Aprikoze', price: 130, grow: 10800, every: 2400, yield: 9,  fruit: 'aprikozes', leaf: '#4f8a34', fcol: '#f2a23a' },
   persiks:  { name: 'Persiks',  price: 150, grow: 12600, every: 2700, yield: 9,  fruit: 'persiki',   leaf: '#3f7a2a', fcol: '#f28a6a' },
+  // 1.36.0
+  valrieksts: { name: 'Valrieksts',   price: 180, grow: 14400, every: 3000, yield: 14, fruit: 'rieksti',   leaf: '#3a6a2a', fcol: '#9a7a4a' },
+  citronkoks: { name: 'Citronkoks',   price: 210, grow: 16200, every: 3000, yield: 10, fruit: 'citroni',   leaf: '#2f6a26', fcol: '#f6e030' },
+  apelsinkoks:{ name: 'Apelsīnkoks',  price: 240, grow: 18000, every: 3300, yield: 10, fruit: 'apelsini',  leaf: '#2f6a26', fcol: '#f68a10' },
+  zeltabele:  { name: 'Zelta ābele',  price: 400, grow: 21600, every: 3600, yield: 8,  fruit: 'zeltaaboli', leaf: '#5a9a2a', fcol: '#ffd020' },
 };
 export const FRUITS = {
   abols:     { name: 'Āboli',     sell: 6 },
@@ -71,6 +89,10 @@ export const FRUITS = {
   plumes:    { name: 'Plūmes',    sell: 6 },
   aprikozes: { name: 'Aprikozes', sell: 8 },
   persiki:   { name: 'Persiki',   sell: 9 },
+  rieksti:   { name: 'Rieksti',   sell: 7 },
+  citroni:   { name: 'Citroni',   sell: 11 },
+  apelsini:  { name: 'Apelsīni',  sell: 12 },
+  zeltaaboli:{ name: 'Zelta āboli', sell: 30 },
 };
 
 export const MUSHROOMS = {
