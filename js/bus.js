@@ -4,13 +4,13 @@
 // bez tīkla ziņām. Ātrums atkarīgs no līkuma (aplī lēnāk). Iekāpt un izkāpt var tikai pieturās, brauciens maksā BUS_PRICE. Vada kaķis Kārlis.
 // Maršruts — globālās koordinātēs (zemes vietējās + zoneOffset); autobuss redzams tikai tajā zemē, kurā tas ir.
 import * as THREE from 'three';
-import { mat, canvasTexture } from './util.js?v=1.30.0';
-import { buildAnimal, flattenStatic } from './characters.js?v=1.30.0';
-import { $, toast, sfx } from './ui.js?v=1.30.0';
-import { roadNS, roadEW, FOREST_ROAD, FOREST_RING, raceGeo } from './world.js?v=1.30.0';
-import { WINTER_ROAD, WINTER_RING } from './winter.js?v=1.30.0';
-import { zoneOffset, ZONE_HALF, FARM, FOREST, RACE, smoothRoad } from './zones.js?v=1.30.0';
-import { busStopSvg } from './icons.js?v=1.30.0';
+import { mat, canvasTexture } from './util.js?v=1.31.0';
+import { buildAnimal, flattenStatic } from './characters.js?v=1.31.0';
+import { $, toast, sfx } from './ui.js?v=1.31.0';
+import { roadNS, roadEW, FOREST_ROAD, FOREST_RING, raceGeo } from './world.js?v=1.31.0';
+import { WINTER_ROAD, WINTER_RING } from './winter.js?v=1.31.0';
+import { zoneOffset, ZONE_HALF, FARM, FOREST, RACE, smoothRoad } from './zones.js?v=1.31.0';
+import { busStopSvg } from './icons.js?v=1.31.0';
 
 export const BUS_PRICE = 2;
 export const BUS_CODE = 6; // pos p[5]: pasažieris autobusā (p[9] — sēdvieta)
@@ -527,7 +527,7 @@ export const Bus = {
     this.avatar.shadow.visible = false;
     me.state = 'sit';
     $('btn-jump').classList.add('hidden');
-    sfx('coin');
+    sfx('coin', { vol: 0.6 }); sfx('st_stone', { vol: 0.6, delay: 0.15 });
     this.busStopShown = B.st.stop;
     const q = BUS_STOPS[(B.st.stop + 1) % BUS_STOPS.length];
     toast(`🐱 Kaķis Kārlis: „Laipni lūdzam! ${BUS_PRICE}🪙, paldies! Nākamā pietura — ${q.icon} ${q.name}.” Izkāpt var tikai pieturā 🚏`, 'good', 5000);

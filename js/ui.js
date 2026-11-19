@@ -1,6 +1,7 @@
 // HUD palīgfunkcijas, paneļi un vienkāršas skaņas
 const $ = (id) => document.getElementById(id);
 export { $ };
+import { initSound, play, audioCtx } from './audio.js?v=1.31.0';
 
 export function toast(text, kind = '', ms = 2600) {
   const box = $('toasts');
@@ -19,6 +20,8 @@ export function showPanel(title, build, onClose = null) {
   const body = $('panel-body');
   body.innerHTML = '';
   build(body);
+  if ($('panel').classList.contains('hidden')) play('ui_open', { vol: 0.45, jit: 0 });
+  else play('book', { vol: 0.35 });
   $('panel').classList.remove('hidden');
   panelOnClose = onClose;
 }
@@ -30,6 +33,7 @@ export function refreshPanel(build) {
   body.scrollTop = st;
 }
 export function closePanel() {
+  if (!$('panel').classList.contains('hidden')) play('ui_close', { vol: 0.4, jit: 0 });
   $('panel').classList.add('hidden');
   if (panelOnClose) { const f = panelOnClose; panelOnClose = null; f(); }
 }
@@ -61,11 +65,14 @@ export function itemRow(icon, name, sub, buttons = [], extraClass = '') {
 // ---------- skaņas ----------
 let actx = null;
 export function initAudio() {
-  try {
-    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
-    if (actx.state === 'suspended') actx.resume();
-  } catch (e) { /* */ }
+  actx = initSound();
 }
+// vecie nosaukumi → CC0 paraugi (audio.js); [paraugs, skaļums, ātrums]
+const MAP = {
+  pick: ['pop', 0.7], coin: ['coin', 0.8], star: ['j_star', 0.8], bad: ['ui_error', 0.7], jump: ['swish', 0.35, 1.2],
+  plant: ['leaves', 0.8], beep: ['ui_select', 0.7], go: ['go', 0.9], boost: ['whoosh', 0.8], pet: ['pluck', 0.8],
+  throw: ['swish', 0.6], splat: ['squish', 0.8], win: ['j_win', 0.75],
+};
 function tone(freq, dur, type = 'sine', vol = 0.15, delay = 0, slide = 0) {
   if (!actx) return;
   const t = actx.currentTime + delay;
@@ -77,7 +84,11 @@ function tone(freq, dur, type = 'sine', vol = 0.15, delay = 0, slide = 0) {
   o.connect(g); g.connect(actx.destination);
   o.start(t); o.stop(t + dur + 0.02);
 }
-export function sfx(name) {
+// sfx(nosaukums, opts) — paraugs, ja ielādēts; citādi sintezēts tonis (tikai vecajiem nosaukumiem)
+export function sfx(name, opts) {
+  const m = MAP[name];
+  if (m ? play(m[0], { vol: m[1], rate: m[2] || 1, ...(opts || {}) }) : play(name, opts || {})) return;
+  if (actx) actx = audioCtx();
   switch (name) {
     case 'pick': tone(660, 0.1, 'triangle'); tone(990, 0.12, 'triangle', 0.12, 0.08); break;
     case 'coin': tone(988, 0.08, 'square', 0.08); tone(1319, 0.2, 'square', 0.08, 0.07); break;
@@ -100,3 +111,11 @@ export function fmtTime(ms) {
   const m = Math.floor(s / 60);
   return (m > 0 ? m + ':' : '') + (s % 60).toFixed(1).padStart(m > 0 ? 4 : 1, '0');
 }
+
+// klusa klikšķa skaņa visām pogām (izņemot braukšanas / lēciena / darbības pogas, kurām savas skaņas)
+const NO_CLICK = new Set(['btn-jump', 'btn-gas', 'btn-brake', 'btn-left', 'btn-right', 'btn-action']);
+document.addEventListener('pointerdown', (e) => {
+  const b = e.target.closest && e.target.closest('button, .swatches button, select, summary');
+  if (!b || NO_CLICK.has(b.id) || b.disabled) return;
+  play(b.classList.contains('mtile') ? 'ui_select' : 'ui_click', { vol: 0.35, gap: 50 });
+}, true);

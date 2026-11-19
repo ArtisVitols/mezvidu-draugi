@@ -4,15 +4,15 @@
 // dažādām kultūrām starp lauciņiem paliek neliela sprauga. Augšana iet pēc pulksteņa (arī tad, kad spēle aizvērta).
 // Farm — Game papildinājums (mixin).
 import * as THREE from 'three';
-import { World, TILE, plotOf, tileToSlot, tileToCanon, gardenTile, gateSpots, rotPlot, rotPlotY, yardPart, YARD } from './world.js?v=1.30.0';
-import { buildCrop, flattenStatic } from './characters.js?v=1.30.0';
-import { buildFruitTree, buildDecor } from './props.js?v=1.30.0';
-import { WORLD_SEED, CROPS, TREES, FRUITS, DECOR } from './data.js?v=1.30.0';
-import { InstanceField } from './instancing.js?v=1.30.0';
-import { canvasTexture, makeSignBoard } from './util.js?v=1.30.0';
-import { $, toast, sfx, fmtTime } from './ui.js?v=1.30.0';
-import { inLand, cropXp, fruitXp, XP } from './garden.js?v=1.30.0';
-import { ZONES, FARM, freeGpu } from './zones.js?v=1.30.0';
+import { World, TILE, plotOf, tileToSlot, tileToCanon, gardenTile, gateSpots, rotPlot, rotPlotY, yardPart, YARD } from './world.js?v=1.31.0';
+import { buildCrop, flattenStatic } from './characters.js?v=1.31.0';
+import { buildFruitTree, buildDecor } from './props.js?v=1.31.0';
+import { WORLD_SEED, CROPS, TREES, FRUITS, DECOR } from './data.js?v=1.31.0';
+import { InstanceField } from './instancing.js?v=1.31.0';
+import { canvasTexture, makeSignBoard } from './util.js?v=1.31.0';
+import { $, toast, sfx, fmtTime } from './ui.js?v=1.31.0';
+import { inLand, cropXp, fruitXp, XP } from './garden.js?v=1.31.0';
+import { ZONES, FARM, freeGpu } from './zones.js?v=1.31.0';
 
 const CROP_IDS = Object.keys(CROPS);
 const TREE_IDS = Object.keys(TREES); // skatā koks ir kods 100 + nr.
@@ -486,12 +486,14 @@ export const Farm = {
     this.objHits[o.id] = n;
     this.me.petT = 0.6;
     this.me.heading = Math.atan2(o.x - this.me.pos.x, o.z - this.me.pos.z);
-    sfx('pick');
+    sfx(o.type === 'tree' ? 'chop' : o.type === 'rock' ? 'hammer' : 'leaves', { at: o, vol: 0.9 });
     if (n < HITS[o.type]) { this.spawnFloat(o.type === 'tree' ? '🪓' : '⛏️', new THREE.Vector3(o.x, o.y + 1, o.z)); return; }
     const f = this.save.farm;
     if (!f.cl.includes(o.id % 100)) f.cl.push(o.id % 100);
     const coins = o.type === 'tree' ? 3 : o.type === 'rock' ? 2 : 1;
     this.addCoins(coins, true);
+    if (o.type === 'tree') sfx('tree_fall', { at: o, vol: 0.8 }); else sfx('pop', { vol: 0.6 });
+    sfx('coin', { vol: 0.5, delay: 0.25 });
     this.gardenXp(XP.clear);
     this.spawnFloat(o.type === 'tree' ? '🪵' : o.type === 'rock' ? '🪨' : '🌿', new THREE.Vector3(o.x, o.y + 1, o.z));
     toast(`${o.type === 'tree' ? '🪵 Koks nocirsts' : o.type === 'rock' ? '🪨 Akmens novākts' : '🌿 Krūms izcirsts'}! +${coins}🪙`);
@@ -506,7 +508,7 @@ export const Farm = {
     if (Object.keys(f.t).length >= MAX_TILES) { toast(`Uzarti jau ${MAX_TILES} lauciņi — vairāk nevar apstrādāt 🙂`); return; }
     f.t[this.ckey(tl.key)] = {};
     this.me.petT = 0.6;
-    sfx('plant');
+    sfx('dig', { vol: 0.9 });
     this.spawnFloat('⛏️', new THREE.Vector3(tl.cx, this.me.pos.y, tl.cz));
     this.stat('plowed');
     this.gardenXp(XP.plow);
@@ -519,7 +521,7 @@ export const Farm = {
     this.save.inv[crop + '_seed']--;
     v.c = crop; v.at = Math.round(this.now() / 1000); v.w = false;
     this.me.petT = 0.6;
-    sfx('plant');
+    sfx('leaves', { vol: 0.7 });
     this.stat('planted');
     const def = CROPS[crop];
     toast(`🌱 Iesēji: ${def.icon} ${def.name} (aug ${fmtLeft(def.grow)}). Aplaisti — augs ātrāk!`);
@@ -534,7 +536,7 @@ export const Farm = {
     v.w = true;
     v.at = Math.round(this.now() / 1000 - p * (v.tr ? TREES[v.tr] : CROPS[v.c]).grow * 0.6);
     this.me.petT = 0.6;
-    sfx('plant');
+    sfx('water', { vol: 0.6 });
     this.spawnFloat('💧', new THREE.Vector3(tl.cx, this.me.pos.y, tl.cz));
     this.farmChanged();
   },
@@ -547,7 +549,7 @@ export const Farm = {
     this.save.farm.t[this.ckey(tl.key)] = {}; // zeme paliek uzarta — var sēt vēlreiz
     this.stat('harvested');
     this.me.petT = 0.6;
-    sfx('pick');
+    sfx('pluck', { vol: 0.8 }); sfx('leaves', { vol: 0.5 });
     this.spawnFloat(def.icon, this.me.pos);
     const xp = cropXp(v.c);
     this.gardenXp(xp, new THREE.Vector3(tl.cx, this.me.pos.y + 0.6, tl.cz));
@@ -561,7 +563,7 @@ export const Farm = {
     this.save.inv[tr + '_sap']--;
     v.tr = tr; v.at = Math.round(this.now() / 1000); v.w = false; v.pk = 0;
     this.me.petT = 0.8;
-    sfx('plant');
+    sfx('dig', { vol: 0.9 }); sfx('leaves', { vol: 0.5 });
     this.stat('planted');
     const d = TREES[tr];
     toast(`🌳 Iestādīji: ${d.name}! Izaugs pēc ${fmtLeft(d.grow)} un tad ik pa ${fmtLeft(d.every)} dos ${FRUITS[d.fruit].name.toLowerCase()}. Aplaisti!`, 'good', 5000);
@@ -577,7 +579,7 @@ export const Farm = {
     this.addItem(d.fruit, d.yield);
     this.stat('fruits', d.yield);
     this.me.petT = 0.8;
-    sfx('pick');
+    sfx('pluck', { vol: 0.8 });
     this.spawnFloat('🧺', this.me.pos);
     this.gardenXp(fruitXp(v.tr), new THREE.Vector3(tl.cx, this.me.pos.y + 0.6, tl.cz));
     toast(`🧺 Salasīji: ${FRUITS[d.fruit].name} ×${d.yield}! Nākamie pēc ${fmtLeft(d.every)}.`, 'good');
@@ -595,7 +597,7 @@ export const Farm = {
   startCarry(k) {
     this.me.carry = { k };
     this.avatar.setCarry(buildDecor(k));
-    sfx('pick');
+    sfx('leather', { vol: 0.7 });
     this.sendProfile();
     this.timers.action = 0;
   },
@@ -628,7 +630,7 @@ export const Farm = {
     this.save.decor.push({ k: c.k, x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100, r: Math.round(r * 100) / 100 });
     this.me.carry = null;
     this.avatar.setCarry(null);
-    sfx('plant');
+    sfx('leather', { vol: 0.8 });
     this.spawnFloat('✨', new THREE.Vector3(sp.x, this.me.pos.y, sp.z));
     this.sendProfile();
     this.persist();

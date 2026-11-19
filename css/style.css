@@ -410,3 +410,17 @@ body.driving #joy-base { display: none !important; }
 .join-row .btn { flex: 1; }
 #btn-join { background: linear-gradient(160deg, #4aa6e0, #2c78c0); color: #fff; box-shadow: 0 4px 0 #225f99, 0 8px 18px rgba(44,120,192,.3); }
 .version { color: #8a8470; }
+
+/* liela karte 16:9 (1.31.0) */
+.panel-box.map { width: auto; max-width: 98vw; }
+.panel-box.map .panel-head { padding: 6px 12px; }
+.panel-box.map .panel-head h2 { font-size: 17px; }
+.panel-box.map #panel-close { width: 32px; height: 32px; }
+.panel-box.map #panel-body { padding: 6px; overflow: hidden; }
+.bigmap { position: relative; border-radius: 14px; overflow: hidden; margin: 0 auto; box-shadow: 0 2px 10px rgba(0,0,0,.25) inset; }
+.bm-zoom { position: absolute; right: 8px; top: 36px; display: flex; flex-direction: column; gap: 6px; }
+.bm-z { width: 40px; height: 40px; border-radius: 12px; border: none; background: rgba(255,255,255,.88); font-size: 18px; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
+.bm-row { position: absolute; left: 8px; top: 8px; display: flex; gap: 6px; flex-wrap: wrap; max-width: 70%; }
+.bm-row .pbtn { box-shadow: 0 2px 6px rgba(0,0,0,.3); font-size: 13px; padding: 7px 10px; }
+.bm-legend { position: absolute; left: 50%; transform: translateX(-50%); bottom: 6px; max-width: 92%; font-size: 11px; color: #fff;
+  background: rgba(0,0,0,.45); padding: 3px 10px; border-radius: 999px; text-align: center; pointer-events: none; }

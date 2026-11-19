@@ -1,16 +1,16 @@
 // Jaunās nodarbes, pievienotas Game klasei: makšķerēšana, ogas, mājdzīvnieki, dārza rotājumi,
 // īpašās vietas ar dārgumu, ķeramais un paslēpes, nedēļas kopīgais mērķis.
 import * as THREE from 'three';
-import { WATER_Y, GARDEN_SLOTS, VILLAGE_Y, rotPlot, rotPlotY } from './world.js?v=1.30.0';
-import { buildNPC } from './characters.js?v=1.30.0';
-import { InstanceField } from './instancing.js?v=1.30.0';
-import { berryTemplate, buildDecor, DECOR_SPOTS, buildRod, buildBobber } from './props.js?v=1.30.0';
-import { buildScroll } from './places.js?v=1.30.0';
-import { ZONE_IDS, FOREST } from './zones.js?v=1.30.0';
-import { FISH, ROD_PRICE, BERRIES, COOKED, PETS, DECOR, PLACES, MAP_PIECES, weekNumber, weeklyGoal, WEEKLY_REWARD, rollFish, CROPS, TREES, CLOTHES, HATS, WISH_PRICE } from './data.js?v=1.30.0';
-import { icon, iconEl, fishSvg } from './icons.js?v=1.30.0';
-import { makeTextSprite, angleLerp } from './util.js?v=1.30.0';
-import { $, toast, showPanel, refreshPanel, closePanel, el, itemRow, sfx, fmtTime } from './ui.js?v=1.30.0';
+import { WATER_Y, GARDEN_SLOTS, VILLAGE_Y, rotPlot, rotPlotY } from './world.js?v=1.31.0';
+import { buildNPC } from './characters.js?v=1.31.0';
+import { InstanceField } from './instancing.js?v=1.31.0';
+import { berryTemplate, buildDecor, DECOR_SPOTS, buildRod, buildBobber } from './props.js?v=1.31.0';
+import { buildScroll } from './places.js?v=1.31.0';
+import { ZONE_IDS, FOREST } from './zones.js?v=1.31.0';
+import { FISH, ROD_PRICE, BERRIES, COOKED, PETS, DECOR, PLACES, MAP_PIECES, weekNumber, weeklyGoal, WEEKLY_REWARD, rollFish, CROPS, TREES, CLOTHES, HATS, WISH_PRICE } from './data.js?v=1.31.0';
+import { icon, iconEl, fishSvg } from './icons.js?v=1.31.0';
+import { makeTextSprite, angleLerp } from './util.js?v=1.31.0';
+import { $, toast, showPanel, refreshPanel, closePanel, el, itemRow, sfx, fmtTime } from './ui.js?v=1.31.0';
 
 const BERRY_RESPAWN = 150000;
 const MG_NAMES = { tag: '🏃 Ķeramais', hide: '🙈 Paslēpes' };
@@ -174,7 +174,7 @@ export const Activities = {
     this.scene.add(this.bobber); this.scene.add(this.fishLine);
     this.fishing = { phase: 'wait', t: 0, bite: 2.5 + Math.random() * 4.5, x: spot.x, z: spot.z, pier: onPier };
     this.rod.visible = true;
-    sfx('jump');
+    sfx('swish', { vol: 0.7, rate: 0.9 }); sfx('plop', { vol: 0.6, delay: 0.55 });
     if (!this.save.stats.fishTip) { this.save.stats.fishTip = 1; toast('🎣 Gaidi, kamēr pludiņš raustās, tad ātri spied „VILKT!”', '', 4500); }
     this.timers.action = 0;
   },
@@ -195,7 +195,7 @@ export const Activities = {
     const b = this.bobber;
     if (f.phase === 'wait') {
       b.position.y = WATER_Y + 0.02 + Math.sin(t / 500) * 0.015;
-      if (f.t >= f.bite) { f.phase = 'bite'; f.t = 0; sfx('beep'); this.timers.action = 0; }
+      if (f.t >= f.bite) { f.phase = 'bite'; f.t = 0; sfx('splash_s', { vol: 0.7 }); this.timers.action = 0; }
     } else if (f.phase === 'bite') {
       b.position.y = WATER_Y - 0.06 + Math.sin(f.t * 30) * 0.05;
       b.position.x = f.x + Math.sin(f.t * 17) * 0.06;
@@ -225,7 +225,7 @@ export const Activities = {
     const pos = new THREE.Vector3(f.x, WATER_Y, f.z);
     this.spawnFloat('💦', pos);
     if (d.junk) {
-      sfx('bad');
+      sfx('splash_s', { vol: 0.6 }); sfx('j_fail', { vol: 0.5 });
       this.showPrize('👢 Ak vai…', null, 'Vecs zābaks!', 'Tas gan nav ēdams… Metam atpakaļ 😄', fishSvg('zabaks'));
     } else {
       // zivs ar izmēru un svaru: lielāka — dārgāka
@@ -234,7 +234,7 @@ export const Activities = {
       this.stat('fish');
       const best = this.save.fishBest[kind] || 0, record = fish.kg > best;
       if (record) this.save.fishBest[kind] = fish.kg;
-      if (kind === 'zelta') { this.stat('goldfish'); sfx('star'); } else sfx(record && best ? 'win' : 'pick');
+      sfx('splash_b', { vol: 0.8 }); if (kind === 'zelta') { this.stat('goldfish'); sfx('star'); } else sfx(record && best ? 'win' : 'pick');
       const kgTxt = fish.kg < 1 ? `${Math.round(fish.kg * 1000)} g` : `${fish.kg.toFixed(2).replace('.', ',')} kg`;
       this.showPrize(kind === 'zelta' ? '✨ Zelta zivtiņa!' : '🎣 Noķēri zivi!', null, d.name,
         `📏 <b>${fish.cm} cm</b> · ⚖️ <b>${kgTxt}</b> · 💰 <b>${fish.v}🪙</b>${record && best ? '<br>🏆 Tavs jaunais rekords!' : ''}`, fishSvg(kind));
@@ -262,7 +262,7 @@ export const Activities = {
     inv.baravika = 0; inv.gailene = 0;
     this.addItem('cepta', n);
     this.stat('cooked', n);
-    sfx('plant');
+    sfx('creak', { vol: 0.4 }); sfx('pop', { vol: 0.6 });
     this.me.petT = 1;
     toast(`${COOKED.icon} Izcepi ${n} sēnes! Ceptas tās maksā ${COOKED.sell}🪙 gabalā.`, 'good', 3500);
     this.spawnFloat('🍢', this.me.pos);
@@ -274,7 +274,7 @@ export const Activities = {
     this.me.vy = 0;
     this.cam.pitch = Math.max(this.cam.pitch, 0.5);
     this.cam.dist = Math.max(this.cam.dist, 10);
-    sfx('jump');
+    sfx('st_wood', { vol: 0.8 });
     this.stat('tower');
     if (!this.save.revealed) {
       this.save.revealed = true;
@@ -287,7 +287,7 @@ export const Activities = {
     const tw = this.placeById.tornis;
     this.me.pos.set(tw.base.x, this.world.getHeight(tw.base.x, tw.base.z), tw.base.z + 0.4);
     this.me.vy = 0;
-    sfx('jump');
+    sfx('st_wood', { vol: 0.8 });
   },
 
   takePiece(id) {
@@ -296,7 +296,7 @@ export const Activities = {
     this.scene.remove(s);
     delete this.scrolls[id];
     if (!this.save.pieces.includes(id)) this.save.pieces.push(id);
-    sfx('star');
+    sfx('book', { vol: 0.7 }); sfx('star');
     const n = this.save.pieces.length, need = MAP_PIECES.length;
     if (n >= need) toast('🗺️ Visi kartes gabali kopā! Krustiņš rāda uz 🏰 Pilsdrupām — tur ir dārguma lāde!', 'good', 6000);
     else toast(`🗺️ Kartes gabals ${n}/${need}! Pārējie ir citās īpašajās vietās.`, 'good', 4500);
@@ -320,7 +320,7 @@ export const Activities = {
     if (!this.save.ownedHats.includes('kivere')) this.save.ownedHats.push('kivere');
     this.setHat('kivere');
     this.stat('treasure');
-    sfx('win');
+    sfx('door_open', { vol: 0.8 }); sfx('j_prize', { vol: 0.8, delay: 0.3 });
     this.persist();
     showPanel('🏰 Dārgums!', (b) => {
       b.append(el('p', { style: 'font-size:40px;text-align:center;margin:4px' }, '💰🛡️'));
@@ -455,7 +455,7 @@ export const Activities = {
     this.me.petT = 1.2;
     this.me.heading = Math.atan2(this.pet.x - this.me.pos.x, this.pet.z - this.me.pos.z);
     this.spawnFloat('❤️', this.pet.model.root.position);
-    sfx('pet');
+    sfx('pet'); if (this.pet && /suns|kuc/.test(this.pet.id)) sfx('bark', { vol: 0.6, at: this.pet, delay: 0.1 });
     const msgs = ['priecīgi lēkā apkārt!', 'apmierināti murrā… vai ņurd.', 'grib vēl paglaudīšanu!', 'ir tavs labākais draugs!'];
     toast(`🐾 ${PETS[this.pet.id].name} ${msgs[Math.floor(Math.random() * msgs.length)]}`);
   },
@@ -509,7 +509,7 @@ export const Activities = {
     b.append(itemRow(iconEl('rod'), 'Makšķere', this.save.rod ? 'Tev pieder! Ej pie ezera un spied „Makšķerēt”' : `${ROD_PRICE}🪙 · ķer zivis ezeros (no laipas ķeras labāk!)`,
       this.save.rod ? [] : [{ label: `Pirkt ${ROD_PRICE}🪙`, disabled: this.save.coins < ROD_PRICE, onclick: () => {
         if (this.save.coins < ROD_PRICE) return;
-        this.addCoins(-ROD_PRICE); this.save.rod = true; sfx('coin');
+        this.addCoins(-ROD_PRICE); this.save.rod = true; sfx('buy');
         toast('🎣 Makšķere ir tavā somā! Ej pie ūdens.', 'good');
         refreshPanel(rebuild);
       } }]));
@@ -528,7 +528,7 @@ export const Activities = {
               if (this.save.coins < p.price) return;
               this.addCoins(-p.price); this.save.ownedPets.push(k);
               this.save.stats.pets = this.save.ownedPets.length; this.checkQuests();
-              this.setPet(k); sfx('pet');
+              this.setPet(k); sfx('buy'); sfx('j_quest', { vol: 0.6, delay: 0.2 });
               toast(`🐾 ${p.name} tagad ir tavs draugs un skries tev līdzi!`, 'good');
               refreshPanel(build);
             } }];
@@ -549,7 +549,7 @@ export const Activities = {
           this.addCoins(-d.price); this.addItem('d_' + k);
           this.save.ownedDecor = Array.from(new Set([...(this.save.ownedDecor || []), k]));
           this.save.stats.decor = this.save.ownedDecor.length; this.checkQuests();
-          sfx('plant');
+          sfx('buy');
           toast(`${d.icon} ${d.name} ir tavā somā! Sētā atver 🎒 un spied „Novietot”.`, 'good', 4000);
           refreshPanel(build);
         } }]));
@@ -565,7 +565,7 @@ export const Activities = {
     this.stat('wishes');
     this.me.petT = 0.7;
     this.me.heading = Math.atan2(-this.me.pos.x, -this.me.pos.z);
-    sfx('coin');
+    sfx('coin', { vol: 0.6 }); sfx('plop', { vol: 0.8, delay: 0.7 });
     this.spawnFloat('🪙', new THREE.Vector3(0, VILLAGE_Y + 1, 0));
     const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
     const r = Math.random();

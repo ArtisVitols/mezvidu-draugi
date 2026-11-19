@@ -4,13 +4,13 @@
 // sniega pikas (arī ar draugiem), ziemas drēbes.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { ZONE_HALF, GROUND_Y, DIRS, clampSquare, openSides, buildBorderPosts, disposeTree, smoothRoad, ringRoad, RoadIndex, buildRoadMesh, roadMaterial } from './zones.js?v=1.30.0';
-import { makeTextSprite, canvasTexture, mat, smoothstep, lerp, angleLerp, clamp } from './util.js?v=1.30.0';
-import { buildNPC, buildAnimal, flattenStatic } from './characters.js?v=1.30.0';
-import { loadTexture } from './gfx.js?v=1.30.0';
-import { InstanceField } from './instancing.js?v=1.30.0';
-import { makeNoise2D, mulberry32 } from './noise.js?v=1.30.0';
-import { $, toast, sfx } from './ui.js?v=1.30.0';
+import { ZONE_HALF, GROUND_Y, DIRS, clampSquare, openSides, buildBorderPosts, disposeTree, smoothRoad, ringRoad, RoadIndex, buildRoadMesh, roadMaterial } from './zones.js?v=1.31.0';
+import { makeTextSprite, canvasTexture, mat, smoothstep, lerp, angleLerp, clamp } from './util.js?v=1.31.0';
+import { buildNPC, buildAnimal, flattenStatic } from './characters.js?v=1.31.0';
+import { loadTexture } from './gfx.js?v=1.31.0';
+import { InstanceField } from './instancing.js?v=1.31.0';
+import { makeNoise2D, mulberry32 } from './noise.js?v=1.31.0';
+import { $, toast, sfx } from './ui.js?v=1.31.0';
 
 const SEED = 9137;
 const TAU = Math.PI * 2;
@@ -931,7 +931,7 @@ export const Winter = {
     me.pos.x += dx * sk.v * dt;
     me.pos.z += dz * sk.v * dt;
     if (W.collide(me.pos, 0.45) && sk.v > 7 && sk.crashT <= 0) {
-      sk.crashT = 1.2; sfx('bad');
+      sk.crashT = 1.2; sfx('st_snow', { vol: 1, rate: 0.8 }); sfx('hit', { vol: 0.5, rate: 0.7 });
       toast('💥 Bums! Uzbrauci virsū šķērslim', 'bad', 1800);
       this.spawnFloat('💫', me.pos);
     }
@@ -1039,7 +1039,7 @@ export const Winter = {
     this.balls.push({ mesh, v: new THREE.Vector3(v[0], v[1], v[2]), by, life: 4 });
   },
   splat(p) {
-    sfx('splat');
+    sfx('squish', { at: p, vol: 0.9, rate: 0.8 }); sfx('st_snow', { at: p, vol: 0.7 });
     for (let i = 0; i < 7; i++) {
       const m = new THREE.Mesh(ballGeo, ballMat);
       m.scale.setScalar(0.35 + Math.random() * 0.3);

@@ -14,6 +14,7 @@ Pašreizējā versija: **1.6.0** (redzama sākuma ekrānā un ☰ izvēlnē). Iz
 5. **Spēlēt vienam** darbojas arī bez interneta.
 
 **Izvēlne ☰:** 📖 pamācība, ⚙️ iestatījumi (pilnekrāns, grafika), soma, uzdevumi, dārzs, istaba, karte, spēles, saglabāt un iziet.
+🔊 Skaņas: soļi, putni, vējš, ūdens, uguns, dzinēji, darbu un balvu skaņas (CC0, sk. `assets/snd/LICENSE.txt`).
 🐾 Mājdzīvnieks brauc tev līdzi visos transportos — mašīnā, velosipēdā, ragavās, autobusā, kartingā un pacēlājā.
 
 **Vadība:** kreisā ekrāna puse — kursorsvira, labā puse — kamera (2 pirksti — tuvināt), ⤒ — lēkt, dzeltenā poga — darbība.

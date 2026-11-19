@@ -3,14 +3,14 @@
 // ja neviens cits ar to nebrauc; izkāpjot tas paliek tur, kur atstāts (arī citā zemē). Saimnieks glabā, kurš ar ko brauc
 // un kur katrs stāv (saimnieka saglabājumā `vehs`). Vehicles — Game papildinājums.
 import * as THREE from 'three';
-import { mat, lerp, clamp, makeBlobShadow, makeTextSprite } from './util.js?v=1.30.0';
-import { optimizeRig, tyreGeo } from './characters.js?v=1.30.0';
-import { $, toast, sfx } from './ui.js?v=1.30.0';
-import { DIRS, neighbour, FARM, FOREST, RACE, ZONE_IDS } from './zones.js?v=1.30.0';
-import { WATER_Y, YARD, YARD_IN, rotPlot, rotPlotY, BIKE_RACK } from './world.js?v=1.30.0';
-import { SLED_SPOT } from './winter.js?v=1.30.0';
-import { BUS_CODE } from './bus.js?v=1.30.0';
-import { ZONES } from './zones.js?v=1.30.0';
+import { mat, lerp, clamp, makeBlobShadow, makeTextSprite } from './util.js?v=1.31.0';
+import { optimizeRig, tyreGeo } from './characters.js?v=1.31.0';
+import { $, toast, sfx } from './ui.js?v=1.31.0';
+import { DIRS, neighbour, FARM, FOREST, RACE, ZONE_IDS } from './zones.js?v=1.31.0';
+import { WATER_Y, YARD, YARD_IN, rotPlot, rotPlotY, BIKE_RACK } from './world.js?v=1.31.0';
+import { SLED_SPOT } from './winter.js?v=1.31.0';
+import { BUS_CODE } from './bus.js?v=1.31.0';
+import { ZONES } from './zones.js?v=1.31.0';
 
 // tīkla kods (pos ziņas 6. lauks): 1 = kartings, 2 = mašīna, 3 = sniega motocikls, 5 = velosipēds
 export const VEH_CODE = { car: 2, sled: 3, bike: 5 }; // 4 = pasažieris (p[8] — vadītāja id, p[9] — sēdvieta); p[10] — transporta id
@@ -376,7 +376,7 @@ export const Vehicles = {
     this.cam.yaw = v.h + Math.PI;
     $('btn-exit-kart').classList.remove('hidden');
     $('btn-jump').classList.add('hidden');
-    sfx('beep');
+    { const k = this.vehs[id] && this.vehs[id].kind; sfx(k === 'bike' ? 'bike_bell' : k === 'sled' ? 'st_snow' : 'car_door', { vol: 0.7 }); }
     toast(kind === 'car'
       ? '🚙 Kreisajā pusē ⛽ gāze un 🛑 bremze/atpakaļgaita, labajā ◀ ▶ stūre. Pa grants ceļu var aizbraukt uz citām zemēm!'
       : kind === 'bike' ? '🚲 Min pedāļus ar ⛽, bremzē ar 🛑, stūrē ar ◀ ▶. Groziņā var braukt tavs mājdzīvnieks!'
@@ -439,7 +439,7 @@ export const Vehicles = {
       // bremzē tikai tad, ja tiešām atsitas (slīdot gar šķērsli ātrums saglabājas)
       const moved = Math.hypot(me.pos.x - ox, me.pos.z - oz) / Math.max(dt, 1e-4), want = Math.abs(v.speed);
       if (moved < want * 0.6) {
-        if (want > 6 && !(v.bumpT > 0)) { sfx('bad'); this.spawnFloat('💥', me.pos); v.bumpT = 1; }
+        if (want > 6 && !(v.bumpT > 0)) { sfx('hit', { vol: 0.9, rate: 0.8 }); this.spawnFloat('💥', me.pos); v.bumpT = 1; }
         v.speed = Math.sign(v.speed) * Math.max(Math.min(want, 2.5), want * 0.6);
       }
     }
@@ -452,7 +452,7 @@ export const Vehicles = {
     if (v.air) {
       v.vy -= 20 * dt;
       me.pos.y += v.vy * dt;
-      if (me.pos.y <= g2) { if (v.vy < -6) sfx('pick'); me.pos.y = g2; v.vy = 0; v.air = false; }
+      if (me.pos.y <= g2) { if (v.vy < -6) sfx('hit', { vol: 0.6, rate: 0.7 }); me.pos.y = g2; v.vy = 0; v.air = false; }
     } else {
       const gv = (g2 - me.pos.y) / sdt;
       if (v.kind === 'sled' && Math.abs(v.speed) > 9 && gv < v.vy - 20 * dt - 4) { v.air = true; v.vy -= 20 * dt; me.pos.y += v.vy * dt; }
@@ -523,7 +523,7 @@ export const Vehicles = {
     me.state = 'sit';
     $('btn-exit-kart').classList.remove('hidden');
     $('btn-jump').classList.add('hidden');
-    sfx('beep');
+    sfx('car_door', { vol: 0.7 });
     toast(`${DEF[r.vehObj.kind].icon} Brauc līdzi: ${r.prof.name}! Vada ${r.prof.name}, tu vari skatīties apkārt.`, 'good', 4000);
   },
 

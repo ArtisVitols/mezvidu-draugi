@@ -1,5 +1,16 @@
 # Izmaiņu žurnāls
 
+## 1.31.0 — 2026-11-19
+- 🔊 **Īstas skaņas** (CC0 no OpenGameArt / Kenney, 57 skaņas, 1,5 MB): soļi pēc virsmas (zāle, ceļš, sniegs, koka laipa, ūdens),
+  vide (putni sētā un mežā, vējš ziemā un kāpās, ūdens pie ezeriem, sienāži un vardes purvā, uguns pie ugunskura),
+  dzinēji (kartings, mašīna, autobuss — tonis pēc ātruma), velosipēda spieķi un zvaniņš, ragavu/slēpju šņākoņa, autobusa durvis un zvaniņš.
+  Darbības: koka ciršana un krišana, akmens kalšana, uzaršana, sēšana, laistīšana, raža, augļi, makšķere (metiens, pludiņš, šļaksts),
+  pirkšana, dāvanas, drēbes, lāde, aka, sniega pikas; melodijas uzvarai, zvaigznei, uzdevumam, līmenim. Pogu klikšķi, logu atvēršana.
+  Skaņas, kas skan kaut kur pasaulē, ir klusākas tālumā un skan no pareizās puses (stereo).
+- ⚙️ Iestatījumos: 🔊 Skaņa — skaļi / vidēji / klusi / izslēgta.
+- 🗺️ Liela karte 16:9 visā ekrānā; pogas un apzīmējumi uz kartes; var tālināt līdz visai zemei un bīdīt.
+- 🚶 Noņemta teleportēšanās („Uz manu sētu”, „Ciemos”) — pie draugiem nokļūst kājām vai ar transportu.
+
 ## 1.30.0 — 2026-11-19
 - ✨ Moderns sākuma ekrāns: zila debess ar sauli un peldošiem mākoņiem, zaļi pakalni ar eglēm, matēta stikla kartīte,
   jauns logotips, soļu indikators (vārds → tēls → istaba), lielas gradienta pogas, koda lauks un „Pievienoties” vienā rindā.
