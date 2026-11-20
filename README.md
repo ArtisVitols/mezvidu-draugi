@@ -23,6 +23,7 @@ Pašreizējā versija: **1.6.0** (redzama sākuma ekrānā un ☰ izvēlnē). Iz
 Datorā: WASD / bultiņas, atstarpe, E, peles vilkšana.
 
 ## Ko var darīt
+- 🧸 Jauns, rotaļlietām līdzīgs izskats (1.37.0): visi tēli, dzīvnieki, transports, tirgus, sētas ēkas, augi un rotājumi pārveidoti — mīkstākas formas, augi šūpojas vējā, spēle telefonā zīmē ātrāk
 - 🍄 Lasīt baravikas un gailenes mežā (sarkanās mušmires ir indīgas!)
 - 🤝 Nedēļas kopīgais mērķis — katru pirmdienu jauns (sēnes, zivis, ogas, raža, dzīvnieki, sacīkstes); skaitās visu draugu darbi, progress saglabājas
 - 🏡 **Sēta** (centrā): krustojuma 4 stūros 4 vienādas iežogotas sētas — katram draugam sava. Katrā sētā: dārzs 20 × 20 lauciņi,

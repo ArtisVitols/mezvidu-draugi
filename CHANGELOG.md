@@ -1,5 +1,13 @@
 # Izmaiņu žurnāls
 
+## 1.37.0 — 2026-11-20
+- 🧸 Jauni 3D modeļi (dizaina AI komplekts `js/assets.js`): spēlētāju dzīvnieki, cepures, drēbes, meža dzīvnieki un mājdzīvnieki
+  (mazuļi), kartingi, mašīna, ragavas, velosipēds, autobuss, tirgus būdas un ratiņi, dārza mājiņa, siltumnīca, vārti, ceļa rādītājs
+  un zīmes, autobusa pietura, visas dārza kultūras, augļu koki, ogu krūmi, sēnes, rotājumi, makšķere, zvaigzne, sirds, kartes rullis.
+- ⚡ Viens kopīgs materiāls un katrs objekts — viens tīkls: zīmēšanas izsaukumu ~2× mazāk (sēta 705 → 291, tirgus 825 → 381).
+- 🌬️ Augi un krūmi šūpojas vējā (šeiderī, bez CPU darba).
+- Pārdevēji (ūdrs, āpsis, pūce, bebrs), koki mežā un ziemas zemes objekti paliek iepriekšējie.
+
 ## 1.36.0 — 2026-11-19
 - 🌱 Dārznieka līmeņi divreiz vairāk: 24 (bija 12). Katrā jaunajā līmenī jauna kultūra ar savu 3D augu un attēlu:
   13. sparģelis, 14. baklažāns, 15. roze, 16. ananāss, 17. zemesrieksti, 18. čili pipari, 19. magone, 20. vīnogas (uz režģa),

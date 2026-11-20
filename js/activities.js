@@ -1,16 +1,16 @@
 // Jaunās nodarbes, pievienotas Game klasei: makšķerēšana, ogas, mājdzīvnieki, dārza rotājumi,
 // īpašās vietas ar dārgumu, ķeramais un paslēpes, nedēļas kopīgais mērķis.
 import * as THREE from 'three';
-import { WATER_Y, GARDEN_SLOTS, VILLAGE_Y, rotPlot, rotPlotY } from './world.js?v=1.36.0';
-import { buildNPC } from './characters.js?v=1.36.0';
-import { InstanceField } from './instancing.js?v=1.36.0';
-import { berryTemplate, buildDecor, DECOR_SPOTS, buildRod, buildBobber } from './props.js?v=1.36.0';
-import { buildScroll } from './places.js?v=1.36.0';
-import { ZONE_IDS, FOREST } from './zones.js?v=1.36.0';
-import { FISH, ROD_PRICE, BERRIES, COOKED, PETS, DECOR, PLACES, MAP_PIECES, weekNumber, weeklyGoal, WEEKLY_REWARD, rollFish, CROPS, TREES, CLOTHES, HATS, WISH_PRICE } from './data.js?v=1.36.0';
-import { icon, iconEl, fishSvg } from './icons.js?v=1.36.0';
-import { makeTextSprite, makeTag, angleLerp } from './util.js?v=1.36.0';
-import { $, toast, showPanel, refreshPanel, closePanel, el, itemRow, sfx, fmtTime } from './ui.js?v=1.36.0';
+import { WATER_Y, GARDEN_SLOTS, VILLAGE_Y, rotPlot, rotPlotY } from './world.js?v=1.37.0';
+import { buildNPC } from './characters.js?v=1.37.0';
+import { InstanceField } from './instancing.js?v=1.37.0';
+import { berryTemplate, buildDecor, DECOR_SPOTS, buildRod, buildBobber } from './props.js?v=1.37.0';
+import { buildScroll } from './places.js?v=1.37.0';
+import { ZONE_IDS, FOREST } from './zones.js?v=1.37.0';
+import { FISH, ROD_PRICE, BERRIES, COOKED, PETS, DECOR, PLACES, MAP_PIECES, weekNumber, weeklyGoal, WEEKLY_REWARD, rollFish, CROPS, TREES, CLOTHES, HATS, WISH_PRICE } from './data.js?v=1.37.0';
+import { icon, iconEl, fishSvg } from './icons.js?v=1.37.0';
+import { makeTextSprite, makeTag, angleLerp } from './util.js?v=1.37.0';
+import { $, toast, showPanel, refreshPanel, closePanel, el, itemRow, sfx, fmtTime } from './ui.js?v=1.37.0';
 
 const BERRY_RESPAWN = 150000;
 const MG_NAMES = { tag: '🏃 Ķeramais', hide: '🙈 Paslēpes' };
@@ -345,7 +345,7 @@ export const Activities = {
   // ======================= mājdzīvnieki =======================
   makePet(id, ownerName) {
     const def = PETS[id];
-    const m = buildNPC(def.npc);
+    const m = buildNPC(def.npc, { baby: true }); // 1.37.0: mazuļa izskats (assets.js)
     m.root.scale.multiplyScalar(def.scale);
     const ns = makeTag(def.name, { height: 0.15, color: '#ffe8c0' });
     ns.position.y = (1.0 + 0.1) / m.root.scale.y;

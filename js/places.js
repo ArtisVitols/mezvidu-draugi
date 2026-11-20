@@ -1,9 +1,10 @@
 // Īpašās vietas pasaulē: skatu tornis, ugunskura vieta, purvs, pilsdrupas, makšķernieku laipa.
 // Vietas atrod deterministiski pēc reljefa (visiem spēlētājiem vienādas), būvē to modeļus un ogu krūmu vietas.
 import * as THREE from 'three';
-import { mulberry32 } from './noise.js?v=1.36.0';
-import { mat, noiseTexture, makeTextSprite, smoothstep } from './util.js?v=1.36.0';
-import { optimizeRig, flattenStatic } from './characters.js?v=1.36.0';
+import { mulberry32 } from './noise.js?v=1.37.0';
+import { mat, noiseTexture, makeTextSprite, smoothstep } from './util.js?v=1.37.0';
+import { optimizeRig, flattenStatic } from './characters.js?v=1.37.0';
+import * as A from './assets.js?v=1.37.0';
 
 const TAU = Math.PI * 2;
 const angDiff = (a, b) => { let d = Math.abs(a - b) % TAU; return d > Math.PI ? TAU - d : d; };
@@ -150,15 +151,7 @@ function sign(parent, text, x, y, z) {
   const s = makeTextSprite(text, { fontSize: 40, bg: 'rgba(90,60,30,0.85)' });
   s.position.set(x, y, z); parent.add(s); return s;
 }
-// kartes gabals (rullītis), redzams tikai, kamēr nav paņemts
-export function buildScroll() {
-  const g = new THREE.Group();
-  put(g, cyl(0.07, 0.07, 0.42, 12), mat('#efe0b8', { roughness: 0.9 }), 0, 0, 0, 0, 0, Math.PI / 2);
-  put(g, new THREE.TorusGeometry(0.075, 0.015, 6, 12), mat('#b02a2a', { roughness: 0.6 }), 0, 0, 0, 0, Math.PI / 2, 0);
-  const glow = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 8), new THREE.MeshBasicMaterial({ color: '#ffe38a', transparent: true, opacity: 0.25, depthWrite: false }));
-  g.add(glow);
-  return g;
-}
+export const buildScroll = A.buildScroll; // 1.37.0: jaunais modelis (assets.js)
 
 function buildTower(W, p) {
   const g = new THREE.Group();

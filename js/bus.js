@@ -4,13 +4,14 @@
 // bez tīkla ziņām. Ātrums atkarīgs no līkuma (aplī lēnāk). Iekāpt un izkāpt var tikai pieturās, brauciens maksā BUS_PRICE. Vada kaķis Kārlis.
 // Maršruts — globālās koordinātēs (zemes vietējās + zoneOffset); autobuss redzams tikai tajā zemē, kurā tas ir.
 import * as THREE from 'three';
-import { mat, canvasTexture } from './util.js?v=1.36.0';
-import { buildAnimal, flattenStatic } from './characters.js?v=1.36.0';
-import { $, toast, sfx } from './ui.js?v=1.36.0';
-import { roadNS, roadEW, FOREST_ROAD, FOREST_RING, raceGeo } from './world.js?v=1.36.0';
-import { WINTER_ROAD, WINTER_RING } from './winter.js?v=1.36.0';
-import { zoneOffset, ZONE_HALF, FARM, FOREST, RACE, smoothRoad } from './zones.js?v=1.36.0';
-import { busStopSvg } from './icons.js?v=1.36.0';
+import { mat, canvasTexture } from './util.js?v=1.37.0';
+import { buildAnimal, flattenStatic } from './characters.js?v=1.37.0';
+import { $, toast, sfx } from './ui.js?v=1.37.0';
+import { roadNS, roadEW, FOREST_ROAD, FOREST_RING, raceGeo } from './world.js?v=1.37.0';
+import { WINTER_ROAD, WINTER_RING } from './winter.js?v=1.37.0';
+import { zoneOffset, ZONE_HALF, FARM, FOREST, RACE, smoothRoad } from './zones.js?v=1.37.0';
+import { busStopSvg } from './icons.js?v=1.37.0';
+import * as A from './assets.js?v=1.37.0';
 
 export const BUS_PRICE = 2;
 const BOARD_R = 4; // m no autobusa malas, kur parādās „Iekāpt” (1.32.0)
@@ -225,180 +226,9 @@ function svgTex(svg) {
 
 // autobuss: priekša — lokālā +z, vadītājs kreisajā pusē (+x), durvis labajā (−x)
 const WHEEL_F = 2.75, WHEEL_R = -3.2, ARCH = 0.64;
-export function buildBus() {
-  const root = new THREE.Group(), body = new THREE.Group();
-  root.add(body);
-  const st = new THREE.Group(); // statiskās daļas (tiks apvienotas)
-  const blue = mat('#1d6ad2', { roughness: 0.35, metalness: 0.3 }), white = mat('#f3f5f8', { roughness: 0.4, metalness: 0.1 });
-  const dark = mat('#22252a', { roughness: 0.75 }), black = mat('#121417', { roughness: 0.5 }), chrome = mat('#cfd5da', { metalness: 0.85, roughness: 0.25 });
-  const yellow = mat('#f2c12e', { roughness: 0.5 });
-  const B = (w, h, d, m, x, y, z, parent = st) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); parent.add(o); return o; };
-  const L = 10.4, HL = L / 2, W = 2.5, HW = W / 2;
-  B(W - 0.04, 0.12, L - 0.1, dark, 0, 0.6, 0); // grīda
-  B(W - 0.3, 0.3, L - 0.6, black, 0, 0.42, 0); // šasija
-  // apakšējās sānu sienas ar riteņu arkām (zilas)
-  const side = new THREE.Shape();
-  side.moveTo(-HL, 0.4);
-  side.lineTo(WHEEL_R - ARCH, 0.4); side.absarc(WHEEL_R, 0.5, ARCH, Math.PI, 0, true);
-  side.lineTo(WHEEL_F - ARCH, 0.4); side.absarc(WHEEL_F, 0.5, ARCH, Math.PI, 0, true);
-  side.lineTo(HL, 0.4); side.lineTo(HL, 1.48); side.lineTo(-HL, 1.48); side.closePath();
-  const sideGeo = new THREE.ExtrudeGeometry(side, { depth: 0.08, bevelEnabled: false, curveSegments: 10 }).rotateY(-Math.PI / 2);
-  for (const s of [-1, 1]) {
-    const m = new THREE.Mesh(sideGeo, blue); m.position.x = s > 0 ? HW : -HW + 0.08; st.add(m);
-    // gumijas arku apmales
-    for (const z of [WHEEL_F, WHEEL_R]) {
-      const a = new THREE.Mesh(new THREE.TorusGeometry(ARCH + 0.02, 0.045, 5, 14, Math.PI).rotateY(Math.PI / 2), black);
-      a.position.set(s * (HW + 0.01), 0.5, z); st.add(a);
-    }
-    B(0.03, 0.1, L - 0.1, white, s * (HW + 0.012), 1.43, 0);   // balta josla zem logiem
-    B(0.03, 0.05, L - 0.1, yellow, s * (HW + 0.014), 1.34, 0); // dzeltena līnija
-    B(0.03, 0.08, L - 0.2, black, s * (HW + 0.01), 0.44, 0);   // apakšējā apmale
-  }
-  // priekša: zila apakša, melna maska ar resti, buferis, numurs
-  B(W, 1.08, 0.08, blue, 0, 0.94, HL - 0.04);
-  B(W - 0.5, 0.32, 0.04, black, 0, 0.98, HL + 0.01);
-  for (let i = 0; i < 4; i++) B(W - 0.6, 0.03, 0.02, chrome, 0, 0.88 + i * 0.07, HL + 0.035);
-  B(W + 0.04, 0.24, 0.16, dark, 0, 0.52, HL + 0.04);
-  const plate = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.15), new THREE.MeshStandardMaterial({ map: busTex('MEŽVIDI 1', 256, 64, '#ffffff', '#111', 0.7), roughness: 0.5 }));
-  plate.position.set(0, 0.52, HL + 0.125); st.add(plate);
-  // aizmugure: zila siena, motora reste, numurs
-  B(W, 1.08, 0.08, blue, 0, 0.94, -HL + 0.04);
-  for (let i = 0; i < 5; i++) B(W - 0.9, 0.035, 0.02, black, 0, 0.75 + i * 0.08, -HL - 0.01);
-  B(W + 0.04, 0.24, 0.16, dark, 0, 0.52, -HL - 0.04);
-  const plate2 = plate.clone(); plate2.position.set(0, 0.52, -HL - 0.125); plate2.rotation.y = Math.PI; st.add(plate2);
-  // logu josla: melni statņi starp logiem
-  for (const s of [-1, 1]) for (const z of [-HL + 0.07, -3.0, -0.95, 1.1, 3.35, HL - 0.07]) B(0.1, 1.02, 0.16, black, s * (HW - 0.05), 2.0, z);
-  for (const x of [-HW + 0.07, HW - 0.07]) { B(0.14, 1.02, 0.1, black, x, 2.0, HL - 0.05); B(0.14, 1.02, 0.1, black, x, 2.0, -HL + 0.05); }
-  B(W, 0.1, 0.08, black, 0, 1.53, HL - 0.04); B(W, 0.1, 0.08, black, 0, 1.53, -HL + 0.04);
-  // jumts ar noapaļotām malām (balts), jumta kaste un lūka
-  const rs = new THREE.Shape(), rr2 = 0.26, rb = 2.5, rt = 2.92;
-  rs.moveTo(-HW, rb); rs.lineTo(HW, rb); rs.lineTo(HW, rt - rr2); rs.quadraticCurveTo(HW, rt, HW - rr2, rt);
-  rs.lineTo(-HW + rr2, rt); rs.quadraticCurveTo(-HW, rt, -HW, rt - rr2); rs.closePath();
-  const roof = new THREE.Mesh(new THREE.ExtrudeGeometry(rs, { depth: L, bevelEnabled: false, curveSegments: 6 }).translate(0, 0, -HL), white);
-  st.add(roof);
-  B(W - 0.7, 0.2, 2.4, white, 0, 3.0, -2.4); // kondicionieris
-  B(0.7, 0.06, 0.7, dark, 0, 2.95, 1.3);    // lūka
-  B(W - 0.2, 0.06, 0.06, blue, 0, 2.55, HL + 0.005); // zila mala virs priekšējā stikla
-  // lukturi
-  const li = new THREE.MeshStandardMaterial({ color: '#fff6dc', emissive: '#ffe7a8', emissiveIntensity: 0.9 });
-  const ta = new THREE.MeshStandardMaterial({ color: '#b01818', emissive: '#6a0808', emissiveIntensity: 0.8 });
-  const am = new THREE.MeshStandardMaterial({ color: '#ff9a1a', emissive: '#a05000', emissiveIntensity: 0.6 });
-  for (const s of [-1, 1]) {
-    B(0.44, 0.2, 0.05, chrome, s * 0.9, 0.98, HL + 0.01);
-    B(0.38, 0.15, 0.04, li, s * 0.9, 0.98, HL + 0.035);
-    B(0.12, 0.1, 0.04, am, s * 1.12, 0.76, HL + 0.02);
-    B(0.22, 0.5, 0.05, ta, s * 1.0, 1.1, -HL - 0.02);
-    B(0.12, 0.12, 0.04, am, s * 1.0, 0.75, -HL - 0.02);
-  }
-  // spoguļi
-  for (const s of [-1, 1]) {
-    const arm = B(0.42, 0.04, 0.04, black, s * (HW + 0.18), 2.35, HL - 0.15); arm.rotation.y = s * 0.3;
-    B(0.05, 0.42, 0.16, black, s * (HW + 0.36), 2.1, HL - 0.05);
-    B(0.04, 0.36, 0.12, chrome, s * (HW + 0.36), 2.1, HL + 0.035);
-  }
-  // sēdekļi (2 rindās ar eju vidū) un vadītāja vieta
-  const fab = mat('#c23b3b', { roughness: 0.9 }), fab2 = mat('#2a4f9a', { roughness: 0.9 });
-  const seats = [], petSpots = [];
-  const rows = [2.2, 1.05, -0.1, -1.25, -2.4, -3.55];
-  rows.forEach((z, r) => {
-    for (const x of [-0.72, 0.72]) {
-      const f = (r + (x > 0 ? 1 : 0)) % 2 ? fab : fab2;
-      B(0.56, 0.12, 0.5, f, x, 1.02, z);
-      B(0.56, 0.55, 0.09, f, x, 1.32, z - 0.27);
-      B(0.08, 0.36, 0.08, dark, x, 0.8, z);
-      const g = new THREE.Group(); g.position.set(x, 0.66, z - 0.02); body.add(g); seats.push(g);
-      // mājdzīvnieka vieta: ejā blakus saimnieka sēdeklim
-      const ps = new THREE.Group(); ps.position.set(Math.sign(x) * 0.26, 0.64, z + 0.12); ps.scale.setScalar(0.75); body.add(ps); petSpots.push(ps);
-    }
-  });
-  // turēšanās stieņi pie griestiem
-  for (const x of [-0.35, 0.35]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, L - 1.6, 6).rotateX(Math.PI / 2), chrome); p.position.set(x, 2.3, -0.4); st.add(p); }
-  B(0.6, 0.12, 0.55, dark, 0.7, 1.02, 3.85); B(0.6, 0.6, 0.09, dark, 0.7, 1.35, 3.56);
-  const wheelS = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.035, 6, 18), dark);
-  wheelS.position.set(0.7, 1.5, 4.5); wheelS.rotation.x = -0.9; st.add(wheelS);
-  B(0.06, 0.06, 0.5, dark, 0.7, 1.32, 4.65).rotation.x = -0.9;
-  B(W - 0.3, 0.5, 0.5, dark, 0, 1.0, HL - 0.35); // panelis
-  // maršruta tablo priekšā un aizmugurē, nosaukums sānos starp riteņu arkām
-  const route1 = '1 · Ziema · Sēta · Trase · Tirgus';
-  const ft = busTex(route1, 768, 64);
-  const signM = new THREE.MeshStandardMaterial({ map: ft, emissive: '#ffffff', emissiveMap: ft, emissiveIntensity: 0.55 });
-  const fs = new THREE.Mesh(new THREE.PlaneGeometry(2.1, 0.22), signM); fs.position.set(0, 2.4, HL + 0.012); st.add(fs);
-  const bt = busTex('1', 128, 64);
-  const rsg = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.25), new THREE.MeshStandardMaterial({ map: bt, emissive: '#ffffff', emissiveMap: bt, emissiveIntensity: 0.55 }));
-  rsg.position.set(0, 2.35, -HL - 0.012); rsg.rotation.y = Math.PI; st.add(rsg);
-  const nameT = busTex('🌲 MEŽVIDU AUTOBUSS', 1024, 80, null, '#ffffff', 0.6);
-  const sideM = new THREE.MeshStandardMaterial({ map: nameT, transparent: true, alphaTest: 0.3, roughness: 0.5 });
-  const zA = WHEEL_R + ARCH + 0.12, zB = WHEEL_F - ARCH - 0.12; // starp arkām
-  for (const s of [-1, 1]) {
-    const p = new THREE.Mesh(new THREE.PlaneGeometry(zB - zA, (zB - zA) * 80 / 1024), sideM);
-    p.position.set(s * (HW + 0.014), 0.92, (zA + zB) / 2); p.rotation.y = s * Math.PI / 2; st.add(p);
-  }
-  const flat = flattenStatic(st);
-  body.add(flat);
-  // stikli (caurspīdīgi — redzami pasažieri)
-  const glass = new THREE.MeshStandardMaterial({ color: '#9fc4dc', roughness: 0.05, metalness: 0.3, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false });
-  glass.userData.keepPBR = true;
-  for (const s of [-1, 1]) { const g = new THREE.Mesh(new THREE.PlaneGeometry(L - 0.2, 0.92), glass); g.position.set(s * (HW - 0.03), 2.02, 0); g.rotation.y = Math.PI / 2; body.add(g); }
-  const wf = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.2, 1.0), glass); wf.position.set(0, 2.0, HL - 0.02); wf.rotation.x = -0.06; body.add(wf);
-  const wb = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.2, 0.86), glass); wb.position.set(0, 2.0, -HL + 0.03); body.add(wb);
-  // durvis labajā pusē (divas stikla vērtnes ar rāmi, atveras pieturā)
-  const doorM = new THREE.MeshStandardMaterial({ color: '#1a2a3a', roughness: 0.2, metalness: 0.4, transparent: true, opacity: 0.55 });
-  doorM.userData.keepPBR = true;
-  const DZ = [3.9, 4.48];
-  const doors = DZ.map((z) => {
-    const d = new THREE.Group(); d.position.set(-HW - 0.03, 1.5, z); body.add(d);
-    d.add(new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.78, 0.56), doorM));
-    for (const y of [-0.87, 0.87]) { const f = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.58), black); f.position.y = y; d.add(f); }
-    for (const zz of [-0.27, 0.27]) { const f = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.78, 0.04), black); f.position.z = zz; d.add(f); }
-    return d;
-  });
-  // riteņi ar diskiem un skrūvēm
-  const tyre = mat('#151515', { roughness: 0.92 }), hub = mat('#d8dde2', { metalness: 0.7, roughness: 0.3 });
-  const wheels = [];
-  const tyreG = new THREE.CylinderGeometry(0.5, 0.5, 0.34, 20).rotateZ(Math.PI / 2), hubG = new THREE.CylinderGeometry(0.28, 0.28, 0.36, 12).rotateZ(Math.PI / 2);
-  const capG = new THREE.CylinderGeometry(0.1, 0.1, 0.38, 8).rotateZ(Math.PI / 2), boltG = new THREE.CylinderGeometry(0.025, 0.025, 0.37, 5).rotateZ(Math.PI / 2);
-  for (const z of [WHEEL_F, WHEEL_R]) for (const s of [-1, 1]) {
-    const w = new THREE.Group(); w.position.set(s * (HW - 0.2), 0.5, z); body.add(w);
-    const t = new THREE.Mesh(tyreG, tyre); t.castShadow = true; w.add(t);
-    w.add(new THREE.Mesh(hubG, hub));
-    w.add(new THREE.Mesh(capG, dark));
-    for (let k = 0; k < 6; k++) { const b = new THREE.Mesh(boltG, dark); b.position.set(0, Math.cos(k / 6 * 6.283) * 0.18, Math.sin(k / 6 * 6.283) * 0.18); w.add(b); }
-    wheels.push(w);
-  }
-  body.traverse((o) => { if (o.isMesh && o.material !== glass && o.material !== doorM) { o.castShadow = true; o.receiveShadow = true; } });
-  // vadītājs — kaķis Kārlis ar beisbola cepuri
-  const driver = buildAnimal({ animal: 'kakis', fur: '#e8a24a', shirt: '#1f6fd6', hat: 'nagene' });
-  const ds = new THREE.Group(); ds.position.set(0.7, 0.66, 3.83); body.add(ds); ds.add(driver.root);
-  driver.shadow.visible = false;
-  return { root, body, seats, petSpots, wheels, doors, doorZ: DZ, driver };
-}
+export const buildBus = A.buildBus; // 1.37.0: jaunais modelis (assets.js)
 
-// pieturas nojume: lokālā +z — pret ceļu
-function buildStop(stop) {
-  const g = new THREE.Group(), st = new THREE.Group();
-  const metal = mat('#8d949b', { metalness: 0.7, roughness: 0.4 }), blue = mat('#1f6fd6', { roughness: 0.5 }), wood = mat('#8a6440', { roughness: 0.9 });
-  const B = (w, h, d, m, x, y, z) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; st.add(o); return o; };
-  for (const x of [-1.7, 1.7]) for (const z of [-0.7, 0.6]) B(0.08, 2.4, 0.08, metal, x, 1.2, z);
-  B(3.8, 0.12, 1.8, blue, 0, 2.45, -0.05);
-  B(3.2, 0.08, 0.45, wood, 0, 0.5, -0.4); B(3.2, 0.45, 0.06, wood, 0, 0.8, -0.65);
-  for (const x of [-1.4, 1.4]) B(0.08, 0.5, 0.4, metal, x, 0.25, -0.4);
-  B(3.9, 0.06, 2.0, mat('#9a968c', { roughness: 1 }), 0, 0.03, 0); // bruģa laukumiņš
-  // zīme ar autobusu un pieturas nosaukumu
-  B(0.07, 2.9, 0.07, metal, 2.3, 1.45, 0.55);
-  const sv = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.62), new THREE.MeshStandardMaterial({ map: svgTex(busStopSvg()), roughness: 0.45 }));
-  sv.position.set(2.3, 2.62, 0.6); st.add(sv);
-  const sv2 = sv.clone(); sv2.rotation.y = Math.PI; sv2.position.z = 0.5; st.add(sv2);
-  const nameT = busTex(`${stop.icon} ${stop.name}`, 512, 80, '#ffffff', '#1d3f8a');
-  const nm = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.24), new THREE.MeshStandardMaterial({ map: nameT, roughness: 0.6 }));
-  nm.position.set(2.3, 2.15, 0.6); st.add(nm);
-  const nm2 = nm.clone(); nm2.rotation.y = Math.PI; nm2.position.z = 0.5; st.add(nm2);
-  const nm3 = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.3), new THREE.MeshStandardMaterial({ map: busTex(`🚌 ${stop.name} · ${BUS_PRICE}🪙`, 640, 80, '#1f6fd6', '#ffffff'), roughness: 0.6 }));
-  nm3.position.set(0, 2.25, 0.86); st.add(nm3);
-  g.add(flattenStatic(st));
-  const glass = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 1.7), new THREE.MeshStandardMaterial({ color: '#bcd8e8', transparent: true, opacity: 0.3, roughness: 0.05, side: THREE.DoubleSide, depthWrite: false }));
-  glass.position.set(0, 1.45, -0.72); g.add(glass);
-  return g;
-}
+export const buildStop = A.buildStop; // 1.37.0: jaunais modelis (assets.js)
 
 // ---------- spēles daļa (mixin) ----------
 // Divi autobusi pa to pašu apli: otrais brauc pusapli (pusi no grafika laika) aiz pirmā.
@@ -490,8 +320,10 @@ export const Bus = {
     B.door = (B.door || 0) + (open - (B.door || 0)) * Math.min(1, dt * 4);
     o.doors[0].position.z = o.doorZ[0] - B.door * 0.52; o.doors[1].position.z = o.doorZ[1] + B.door * 0.52;
     o.doors[0].position.x = o.doors[1].position.x = -1.28 - B.door * 0.08;
-    o.driver.animate(dt, 'sit', 0);
-    o.driver.head.rotation.y = st.stop >= 0 ? Math.sin(now / 900) * 0.5 : 0;
+    if (o.driver && o.driver.animate) { // 1.37.0: jaunajā autobusā šoferis ir daļa no modeļa (nekustīgs)
+      o.driver.animate(dt, 'sit', 0);
+      o.driver.head.rotation.y = st.stop >= 0 ? Math.sin(now / 900) * 0.5 : 0;
+    }
     // gājēji neiet cauri autobusam
     if (!this.me.bus && !this.me.veh && !this.me.inKart && !this.me.ride) pushOut(this.me.pos, B.lx, B.lz, h, 1.25 + 0.4, 5.2 + 0.4);
   },

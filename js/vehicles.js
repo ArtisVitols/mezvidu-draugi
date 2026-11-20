@@ -3,14 +3,15 @@
 // ja neviens cits ar to nebrauc; izkāpjot tas paliek tur, kur atstāts (arī citā zemē). Saimnieks glabā, kurš ar ko brauc
 // un kur katrs stāv (saimnieka saglabājumā `vehs`). Vehicles — Game papildinājums.
 import * as THREE from 'three';
-import { mat, lerp, clamp, makeBlobShadow, makeTextSprite } from './util.js?v=1.36.0';
-import { optimizeRig, tyreGeo } from './characters.js?v=1.36.0';
-import { $, toast, sfx } from './ui.js?v=1.36.0';
-import { DIRS, neighbour, FARM, FOREST, RACE, ZONE_IDS } from './zones.js?v=1.36.0';
-import { WATER_Y, YARD, YARD_IN, rotPlot, rotPlotY, BIKE_RACK } from './world.js?v=1.36.0';
-import { SLED_SPOT } from './winter.js?v=1.36.0';
-import { BUS_CODE } from './bus.js?v=1.36.0';
-import { ZONES } from './zones.js?v=1.36.0';
+import { mat, lerp, clamp, makeBlobShadow, makeTextSprite } from './util.js?v=1.37.0';
+import { optimizeRig, tyreGeo } from './characters.js?v=1.37.0';
+import { $, toast, sfx } from './ui.js?v=1.37.0';
+import { DIRS, neighbour, FARM, FOREST, RACE, ZONE_IDS } from './zones.js?v=1.37.0';
+import { WATER_Y, YARD, YARD_IN, rotPlot, rotPlotY, BIKE_RACK } from './world.js?v=1.37.0';
+import { SLED_SPOT } from './winter.js?v=1.37.0';
+import { BUS_CODE } from './bus.js?v=1.37.0';
+import { ZONES } from './zones.js?v=1.37.0';
+import * as A from './assets.js?v=1.37.0';
 
 // tīkla kods (pos ziņas 6. lauks): 1 = kartings, 2 = mašīna, 3 = sniega motocikls, 5 = velosipēds
 export const VEH_CODE = { car: 2, sled: 3, bike: 5 }; // 4 = pasažieris (p[8] — vadītāja id, p[9] — sēdvieta); p[10] — transporta id
@@ -69,169 +70,11 @@ function kit(parent) {
 // atvērts visurgājējs ar drošības loku (lai brauciēji labi redzami). Lielāks (×1,2) — 4 braucējiem un mājdzīvniekiem.
 // Virsmas nekur nesakrīt vienā plaknē (citādi krāsas „mirgo” — z-fighting).
 const CAR_S = 1.2;
-export function buildCar(color = '#3a7d44') {
-  const root = new THREE.Group(), body = new THREE.Group(), shell = new THREE.Group();
-  root.add(body);
-  body.add(shell);
-  shell.scale.setScalar(CAR_S);
-  const paint = new THREE.MeshPhysicalMaterial({ color, roughness: 0.45, metalness: 0.1, clearcoat: 0.6, clearcoatRoughness: 0.2 });
-  const { P, B, tube } = kit(shell);
-  const dark = darkM(), chrome = chromeM();
-  B(1.62, 0.5, 3.1, paint, 0, 0.8, 0);                 // kārba (augša 1.05)
-  B(1.5, 0.3, 1.0, paint, 0, 1.19, 1.0);               // motora pārsegs (līdz z 1.5)
-  B(1.7, 0.1, 3.18, dark, 0, 0.52, 0);                 // slieksnis
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-    B(0.32, 0.08, 1.08, paint, sx * 0.91, 1.09, sz * 1.05); // spārni virs riteņiem
-    B(0.05, 0.26, 1.04, dark, sx * 0.865, 0.93, sz * 1.05);
-  }
-  B(1.24, 0.44, 0.05, dark, 0, 0.98, 1.57);            // reste
-  for (let i = -3; i <= 3; i++) B(0.04, 0.38, 0.05, chrome, i * 0.15, 0.98, 1.6);
-  for (const sx of [-1, 1]) {
-    P(new THREE.CylinderGeometry(0.12, 0.12, 0.08, 16), lightM(), sx * 0.6, 1.08, 1.6, Math.PI / 2);
-    P(new THREE.TorusGeometry(0.125, 0.02, 6, 16), chrome, sx * 0.6, 1.08, 1.645);
-    B(0.12, 0.14, 0.04, tailM(), sx * 0.68, 0.92, -1.58);
-  }
-  B(1.84, 0.14, 0.16, dark, 0, 0.64, 1.67);            // buferi
-  B(1.84, 0.14, 0.16, dark, 0, 0.64, -1.65);
-  // vējstikls ar rāmi
-  const wy = 1.38, wz = 0.4;
-  B(1.46, 0.5, 0.025, glassM(), 0, wy, wz, -0.28);
-  B(1.56, 0.05, 0.07, dark, 0, wy + 0.27, wz - 0.07, -0.28);
-  for (const sx of [-1, 1]) B(0.05, 0.56, 0.07, dark, sx * 0.76, wy, wz, -0.28);
-  // sēdekļi (virs grīdas, nevis tajā pašā plaknē), stūre
-  for (const sx of [-1, 1]) {
-    B(0.56, 0.14, 0.55, seatM(), sx * 0.38, 1.1, -0.25);
-    B(0.56, 0.6, 0.12, seatM(), sx * 0.38, 1.42, -0.58, -0.15);
-  }
-  tube([-0.38, 1.07, 0.5], [-0.38, 1.4, 0.18], 0.025, dark);
-  P(new THREE.TorusGeometry(0.17, 0.025, 8, 22), dark, -0.38, 1.43, 0.15, -1.0);
-  B(1.44, 0.14, 0.55, seatM(), 0, 1.1, -1.15);         // aizmugures sēdeklis
-  B(1.44, 0.5, 0.1, seatM(), 0, 1.38, -1.47, -0.12);
-  // drošības loks un rezerves ritenis
-  tube([-0.76, 1.06, -0.82], [-0.76, 1.86, -0.82], 0.04, dark);
-  tube([0.76, 1.06, -0.82], [0.76, 1.86, -0.82], 0.04, dark);
-  tube([-0.76, 1.86, -0.82], [0.76, 1.86, -0.82], 0.04, dark);
-  tube([-0.76, 1.86, -0.82], [-0.76, 1.08, -1.52], 0.035, dark);
-  tube([0.76, 1.86, -0.82], [0.76, 1.08, -1.52], 0.035, dark);
-  const spare = P(tyreGeo(0.38, 0.26), rubberM(), 0, 1.05, -1.78, 0, Math.PI / 2, 0);
-  spare.rotation.set(0, Math.PI / 2, 0);
-  // riteņi (priekšējie stūrējas)
-  const wheels = [], steer = [];
-  for (const [x, z] of [[-0.88, 1.05], [0.88, 1.05], [-0.88, -1.05], [0.88, -1.05]]) {
-    const st = new THREE.Group(); st.position.set(x, 0.42, z); shell.add(st);
-    const w = new THREE.Group(); st.add(w);
-    P(tyreGeo(0.42, 0.32), rubberM(), 0, 0, 0, 0, 0, 0, w);
-    P(new THREE.CylinderGeometry(0.22, 0.22, 0.27, 14), chrome, 0, 0, 0, 0, 0, Math.PI / 2, w);
-    for (let k = 0; k < 4; k++) B(0.34, 0.05, 0.4, dark, 0, 0, 0, k / 4 * Math.PI, w);
-    wheels.push(w);
-    if (z > 0) steer.push(st);
-  }
-  // sēdvietas un mājdzīvnieku vietas — nemērogotā grupā (tēli paliek parastā lielumā)
-  const at = (x, y, z) => { const g = new THREE.Group(); g.position.set(x * CAR_S, y * CAR_S, z * CAR_S); body.add(g); return g; };
-  const lift = 1.17 * CAR_S - 1.05; // sēdekļa virsma (tēla sēdēšanas pozai kā iepriekš)
-  const seats = [[-0.38, -0.25], [0.38, -0.25], [-0.38, -1.15], [0.38, -1.15]].map(([x, z]) => { const g = at(x, 0, z); g.position.y = 0.86 + lift; return g; });
-  const petSpots = [at(0, 1.17, -1.12), at(0, 1.07, -0.3), at(-0.35, 1.34, 1.05), at(0.35, 1.34, 1.05)];
-  body.traverse((o) => { if (o.isMesh) o.castShadow = true; });
-  optimizeRig(shell);
-  const shadow = makeBlobShadow(4.6); shadow.position.y = 0.04; root.add(shadow);
-  return { kind: 'car', root, body, wheels, steer, seat: seats[0], seats, petSpots, wheelR: 0.42 * CAR_S };
-}
+export const buildCar = A.buildCar; // 1.37.0: jaunais modelis (assets.js)
 
-// sniega motocikls: divas slēpes priekšā, kāpurķēde aizmugurē
-export function buildSled(color = '#d8262a') {
-  const root = new THREE.Group(), body = new THREE.Group();
-  root.add(body);
-  const paint = new THREE.MeshPhysicalMaterial({ color, roughness: 0.35, metalness: 0.15, clearcoat: 0.8, clearcoatRoughness: 0.1 });
-  const { P, B, tube } = kit(body);
-  const dark = darkM(), chrome = chromeM();
-  const nose = P(new THREE.CapsuleGeometry(0.36, 0.8, 6, 14), paint, 0, 0.62, 0.72, Math.PI / 2 - 0.25);
-  nose.scale.set(1.15, 1, 0.75);
-  B(0.92, 0.3, 1.0, paint, 0, 0.74, 0.45);
-  B(0.98, 0.26, 1.7, paint, 0, 0.56, -0.45);
-  B(0.56, 0.2, 1.15, seatM(), 0, 0.84, -0.55);
-  B(0.8, 0.42, 0.03, glassM(), 0, 1.06, 0.2, -0.55);
-  P(new THREE.CylinderGeometry(0.1, 0.1, 0.06, 14), lightM(), 0, 0.8, 1.16, Math.PI / 2 - 0.3);
-  B(0.5, 0.08, 0.04, tailM(), 0, 0.62, -1.31);
-  // stūre
-  tube([0, 0.86, 0.2], [0, 1.02, 0.05], 0.03, dark);
-  tube([-0.36, 1.04, 0.02], [0.36, 1.04, 0.02], 0.022, chrome);
-  for (const sx of [-1, 1]) P(new THREE.CylinderGeometry(0.03, 0.03, 0.12, 8), dark, sx * 0.4, 1.04, 0.02, 0, 0, Math.PI / 2);
-  // kāpurķēde ar rullīšiem
-  B(0.6, 0.3, 1.5, rubberM(), 0, 0.2, -0.7);
-  for (let i = 0; i < 4; i++) P(new THREE.CylinderGeometry(0.12, 0.12, 0.64, 12), dark, 0, 0.17, -1.35 + i * 0.42, 0, 0, Math.PI / 2);
-  // slēpes ar balstiem
-  for (const sx of [-1, 1]) {
-    B(0.15, 0.05, 1.15, dark, sx * 0.46, 0.05, 0.7);
-    B(0.15, 0.05, 0.3, dark, sx * 0.46, 0.12, 1.36, -0.6);
-    tube([sx * 0.46, 0.08, 0.75], [sx * 0.3, 0.55, 0.65], 0.03, chrome);
-  }
-  // 2 sēdvietas: vadītājs un pasažieris aiz viņa
-  const seats = [-0.45, -1.0].map((z, i) => { const s = new THREE.Group(); s.position.set(0, 0.8 + i * 0.03, z); body.add(s); return s; });
-  body.traverse((o) => { if (o.isMesh) o.castShadow = true; });
-  optimizeRig(body);
-  const shadow = makeBlobShadow(2.8); shadow.position.y = 0.04; root.add(shadow);
-  const petSpots = [new THREE.Group()]; petSpots[0].position.set(0, 0.86, -1.32); body.add(petSpots[0]);
-  return { kind: 'sled', root, body, wheels: [], steer: [], seat: seats[0], seats, petSpots, wheelR: 1 };
-}
+export const buildSled = A.buildSled; // 1.37.0: jaunais modelis (assets.js)
 
-// velosipēds: rāmis, divi riteņi ar spieķiem, stūre ar groziņu (tur var braukt mājdzīvnieks), sēdeklis un pedāļi
-export function buildBike(color = '#d23b3b') {
-  const root = new THREE.Group(), body = new THREE.Group();
-  root.add(body);
-  const paint = new THREE.MeshPhysicalMaterial({ color, roughness: 0.35, metalness: 0.3, clearcoat: 0.7, clearcoatRoughness: 0.15 });
-  const { P, B, tube } = kit(body);
-  const dark = darkM(), chrome = chromeM();
-  const R = 0.34, wz = 0.56;
-  // rāmis (dimanta forma)
-  // 1.33.0: bērnu izmēra rāmis — dzīvnieku kājas (0,65 m) sniedzas līdz pedāļiem visā aplī
-  const bb = [0, 0.4, -0.04], st = [0, 0.8, -0.2], ht = [0, 0.86, 0.36], htL = [0, 0.66, 0.42];
-  tube(bb, st, 0.025, paint); tube(st, ht, 0.022, paint); tube(bb, htL, 0.026, paint);
-  tube(bb, [0, R, -wz], 0.016, paint); tube(st, [0, R, -wz], 0.015, paint);
-  tube(htL, ht, 0.028, paint);
-  // sēdeklis
-  tube(st, [0, 0.83, -0.21], 0.016, chrome);
-  const sad = P(new THREE.CapsuleGeometry(0.06, 0.16, 4, 8), seatM(), 0, 0.85, -0.2, Math.PI / 2, 0, 0); sad.scale.set(1.1, 1, 0.5);
-  // aizmugures ritenis
-  const wheels = [];
-  const mkWheel = (z, parent) => {
-    const w = new THREE.Group(); w.position.set(0, R, z); parent.add(w);
-    const ty = new THREE.Mesh(new THREE.TorusGeometry(R - 0.025, 0.03, 8, 28), rubberM()); ty.rotation.y = Math.PI / 2; w.add(ty);
-    const rim = new THREE.Mesh(new THREE.TorusGeometry(R - 0.055, 0.008, 5, 28), chrome); rim.rotation.y = Math.PI / 2; w.add(rim);
-    for (let i = 0; i < 8; i++) { const sp = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 2 * (R - 0.06), 3), chrome); sp.rotation.x = i / 8 * Math.PI; w.add(sp); }
-    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.08, 8), dark); hub.rotation.z = Math.PI / 2; w.add(hub);
-    wheels.push(w);
-    return w;
-  };
-  mkWheel(-wz, body);
-  // stūre + dakša + priekšējais ritenis + groziņš (pagriežas kopā)
-  const steer = new THREE.Group(); steer.position.set(0, 0, 0.42); body.add(steer);
-  const sk = kit(steer);
-  sk.tube([0, R, 0.14], [0, 0.7, -0.02], 0.016, chrome);
-  sk.tube([0, 0.7, -0.02], [0, 1.02, -0.08], 0.018, dark);
-  sk.tube([-0.26, 1.02, -0.1], [0.26, 1.02, -0.1], 0.014, dark);
-  for (const s of [-1, 1]) sk.P(new THREE.CylinderGeometry(0.02, 0.02, 0.1, 8), mat('#2a2a2a', { roughness: 0.9 }), s * 0.28, 1.02, -0.1, 0, 0, Math.PI / 2);
-  mkWheel(0.14, steer);
-  const basket = new THREE.Group(); basket.position.set(0, 0.9, 0.12); steer.add(basket);
-  const wick = mat('#b08a4a', { roughness: 0.95 });
-  kit(basket).B(0.34, 0.02, 0.26, wick, 0, 0, 0);
-  for (const [x, z, w, d] of [[0, 0.13, 0.34, 0.015], [0, -0.13, 0.34, 0.015], [0.17, 0, 0.015, 0.26], [-0.17, 0, 0.015, 0.26]]) kit(basket).B(w, 0.2, d, wick, x, 0.1, z);
-  P(new THREE.CylinderGeometry(0.05, 0.05, 0.03, 10), lightM(), 0, 0.78, 0.62, Math.PI / 2, 0, 0);
-  // pedāļi
-  const CR = 0.13; // kloķa garums
-  const crank = new THREE.Group(); crank.position.set(0, 0.4, -0.04); body.add(crank);
-  const ck = kit(crank);
-  ck.P(new THREE.CylinderGeometry(0.08, 0.08, 0.02, 14), chrome, 0.05, 0, 0, 0, 0, Math.PI / 2);
-  for (const s of [-1, 1]) { ck.B(0.02, CR + 0.03, 0.03, chrome, s * 0.07, s * CR / 2, 0); ck.B(0.1, 0.02, 0.06, dark, s * 0.12, s * CR, 0); }
-  tube([0.05, 0.4, -0.04], [0.05, R, -wz], 0.006, dark); // ķēde
-  body.traverse((o) => { if (o.isMesh) o.castShadow = true; });
-  const seat = new THREE.Group(); seat.position.set(0, 0.32, -0.16); body.add(seat);
-  // pedāļu ass sēdekļa (braucēja) koordinātēs — kājām (pedalIK characters.js)
-  const pedal = { cy: 0.4 - 0.32, cz: -0.04 + 0.16, r: CR };
-  const petSpot = new THREE.Group(); petSpot.position.set(0, 0.03, 0); basket.add(petSpot);
-  petSpot.scale.setScalar(0.6);
-  const shadow = makeBlobShadow(1.7); shadow.position.y = 0.04; shadow.scale.set(0.45, 1, 1); root.add(shadow);
-  return { kind: 'bike', root, body, wheels, steer: [steer], seat, seats: [seat], petSpots: [petSpot], wheelR: R, crank, pedal };
-}
+export const buildBike = A.buildBike; // 1.37.0: jaunais modelis (assets.js)
 
 const buildVeh = (kind, color) => (kind === 'car' ? buildCar(color) : kind === 'bike' ? buildBike(color) : buildSled(color));
 
