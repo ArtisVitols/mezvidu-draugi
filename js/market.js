@@ -2,10 +2,10 @@
 // karodziņu virtenes starp būdām. Viss statisks — spēle to apvieno ar flattenStatic.
 // Būdas lokālās koordinātes: +z — pret pircējiem (laukuma vidu), pārdevējs stāv aiz letes (z ≈ −0,85).
 import * as THREE from 'three';
-import { mat, canvasTexture, makeSignBoard } from './util.js?v=1.37.0';
-import { buildCart, buildNPC } from './characters.js?v=1.37.0';
-import { buildDecor } from './props.js?v=1.37.0';
-import * as A from './assets.js?v=1.37.0';
+import { mat, canvasTexture, makeSignBoard } from './util.js?v=1.38.0';
+import { buildCart, buildNPC } from './characters.js?v=1.38.0';
+import { buildDecor } from './props.js?v=1.38.0';
+import * as A from './assets.js?v=1.38.0';
 
 let plankT = null;
 function plankTex() {
@@ -33,4 +33,24 @@ export const buildStall = A.buildStall; // 1.37.0: jaunais modelis (assets.js)
 
 // karodziņu virtene no a līdz b (lokālās/pasaules koordinātēs, y — piekares augstums), nokarāta pa vidu
 let flagGeo = null;
-export const buildBunting = A.buildBunting; // 1.37.0: jaunais modelis (assets.js)
+// 1.38.0: karodziņi — atpakaļ iepriekšējais izskats
+export function buildBunting(a, b, sag = 0.7) {
+  const g = new THREE.Group();
+  const cols = ['#d42a2a', '#f2c12e', '#2fa84f', '#2a6ad4', '#f7f2e6', '#c04ad2'];
+  const len = Math.hypot(b.x - a.x, b.z - a.z), n = Math.max(4, Math.floor(len / 0.7));
+  flagGeo = flagGeo || new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-0.17, 0, 0), new THREE.Vector3(0.17, 0, 0), new THREE.Vector3(0, -0.36, 0)]);
+  if (!flagGeo.attributes.normal) { flagGeo.computeVertexNormals(); flagGeo.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0.5, 1], 2)); }
+  const ry = Math.atan2(-(b.z - a.z), b.x - a.x);
+  const pts = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n, y = a.y + (b.y - a.y) * t - sag * 4 * t * (1 - t);
+    pts.push(new THREE.Vector3(a.x + (b.x - a.x) * t, y, a.z + (b.z - a.z) * t));
+    if (i > 0 && i < n) {
+      const f = new THREE.Mesh(flagGeo, mat(cols[i % cols.length], { roughness: 0.9, side: THREE.DoubleSide }));
+      f.position.copy(pts[i]); f.rotation.y = ry; g.add(f);
+    }
+  }
+  const rope = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), n * 2, 0.012, 4), mat('#3a3328', { roughness: 1 }));
+  g.add(rope);
+  return g;
+}

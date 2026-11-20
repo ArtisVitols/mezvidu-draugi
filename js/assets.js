@@ -1,7 +1,7 @@
 // 🧸 Jaunie 3D objekti (2.0 komplekts, 1.37.0): viens kopīgs materiāls (toyMaterial), katrs objekts — viens tīkls.
 // Izveidots ar dizaina AI no katalogs.html; spēles moduļi (characters, props, vehicles, bus, farmyard, market) pārsūta savus build* šeit.
 // Mežvidu Draugi — 3D asset kit v2 (three.js r160). Generated 2026-11-20.
-// Usage: import * as A from './mezvidu-assets.js?v=1.37.0'; scene.add(A.buildAnimal({animal:'lapsa'}).root); each frame: A.MZ.time.value += dt;
+// Usage: import * as A from './mezvidu-assets.js?v=1.38.0'; scene.add(A.buildAnimal({animal:'lapsa'}).root); each frame: A.MZ.time.value += dt;
 import * as THREE from 'three';
 
 // =====================================================================
@@ -591,7 +591,7 @@ export function buildAnimal({ animal = 'lacis', fur = null, shirt = '#d23b3b', h
   const shirtBase = top ? top.base : shirt;
   const patt = (v) => { if (!top || !top.fn) return null; return top.fn(v.y, Math.atan2(v.x, v.z)); };
   const shirtTag = [];
-  if (!bird) {
+  {
     const prof = resample(SHIRT_PROF, 0.034);
     k.add(G.lathe(prof, 16), shirtBase, { bone: spine, s: [B, 1, 0.86 * B], skin: torsoSkin, rough: 0.9, fc: top ? patt : null, grad: [0.86, 1.02] });
     shirtTag.push(k.parts.length - 1);
@@ -605,11 +605,6 @@ export function buildAnimal({ animal = 'lacis', fur = null, shirt = '#d23b3b', h
         k.add(st, i % 3 ? '#f2c94c' : '#ffffff', { bone: spine, p: [x, y, z], r: [0, a, i * 0.4], skin: torsoSkin, rough: 0.5, emit: 0.08 });
       });
     }
-  } else {
-    // birds: knitted scarf with a hanging end
-    k.add(G.torus(0.095, 0.034, 7, 18), shirt, { bone: spine, p: [0, 0.4, 0.01], r: [Math.PI / 2 + 0.1, 0, 0], s: [B, 0.86 * B, 1], rough: 0.95 });
-    k.add(G.rbox(0.06, 0.16, 0.025, 0.012), shirt, { bone: spine, p: [0.05, 0.32, 0.105 * B], r: [-0.25, 0, 0.18], rough: 0.95 });
-    k.add(G.rbox(0.062, 0.02, 0.028, 0.008), shade(shirt, 0.35), { bone: spine, p: [0.064, 0.245, 0.124 * B], r: [-0.25, 0, 0.18], rough: 0.95 });
   }
 
   // ---- arms ----
@@ -620,6 +615,8 @@ export function buildAnimal({ animal = 'lacis', fur = null, shirt = '#d23b3b', h
     if (bird) {
       k.add(G.sph(0.1, 12, 10), fur, F({ bone: sh, p: [s * 0.01, -0.12, -0.02], s: [0.3, 1.32, 0.78], r: [0.1, 0, s * 0.08] }));
       for (let i = 0; i < 3; i++) k.add(G.sph(0.05, 8, 6), shade(fur, -0.08 - i * 0.04), F({ bone: sh, p: [s * 0.012, -0.21 - i * 0.025, -0.04 + i * 0.03], s: [0.3, 1.2, 0.7], r: [0.3, 0, 0] }));
+      // 1.38.0: īsa piedurkne arī pīlei
+      k.add(G.sph(0.085, 12, 8), shirtBase, { bone: sh, p: [s * 0.012, -0.05, -0.02], s: [0.42, 0.75, 0.9], rough: 0.9, fc: top ? (v) => (top.fn ? top.fn(0.3 + v.y, s * Math.PI / 2) : null) : null });
     } else {
       const armSkin = (v) => { const w = smooth(-0.16, -0.245, v.y); return [el, w, sh, 1 - w]; };
       const sock = P.sock;
@@ -2027,10 +2024,11 @@ export function makeSignBoard(text, opts = {}) {
     k.add(G.poly([[x0, -y], [x1, -y], [x1 + H * 0.55, 0], [x1, y], [x0, y]], D, 0.012), road ? '#8d9297' : '#9a6a3c', { rough: road ? 0.4 : 0.85, metal: road ? 0.6 : 0 });
   } else k.add(G.rbox(W + e * 2, H + e * 2, D, Math.min(0.05, e)), road ? '#8d9297' : '#9a6a3c', { rough: road ? 0.4 : 0.85, metal: road ? 0.6 : 0 });
   const obj = k.build({ name: 'sign' });
+  obj.updateMatrixWorld(true); const fz = Math.max(D / 2, new THREE.Box3().setFromObject(obj).max.z) + 0.004; // 1.38.0: teksts uz dēļa virsmas (bultas apmale ir biezāka par D)
   const face = (t) => labelTexture(t, { w: 512, h: Math.round(512 * H / W), bg: road ? '#6e3f1f' : '#e9c895', fg: road ? '#ffffff' : '#4a2a12', plank: !road, border: road ? '#ffffff' : null });
   const mk = (t, back) => {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshStandardMaterial({ map: face(t), roughness: 0.75, emissive: '#ffffff', emissiveMap: face(t), emissiveIntensity: 0.1 }));
-    m.position.z = back ? -D / 2 - 0.004 : D / 2 + 0.004; if (back) m.rotation.y = Math.PI; m.name = 'label'; return m;
+    m.position.z = back ? -fz : fz; if (back) m.rotation.y = Math.PI; m.name = 'label'; return m;
   };
   obj.add(mk(text, false), mk(opts.back || text, true));
   return { obj, w: W };

@@ -1,5 +1,10 @@
 # Izmaiņu žurnāls
 
+## 1.38.0 — 2026-11-20
+- 🎏 Tirgus karodziņu virtenes — atkal iepriekšējais izskats.
+- 🪧 Ceļa rādītājā krustojumā atkal redzami virzienu uzraksti (teksts bija paslēpts dēļa iekšā).
+- 🦆 Pīle atkal valkā kreklu (arī rakstainos), šalles vietā; spārniem īsas piedurknes.
+
 ## 1.37.0 — 2026-11-20
 - 🧸 Jauni 3D modeļi (dizaina AI komplekts `js/assets.js`): spēlētāju dzīvnieki, cepures, drēbes, meža dzīvnieki un mājdzīvnieki
   (mazuļi), kartingi, mašīna, ragavas, velosipēds, autobuss, tirgus būdas un ratiņi, dārza mājiņa, siltumnīca, vārti, ceļa rādītājs
