@@ -6,15 +6,15 @@
 // TrailZone — zemes modelis (uzbūvē, ieejot, izmet, izejot). Trail — Game papildinājums (darbības, tīkls, panelis).
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { ZONE_HALF, SOUTH_END, GROUND_Y, CROSS_AT, smoothRoad, RoadIndex, buildRoadMesh, roadMaterial, disposeTree, buildBorderPosts, wood } from './zones.js?v=1.41.1';
-import { WATER_Y } from './world.js?v=1.41.1';
-import { makeTextSprite, makeTag, makeSignBoard, canvasTexture, noiseTexture, smoothstep, lerp, clamp } from './util.js?v=1.41.1';
-import { buildAnimal } from './characters.js?v=1.41.1';
-import * as A from './assets.js?v=1.41.1';
-import { InstanceField } from './instancing.js?v=1.41.1';
-import { makeNoise2D, mulberry32 } from './noise.js?v=1.41.1';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, sfx } from './ui.js?v=1.41.1';
-import { HATS } from './data.js?v=1.41.1';
+import { ZONE_HALF, SOUTH_END, GROUND_Y, CROSS_AT, smoothRoad, RoadIndex, buildRoadMesh, roadMaterial, disposeTree, buildBorderPosts, wood, ZONE_IDS } from './zones.js?v=1.42.0';
+import { WATER_Y } from './world.js?v=1.42.0';
+import { makeTextSprite, makeTag, makeSignBoard, canvasTexture, noiseTexture, smoothstep, lerp, clamp } from './util.js?v=1.42.0';
+import { buildAnimal } from './characters.js?v=1.42.0';
+import * as A from './assets.js?v=1.42.0';
+import { InstanceField } from './instancing.js?v=1.42.0';
+import { makeNoise2D, mulberry32 } from './noise.js?v=1.42.0';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, sfx } from './ui.js?v=1.42.0';
+import { HATS } from './data.js?v=1.42.0';
 
 const SEED = 4711, TAU = Math.PI * 2, H = ZONE_HALF;
 // krasts (ūdens mala) un strauts — tīras funkcijas (tās izmanto arī karte)
@@ -211,8 +211,18 @@ export function trailLayout() {
     }
     s.items = out;
   });
+  // 1.42.0: uzdevuma zona — aplis ap pļavu, kurā ir NPC, visi priekšmeti un nodošanas vieta (+30 m)
+  for (const s of stops) {
+    let r = Math.hypot(s.x - s.clear.x, s.z - s.clear.z);
+    for (const it of s.items) r = Math.max(r, Math.hypot(it.x - s.clear.x, it.z - s.clear.z));
+    if (s.drop) r = Math.max(r, Math.hypot(s.drop.x - s.clear.x, s.drop.z - s.clear.z));
+    s.range = r + 30;
+  }
   return L;
 }
+// vai vieta ir uzdevuma zonā
+export function inQuestRange(k, x, z) { const s = trailLayout().stops[k]; return !!s && Math.hypot(x - s.clear.x, z - s.clear.z) < s.range; }
+const FAIL_MS = 4000; // cik ilgi visiem jābūt ārpus zonas, līdz uzdevums neizdodas
 
 // pilns augstums (bez tilta) — tīra funkcija
 export function trailHeight(x, z) {
@@ -891,6 +901,14 @@ export class TrailZone {
     if (this.waterMat) { const nm = this.waterMat.normalMap; nm.offset.x += dt * 0.006; nm.offset.y += dt * 0.0045; }
     if (this.foam) this.foam.material.opacity = 0.55 + 0.3 * Math.sin(t * 0.9);
     const me = game.me.pos;
+    // brīdinājums, ja aizej no pieņemta uzdevuma zonas (ja visi aiziet — uzdevums neizdodas)
+    const qt = game.trail;
+    if (qt && qt.acc && qt.step < TASKS.length) {
+      const inR = inQuestRange(qt.step, me.x, me.z);
+      if (this.wasIn === true && !inR) toast(`⚠️ Tu aizej no ${TASKS[qt.step].icon} uzdevuma vietas! Ja visi aizies prom, uzdevums neizdosies.`, 'bad', 4500);
+      else if (this.wasIn === false && inR) toast(`${TASKS[qt.step].icon} Atpakaļ pie uzdevuma`, 'good');
+      this.wasIn = inR;
+    } else this.wasIn = null;
     // priekšmeti viegli šūpojas, lai tos labāk pamanītu
     for (const o of this.itemObjs) if (o.bob && o.obj.visible && Math.abs(o.it.x - me.x) < 60 && Math.abs(o.it.z - me.z) < 60) { o.obj.position.y = o.y + 0.12 + Math.sin(t * 2.2 + o.it.i) * 0.08; o.obj.rotation.y += dt * 0.8; }
     // NPC: dzīvi tikai tuvumā
@@ -1089,7 +1107,7 @@ export const Trail = {
     // nesamais vairs nav mans (beidzās laiks vai jauns uzdevums) — izkrīt
     if (c && c.trail != null) {
       const tk = this.trail.taken[c.trail];
-      if (c.step !== this.trail.step || !tk || tk[0] !== this.myId || tk[1] < 0) { this.trailDropCarry(false); if (!(ev && ev.k === 'drop')) toast('🫳 Nesamais izkrita un atgriezās savā vietā'); }
+      if (c.step !== this.trail.step || !tk || tk[0] !== this.myId || tk[1] < 0) { this.trailDropCarry(false); if (!(ev && (ev.k === 'drop' || ev.k === 'fail'))) toast('🫳 Nesamais izkrita un atgriezās savā vietā'); }
     }
     if (ev) this.trailEvent(ev);
     this.updateTeamBar();
@@ -1113,6 +1131,7 @@ export const Trail = {
     }
     if (ev.k === 'drop' && ev.by === this.myId) { sfx('j_star', { vol: 0.6 }); this.spawnFloat('✨', this.me.pos); }
     if (ev.k === 'acc' && here && T) { sfx('j_quest', { vol: 0.6 }); toast(`${T.icon} Jauns uzdevums: ${T.title}! ${T.help}`, 'good', 5000); }
+    if (ev.k === 'fail' && T) { sfx('bad'); toast(`❌ Uzdevums neizdevās: ${T.title} — visi aizgāja prom no ${T.icon}. ${T.icon} ${T.name} gaida — sāciet vēlreiz!`, 'bad', 6000); }
     if (ev.k === 'restart' && here) toast('🔁 Piedzīvojums sākas no jauna — ej pie 🐻 Lāča Bruņa!', 'good', 4500);
     if (ev.done != null && here) {
       const D = TASKS[ev.done];
@@ -1282,6 +1301,19 @@ export const Trail = {
     this.trailTickT = now;
     let ch = false;
     for (const i in tr.taken) { const tk = tr.taken[i]; if (tk[1] > 0 && tk[1] < now) { delete tr.taken[i]; ch = true; } }
+    // 1.42.0: pieņemts uzdevums neizdodas, ja visi spēlētāji ir ārpus tā zonas (arī citā zemē) ilgāk par FAIL_MS
+    if (tr.acc && tr.step < TASKS.length) {
+      let anyIn = this.zone === 's' && inQuestRange(tr.step, this.me.pos.x, this.me.pos.z);
+      for (const [id, p] of this.hs.positions) if (!anyIn && id !== 0 && Array.isArray(p) && ZONE_IDS[p[7]] === 's' && inQuestRange(tr.step, p[0], p[2])) anyIn = true;
+      if (anyIn) this.trailOutT = 0;
+      else if (!this.trailOutT) this.trailOutT = now;
+      else if (now - this.trailOutT > FAIL_MS) {
+        this.trailOutT = 0;
+        tr.acc = false; tr.c = 0; tr.taken = {};
+        this.hostTrailSend({ k: 'fail', step: tr.step });
+        return;
+      }
+    } else this.trailOutT = 0;
     if (ch) this.hostTrailSend(null);
   },
   hostTrailLeave(id) {

@@ -1,5 +1,9 @@
 # Izmaiņu žurnāls
 
+## 1.42.0 — 2026-11-21
+- ❌ Piedzīvojumu takas uzdevums var neizdoties: ja pēc uzdevuma pieņemšanas **visi** spēlētāji aiziet no uzdevuma vietas
+  (pļava ap meža draugu ar visiem priekšmetiem, +30 m) vai uz citu zemi ilgāk par 4 s, uzdevums neizdodas — visiem paziņojums,
+  savāktais atgriežas vietās, nesamie izkrīt. Uzdevumu var sākt vēlreiz pie tā paša drauga. Kad tu pats aizej no vietas — brīdinājums.
 ## 1.41.1 — 2026-11-21
 - 🪨 Piedzīvojumu meža lielajiem akmeņiem un klintīm tagad ir akmens faktūra (zemākā grafikā — zīmēta, augstākā — foto, kā meža akmeņiem), sūnas augšpusē.
 ## 1.41.0 — 2026-11-21
