@@ -1,5 +1,10 @@
 # Izmaiņu žurnāls
 
+## 1.41.0 — 2026-11-21
+- 🐞 **Kļūdas vieta** (☰ izvēlnē): spēlējot kopā, jebkurš var saglabāt vietu, kad redz kļūdu — tiek pierakstīts, kur stāv visi spēlētāji
+  (zeme, precīza vieta, virziens), ko kurš nes, cik tālu ir piedzīvojumu taka, un konsoles kļūdas. Var pierakstīt, kas notika.
+  "📋 Kopēt aprakstu" — teksts izstrādātājam. Pēc labojuma saimnieks nospiež "▶ Turpināt no šejienes" — visi (pēc vārda) tiek pārcelti
+  atpakaļ uz savām vietām, taka atjaunota, nesamie atkal rokās. Vietas paliek saglabātas arī pēc lapas pārlādes (pēdējās 10).
 ## 1.40.0 — 2026-11-21
 - 🐍 Piedzīvojumu meža taka tagad lokās kā čūska (~2,5 km): cieši līkumi visā garumā, taisnāka tikai pie meža draugiem, tilta, ieejas un jūras.
 - ⛰️ Kalnaini apgabali starp meža draugiem (kores līdz ~35 m): taka kāpj kalnos un iet pa aizām ar stāvām akmens kraujām abās pusēs,

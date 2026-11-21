@@ -6,15 +6,15 @@
 // TrailZone — zemes modelis (uzbūvē, ieejot, izmet, izejot). Trail — Game papildinājums (darbības, tīkls, panelis).
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { ZONE_HALF, SOUTH_END, GROUND_Y, CROSS_AT, smoothRoad, RoadIndex, buildRoadMesh, roadMaterial, disposeTree, buildBorderPosts, wood } from './zones.js?v=1.40.0';
-import { WATER_Y } from './world.js?v=1.40.0';
-import { makeTextSprite, makeTag, makeSignBoard, canvasTexture, smoothstep, lerp, clamp } from './util.js?v=1.40.0';
-import { buildAnimal } from './characters.js?v=1.40.0';
-import * as A from './assets.js?v=1.40.0';
-import { InstanceField } from './instancing.js?v=1.40.0';
-import { makeNoise2D, mulberry32 } from './noise.js?v=1.40.0';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, sfx } from './ui.js?v=1.40.0';
-import { HATS } from './data.js?v=1.40.0';
+import { ZONE_HALF, SOUTH_END, GROUND_Y, CROSS_AT, smoothRoad, RoadIndex, buildRoadMesh, roadMaterial, disposeTree, buildBorderPosts, wood } from './zones.js?v=1.41.0';
+import { WATER_Y } from './world.js?v=1.41.0';
+import { makeTextSprite, makeTag, makeSignBoard, canvasTexture, smoothstep, lerp, clamp } from './util.js?v=1.41.0';
+import { buildAnimal } from './characters.js?v=1.41.0';
+import * as A from './assets.js?v=1.41.0';
+import { InstanceField } from './instancing.js?v=1.41.0';
+import { makeNoise2D, mulberry32 } from './noise.js?v=1.41.0';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, sfx } from './ui.js?v=1.41.0';
+import { HATS } from './data.js?v=1.41.0';
 
 const SEED = 4711, TAU = Math.PI * 2, H = ZONE_HALF;
 // krasts (ūdens mala) un strauts — tīras funkcijas (tās izmanto arī karte)
