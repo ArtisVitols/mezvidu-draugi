@@ -7,6 +7,7 @@ import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUEST
 import { writeSave } from './save.js?v=1.40.0';
 import { Sound } from './sound.js?v=1.40.0';
 import { getVolume, setVolume } from './audio.js?v=1.40.0';
+import { BugSpot } from './bugspot.js?v=1.40.0';
 import { VERSION, BUILD_DATE } from './version.js?v=1.40.0';
 import { makeTextSprite, makeTag, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.40.0';
 import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.40.0';
@@ -168,6 +169,7 @@ export class Game {
     this.initVehicles();
     this.initBus();
     this.initTrail();
+    this.initBugSpot();
     await step(0.88, 'Ejam uz tavu vietu…');
     this.switchZone(sz, sp, null); // ielādējas saglabātā zeme (mežs tiek izlādēts, ja tā nav mežs)
     this.controls = new Controls($('touch'));
@@ -2657,6 +2659,7 @@ export class Game {
       tile('👥', 'Istaba', this.net.offline ? 'Viens' : `Kods ${this.roomCode}`, 't-purple', () => this.openRoom());
       tile('🗺️', 'Karte', 'Visas zemes', 't-teal', () => { closePanel(); this.openBigMap(); });
       tile('🎲', 'Spēles', 'Ar draugiem', 't-pink', () => this.openGames());
+      tile('🐞', 'Kļūdas vieta', 'Saglabāt / turpināt', 't-grey', () => this.openBugSpot());
       b.append(grid);
       const row = el('div', { className: 'mrow' });
       row.append(el('button', { className: 'mbtn', onclick: () => { this.persist(); toast('💾 Saglabāts!', 'good'); } }, '💾 Saglabāt'));
@@ -2728,5 +2731,5 @@ export class Game {
   }
 }
 
-Object.assign(Game.prototype, Activities, Quality, Winter, Vehicles, Farm, Bus, Garden, Sound, Trail);
+Object.assign(Game.prototype, Activities, Quality, Winter, Vehicles, Farm, Bus, Garden, Sound, Trail, BugSpot);
 Game.prototype.weeklyIcon = function () { return ({ mushrooms: '🍄', fish: '🐟', berries: '🫐', harvested: '🥕', petted: '🦌', races: '🏎️' })[this.team.stat] || ''; };

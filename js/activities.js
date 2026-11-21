@@ -657,7 +657,7 @@ export const Activities = {
         break;
       }
       case 'mgStart': this.hostMgStart(from, m.kind); break;
-      default: if (!this.hostTrail(from, m) && this.hostWinter) this.hostWinter(from, m);
+      default: if (!this.hostBug(from, m) && !this.hostTrail(from, m) && this.hostWinter) this.hostWinter(from, m);
     }
   },
 
@@ -754,7 +754,7 @@ export const Activities = {
       }
       case 'team': this.onTeam(m.team); break;
       case 'mg': this.onMg(m.mg, m.foundNow); break;
-      default: if (!this.onTrailMessage(m) && this.onWinterMessage) this.onWinterMessage(m);
+      default: if (!this.onBugMessage(m) && !this.onTrailMessage(m) && this.onWinterMessage) this.onWinterMessage(m);
     }
   },
 
