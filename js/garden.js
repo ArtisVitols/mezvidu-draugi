@@ -5,12 +5,12 @@
 // Saglabājumā: save.gd = { xp, land } (land — LAND indekss).
 // Garden — Game papildinājums (mixin).
 import * as THREE from 'three';
-import { CROPS, TREES } from './data.js?v=1.38.0';
-import { TILE, GARDEN_T, rotPlot } from './world.js?v=1.38.0';
-import { mat } from './util.js?v=1.38.0';
-import { $, toast, sfx, showPanel, refreshPanel, el, itemRow } from './ui.js?v=1.38.0';
-import { iconEl } from './icons.js?v=1.38.0';
-import { FARM } from './zones.js?v=1.38.0';
+import { CROPS, TREES } from './data.js?v=1.39.0';
+import { TILE, GARDEN_T, rotPlot } from './world.js?v=1.39.0';
+import { mat } from './util.js?v=1.39.0';
+import { $, toast, sfx, showPanel, refreshPanel, el, itemRow } from './ui.js?v=1.39.0';
+import { iconEl } from './icons.js?v=1.39.0';
+import { FARM } from './zones.js?v=1.39.0';
 
 // cik XP vajag, lai sasniegtu līmeni n (1. līmenis — 0)
 export const MAX_LVL = 24;  // 1.36.0: bija 12

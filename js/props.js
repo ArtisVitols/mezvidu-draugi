@@ -1,9 +1,9 @@
 // Mazie modeļi jaunajām nodarbēm: ogu krūmi, dārza rotājumi, makšķere, pludiņš
 import * as THREE from 'three';
-import { mat, canvasTexture, noiseTexture } from './util.js?v=1.38.0';
-import { optimizeRig, buildHat } from './characters.js?v=1.38.0';
-import { BERRIES, TREES } from './data.js?v=1.38.0';
-import * as A from './assets.js?v=1.38.0';
+import { mat, canvasTexture, noiseTexture } from './util.js?v=1.39.0';
+import { optimizeRig, buildHat } from './characters.js?v=1.39.0';
+import { BERRIES, TREES } from './data.js?v=1.39.0';
+import * as A from './assets.js?v=1.39.0';
 
 const TAU = Math.PI * 2;
 function put(parent, geo, m, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) {

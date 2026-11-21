@@ -1,8 +1,8 @@
 // Grafikas līmeņi un automātiska pielāgošana pēc kadru ātruma (fps).
 // Visi iestatījumi mainās uzreiz spēles laikā (bez pārlādes), tāpēc „Auto” var kāpt uz augšu un leju.
 import * as THREE from 'three';
-import { PlanarReflection, PostFX, upgradeWater, terrainMaterial, loadTexture } from './gfx.js?v=1.38.0';
-import { toast } from './ui.js?v=1.38.0';
+import { PlanarReflection, PostFX, upgradeWater, terrainMaterial, loadTexture } from './gfx.js?v=1.39.0';
+import { toast } from './ui.js?v=1.39.0';
 
 export const Q_ORDER = ['lowest', 'low', 'mid', 'high'];
 export const Q_MODES = ['auto', 'high', 'mid', 'low', 'lowest'];
@@ -126,6 +126,7 @@ export const Quality = {
     this.sky.scale.setScalar(Q.far * 0.84);
     if (Q.detail > 0) this.camera.layers.enable(1); else this.camera.layers.disable(1);
     if (this.world) for (const W of this.builtWorlds()) this.applyWorldQuality(W);
+    if (this.terr && this.terr.applyQuality && !this.terr.isWorld) this.terr.applyQuality(this);
     this.cheapScan(true);
     this.renderer.shadowMap.autoUpdate = true;
     this.onResize();

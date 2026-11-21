@@ -1,5 +1,5 @@
 // Spēlētāja progresa saglabāšana pārlūka atmiņā (localStorage)
-import { FISH } from './data.js?v=1.38.0';
+import { FISH } from './data.js?v=1.39.0';
 const PREFIX = 'mezvidi_save_v1_';
 const LAST = 'mezvidi_last_profile';
 const GAMES = 'mezvidi_games';      // zināmās spēles [{id, name, at, last, keep}] (1.28.0)
@@ -28,7 +28,7 @@ export function defaultSave(name) {
     stars: [],        // atrasto zvaigžņu indeksi
     bestLap: null,
     pos: null,
-    zone: 'c',        // kurā zemē spēlētājs atrodas (c — sēta, e — mežs, w — trase, n — ziema, s — kāpas)
+    zone: 'c',        // kurā zemē spēlētājs atrodas (c — sēta, e — mežs, w — trase, n — ziema, s — piedzīvojumu mežs)
     zones: {},        // blakus zemju stāvoklis (uzdevumi tiks pievienoti vēlāk)
     playTime: 0,
     rod: false,

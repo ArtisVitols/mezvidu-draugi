@@ -1,7 +1,7 @@
 // 🔊 Pastāvīgās skaņas (1.31.0): soļi pēc virsmas, vide pēc zemes (putni, vējš, ūdens, purva sienāži), uguns pie ugunskura,
 // dzinēji (kartings, mašīna, autobuss), velosipēda spieķi, slēpošanas vējš. Mixin uz Game.prototype; updateSound(dt) katru kadru.
-import { loop, loopAt, play, setListener, stopAllLoops, engine } from './audio.js?v=1.38.0';
-import { FOREST, FARM, RACE } from './zones.js?v=1.38.0';
+import { loop, loopAt, play, setListener, stopAllLoops, engine } from './audio.js?v=1.39.0';
+import { FOREST, FARM, RACE } from './zones.js?v=1.39.0';
 
 const STEP = 0.78;   // m starp soļiem ejot (skrienot — garāki)
 const rd = (T, x, z) => { if (!T || !T.roadDist) return 99; const r = T.roadDist(x, z); return typeof r === 'number' ? r : r ? r.d : 99; };
@@ -57,11 +57,12 @@ export const Sound = {
     }
 
     // --- vide pēc zemes ---
-    const birds = z === FOREST ? 0.55 : z === FARM ? 0.45 : z === RACE ? 0.25 : 0;
-    const wind = z === 'n' ? 0.55 : z === 's' ? 0.45 : 0.08;
+    const amb = z === 's' && T && T.ambience ? T.ambience(me.pos.x, me.pos.z) : null; // 1.39.0: mežā putni, pie jūras vējš
+    const birds = amb ? amb.birds : z === FOREST ? 0.55 : z === FARM ? 0.45 : z === RACE ? 0.25 : 0;
+    const wind = amb ? amb.wind : z === 'n' ? 0.55 : z === 's' ? 0.45 : 0.08;
     loop('amb_birds', 'amb_birds', birds);
     loop('amb_wind', 'amb_wind', wind);
-    loop('air', 'air', z === 'n' ? 0.28 : z === 's' ? 0.22 : 0);
+    loop('air', 'air', z === 'n' ? 0.28 : amb ? amb.wind * 0.4 : 0);
     // ūdens un purvs tuvumā (pārbauda reizi 0,5 s)
     this.sndT = (this.sndT || 0) - dt;
     if (this.sndT <= 0) {

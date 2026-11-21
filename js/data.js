@@ -112,6 +112,7 @@ export const HATS = {
   berete:  { name: 'Berete', price: 35 },
   kovbojs: { name: 'Kovboja cepure', price: 70 },
   pirats:  { name: 'Pirāta cepure', price: 90 },
+  jurnieks: { name: 'Jūrnieka cepure', price: 0, hidden: true }, // tikai par visu Piedzīvojumu taku (1.39.0)
 };
 
 // ---------- Drēbes (pērk pie Pūces Paulas, uzvelk somā). slot: krekls, brilles, kakls, mugura, kājas ----------

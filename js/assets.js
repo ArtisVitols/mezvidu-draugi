@@ -1,7 +1,7 @@
 // 🧸 Jaunie 3D objekti (2.0 komplekts, 1.37.0): viens kopīgs materiāls (toyMaterial), katrs objekts — viens tīkls.
 // Izveidots ar dizaina AI no katalogs.html; spēles moduļi (characters, props, vehicles, bus, farmyard, market) pārsūta savus build* šeit.
 // Mežvidu Draugi — 3D asset kit v2 (three.js r160). Generated 2026-11-20.
-// Usage: import * as A from './mezvidu-assets.js?v=1.38.0'; scene.add(A.buildAnimal({animal:'lapsa'}).root); each frame: A.MZ.time.value += dt;
+// Usage: import * as A from './mezvidu-assets.js?v=1.39.0'; scene.add(A.buildAnimal({animal:'lapsa'}).root); each frame: A.MZ.time.value += dt;
 import * as THREE from 'three';
 
 // =====================================================================
@@ -530,6 +530,10 @@ export const SPECIES = {
   suns: { name: 'Suns', fur: '#c89b5e', bulk: 1.02, head: [1.02, 0.97, 1.0], ears: 'floppy', muzzle: 'dog', nose: '#231a16', tail: 'wag', patch: true },
   varde: { name: 'Varde', fur: '#5fae4a', bulk: 1.08, head: [1.16, 0.84, 1.0], ears: 'none', muzzle: 'frog', skin: 0.42, chest: '#e3eaa0', tail: 'none', feet: 1.25, headY: 0.5 },
   pile: { name: 'Pīle', fur: '#f5f0e0', bulk: 1.0, head: [0.95, 1.0, 1.0], ears: 'tuft', muzzle: 'bill', bird: true, legC: '#f09a24', tail: 'duck', headY: 0.6 },
+  // 1.39.0: Dienvidu meža takas NPC (nav spēlētāju izvēlē)
+  vavere: { name: 'Vāvere', fur: '#b8582a', bulk: 0.9, head: [1.0, 0.98, 0.98], ears: 'squirrel', muzzle: 'bunny', nose: '#4a2a1e', chest: '#f6e4c6', tail: 'squirrel' },
+  ezis: { name: 'Ezis', fur: '#c9a27a', bulk: 1.05, head: [0.98, 0.92, 1.05], ears: 'round', muzzle: 'snout', nose: '#1b1310', chest: '#efe0c4', tail: 'none', spikes: '#5a4232' },
+  bebritis: { name: 'Bebrs', fur: '#7a4c2c', bulk: 1.16, head: [1.04, 0.96, 1.02], ears: 'round', muzzle: 'bunny', nose: '#2a1a12', chest: '#a87a52', tail: 'beaver' },
 };
 
 /** shirt patterns: fn(y, angle) → colour or null (base). y in spine space */
@@ -586,6 +590,15 @@ export function buildAnimal({ animal = 'lacis', fur = null, shirt = '#d23b3b', h
   k.add(G.lathe(TORSO_PROF, 16), fur, F({ bone: spine, s: [B, 1, 0.86 * B], skin: torsoSkin }));
   if (bird || animal === 'varde') k.add(G.sph(0.13, 14, 10), light, F({ bone: spine, p: [0, 0.17, 0.075 * B], s: [0.95 * B, 1.3, 0.6], skin: torsoSkin }));
 
+  // eža adatas (mugura) — 1.39.0
+  if (P.spikes) {
+    const R0 = rng(17);
+    for (let row = 0; row < 6; row++) for (let i = 0; i < 12; i++) {
+      const y = 0.02 + row * 0.07, a = Math.PI + (i - 5.5) * 0.27 + (row % 2) * 0.13, r = lerpProf(TORSO_PROF, Math.min(0.37, y)) + 0.035;
+      const x = Math.sin(a) * r * B, z = Math.cos(a) * r * 0.86 * B, d = new THREE.Vector3(Math.sin(a), 0.35 + row * 0.08, Math.cos(a)).normalize();
+      k.add(G.cone(0.03, 0.16 + R0() * 0.04, 5), i % 3 ? P.spikes : shade(P.spikes, 0.35), { bone: spine, p: [x, y, z], q: qFromY(d), rough: 0.9, skin: torsoSkin });
+    }
+  }
   // ---- shirt (skinned with the torso) ----
   const top = wear && wear.top && TOPS[wear.top];
   const shirtBase = top ? top.base : shirt;
@@ -805,6 +818,12 @@ export function buildAnimal({ animal = 'lacis', fur = null, shirt = '#d23b3b', h
         k.add(G.cone(0.062, 0.12, 8), fur, F({ ...HB, p: [p.x, p.y + 0.03, p.z + 0.02], r: [0.75, 0, -s * 0.5], s: [1, 1, 0.38] }));
         break;
       }
+      case 'squirrel': {
+        const { p, q } = earAt(s, 0.5, 0.66, 0.22);
+        k.add(G.cone(0.05, 0.12, 8), fur, F({ ...HB, p: [p.x, p.y + 0.04, p.z], q, s: [1, 1, 0.55] }));
+        k.add(G.cone(0.022, 0.07, 6), shade(fur, -0.25), F({ ...HB, p: [p.x, p.y + 0.12, p.z - 0.01], q }));
+        break;
+      }
       case 'tuft': {
         if (s > 0) for (let i = 0; i < 3; i++) k.add(G.cone(0.022, 0.09, 6), shade(fur, -0.05), F({ ...HB, p: [(i - 1) * 0.02, hy * 0.98, 0.02 - i * 0.02], r: [-0.3 - i * 0.15, 0, (i - 1) * 0.35] }));
         break;
@@ -812,6 +831,12 @@ export function buildAnimal({ animal = 'lacis', fur = null, shirt = '#d23b3b', h
     }
   }
 
+  // eža adatas arī pakausī (1.39.0)
+  if (P.spikes) for (let row = 0; row < 4; row++) for (let i = 0; i < 8; i++) {
+    const p = surf(Math.PI + (i - 3.5) * 0.36 + (row % 2) * 0.18, -0.25 + row * 0.3, 0.93), n = nrm(p);
+    const d = n.clone().add(new THREE.Vector3(0, 0.25, -0.5)).normalize();
+    k.add(G.cone(0.03, 0.15, 5), i % 3 ? P.spikes : shade(P.spikes, 0.35), { ...HB, p: [p.x, p.y, p.z], q: qFromY(d), rough: 0.9 });
+  }
   // ---- tails (on the 'tail' bone, game rotates tail.rotation.y) ----
   const TB = { bone: tail };
   switch (P.tail) {
@@ -832,6 +857,13 @@ export function buildAnimal({ animal = 'lacis', fur = null, shirt = '#d23b3b', h
       k.add(G.tube(pts, 0.011, 6, { capB: true }), fur, F({ ...TB }));
       break;
     }
+    case 'squirrel':
+      k.add(G.tube([[0, 0, 0], [0, 0.04, -0.12], [0, 0.22, -0.22], [0, 0.48, -0.2], [0, 0.62, -0.08], [0, 0.6, 0.0]], (t) => 0.04 + Math.sin(Math.PI * Math.pow(t, 0.7)) * 0.085, 10, { div: 4, capB: true }),
+        fur, F({ ...TB, vc: (v) => (v.y > 0.56 ? shade(fur, 0.25) : null) }));
+      break;
+    case 'beaver':
+      k.add(G.rbox(0.17, 0.035, 0.3, 0.016), '#4a3a32', { ...TB, p: [0, -0.1, -0.16], r: [0.5, 0, 0], rough: 0.7, fc: (c) => ((Math.floor(c.x * 40) + Math.floor(c.z * 40)) % 2 ? '#3c2f28' : null) });
+      break;
     case 'duck':
       for (const s of [-1, 0, 1]) k.add(G.cone(0.035, 0.12, 6), fur, F({ ...TB, p: [s * 0.03, 0.06, -0.05], r: [-2.0, 0, s * 0.3], s: [1, 1, 0.5] }));
       break;
@@ -1024,7 +1056,7 @@ export function posePlayer(av, t, state = 'idle') {
 // =====================================================================
 export const HATS = {
   salmu: 'Salmu cepure', vainags: 'Ziedu vainags', ozols: 'Ozollapu vainags', cilindrs: 'Cilindrs', kronis: 'Kronis',
-  kivere: 'Bruņinieka ķivere', nagene: 'Beisbola cepure', berete: 'Berete', kovbojs: 'Kovboja cepure', pirats: 'Pirāta cepure', ziemas: 'Ziemas cepure',
+  kivere: 'Bruņinieka ķivere', nagene: 'Beisbola cepure', berete: 'Berete', kovbojs: 'Kovboja cepure', pirats: 'Pirāta cepure', jurnieks: 'Jūrnieka cepure', ziemas: 'Ziemas cepure',
 };
 
 /** rounded n-petal flower outline, extruded thin (cheap, crisp silhouette) */
@@ -1133,6 +1165,18 @@ export function buildHat(id) {
       k.add(vis, '#1b3d9a', { p: [0, -0.04, 0.2], r: [0.14, 0, 0], s: [1, 1, 0.78], rough: 0.65 });
       k.add(G.sph(0.026, 8, 6), '#1b3d9a', { p: [0, 0.19, 0], s: [1, 0.6, 1], rough: 0.6 });
       k.add(G.rbox(0.09, 0.05, 0.015, 0.008), '#ffffff', { p: [0, 0.07, 0.25], r: [-0.45, 0, 0], rough: 0.6 });
+      break;
+    }
+    case 'jurnieks': { // 1.39.0: Piedzīvojumu takas balva — kapteiņa cepure
+      k.add(G.cyl(0.25, 0.235, 0.12, 24), '#1d2e5a', { p: [0, 0.02, 0], rough: 0.7 });
+      k.add(G.cyl(0.31, 0.26, 0.09, 24), '#f6f4ee', { p: [0, 0.12, 0.01], s: [1, 1, 1.02], rough: 0.6, grad: [0.9, 1.05] });
+      k.add(G.cyl(0.3, 0.31, 0.012, 24), '#e8e4da', { p: [0, 0.17, 0.01], rough: 0.6 });
+      const vis = new THREE.CylinderGeometry(0.22, 0.22, 0.016, 20, 1, false, -Math.PI / 2, Math.PI);
+      k.add(vis, '#111418', { p: [0, -0.03, 0.17], r: [0.32, 0, 0], s: [1, 1, 0.72], rough: 0.25 });
+      k.add(G.torus(0.245, 0.01, 4, 24), '#d8b040', { p: [0, 0.05, 0], r: [Math.PI / 2, 0, 0], rough: 0.3, metal: 1 });
+      k.add(G.rbox(0.03, 0.09, 0.012, 0.004), '#d8b040', { p: [0, 0.03, 0.25], r: [-0.1, 0, 0], rough: 0.3, metal: 1 });
+      k.add(G.torus(0.028, 0.008, 4, 10, Math.PI), '#d8b040', { p: [0, 0.0, 0.252], r: [0, 0, Math.PI], rough: 0.3, metal: 1 });
+      k.add(G.rbox(0.07, 0.012, 0.012, 0.004), '#d8b040', { p: [0, 0.065, 0.252], rough: 0.3, metal: 1 });
       break;
     }
     case 'berete': {

@@ -1,5 +1,13 @@
 # Izmaiņu žurnāls
 
+## 1.39.0 — 2026-11-21
+- 🧭 Jauna dienvidu zeme **Piedzīvojumu mežs** (kāpu vietā) — 630 × 1260 m, 2× lielāka par citām zemēm (eksperiments): pakalni, biezs mežs
+  (egles, priedes, bērzi, ozoli, krūmi, papardes), līkumota ~2 km taka no sētas robežas līdz jūrai, strauts gravā, pludmale ar būdiņu un laivu, jūra ar putām.
+- 🤝 Kopīgs piedzīvojums visai komandai: 5 divkājaini meža draugi pa taku ar uzdevumiem — 🐻 malka šķūnītī, 🐿️ rieksti, 🦔 āboli grozā,
+  🦫 dēļi tiltam (strautu var šķērsot tikai pa uzbūvēto tiltu), 🦊 gliemežvāki pludmalē. Nākamais uzdevums atveras, kad iepriekšējais izpildīts;
+  progress kopīgs (saimnieks to glabā), redzams joslā, kartē un burbuļos. Balva katram šajā zemē: 🪙 + ⭐; beigās ⚓ Jūrnieka cepure. Taku var sākt no jauna.
+- 🐿️🦔🦫 Jauni tēlu modeļi: vāvere (liela cekulaina aste), ezis (adatas mugurā un pakausī), bebrs (plakana aste).
+
 ## 1.38.0 — 2026-11-20
 - 🎏 Tirgus karodziņu virtenes — atkal iepriekšējais izskats.
 - 🪧 Ceļa rādītājā krustojumā atkal redzami virzienu uzraksti (teksts bija paslēpts dēļa iekšā).

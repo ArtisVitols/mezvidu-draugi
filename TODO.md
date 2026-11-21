@@ -13,7 +13,7 @@
 ## Blakus zemes (1.7.0 — pagaidām līdzenas)
 - [x] ❄️ Ziemas zeme (1.10.0): slēpošanas kalns ar pacēlāju, sniega piku kauja, sniegputenis, ziemeļbrieži.
 - [x] 1.14.0: 🏡 sēta centrā (lauksaimniecība), 🌲 mežs austrumos, 🏁 trase ar tuneļiem rietumos.
-- [ ] Saturs 🏖️ Dienvidu kāpām — tiks definēts vēlāk.
+- [x] Dienvidu zeme — 🧭 Piedzīvojumu mežs ar taku, 5 NPC uzdevumiem un jūru (1.39.0). Var pievienot vēl NPC un uzdevumus.
 - [ ] Sētā: ēkas (klēts, šķūnis), dzīvnieki (vistas, govis), traktors aršanai vairākiem lauciņiem uzreiz.
 - [ ] Ziemas zemē: slēpošanas sacensības ar laiku visiem, ragaviņas, slidotava.
       Zemes stāvoklim ir rezervēts `save.zones`; kopīgām lietām (kā sēnes) vajadzēs saimnieka stāvokli pa zemēm.

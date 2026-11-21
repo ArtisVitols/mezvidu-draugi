@@ -4,15 +4,15 @@
 // dažādām kultūrām starp lauciņiem paliek neliela sprauga. Augšana iet pēc pulksteņa (arī tad, kad spēle aizvērta).
 // Farm — Game papildinājums (mixin).
 import * as THREE from 'three';
-import { World, TILE, plotOf, tileToSlot, tileToCanon, gardenTile, gateSpots, rotPlot, rotPlotY, yardPart, YARD } from './world.js?v=1.38.0';
-import { buildCrop, flattenStatic } from './characters.js?v=1.38.0';
-import { buildFruitTree, buildDecor } from './props.js?v=1.38.0';
-import { WORLD_SEED, CROPS, TREES, FRUITS, DECOR } from './data.js?v=1.38.0';
-import { InstanceField } from './instancing.js?v=1.38.0';
-import { canvasTexture, makeSignBoard } from './util.js?v=1.38.0';
-import { $, toast, sfx, fmtTime } from './ui.js?v=1.38.0';
-import { inLand, cropXp, fruitXp, XP } from './garden.js?v=1.38.0';
-import { ZONES, FARM, freeGpu } from './zones.js?v=1.38.0';
+import { World, TILE, plotOf, tileToSlot, tileToCanon, gardenTile, gateSpots, rotPlot, rotPlotY, yardPart, YARD } from './world.js?v=1.39.0';
+import { buildCrop, flattenStatic } from './characters.js?v=1.39.0';
+import { buildFruitTree, buildDecor } from './props.js?v=1.39.0';
+import { WORLD_SEED, CROPS, TREES, FRUITS, DECOR } from './data.js?v=1.39.0';
+import { InstanceField } from './instancing.js?v=1.39.0';
+import { canvasTexture, makeSignBoard } from './util.js?v=1.39.0';
+import { $, toast, sfx, fmtTime } from './ui.js?v=1.39.0';
+import { inLand, cropXp, fruitXp, XP } from './garden.js?v=1.39.0';
+import { ZONES, FARM, freeGpu } from './zones.js?v=1.39.0';
 
 const CROP_IDS = Object.keys(CROPS);
 const TREE_IDS = Object.keys(TREES); // skatā koks ir kods 100 + nr.
@@ -617,6 +617,7 @@ export const Farm = {
     return { x, z };
   },
   carryAction() {
+    if (this.me.carry.trail != null) return this.trailCarryAction();
     const c = this.me.carry, name = (DECOR[c.k] || {}).name || c.k;
     const sp = this.carrySpot();
     if (sp) return { label: `📍 Novietot: ${name}`, fn: () => this.placeCarry(sp) };
@@ -639,6 +640,7 @@ export const Farm = {
   stowCarry() {
     const c = this.me.carry;
     if (!c) return;
+    if (c.trail != null) { this.trailDropCarry(false); return; } // takas priekšmets atgriežas savā vietā
     this.addItem('d_' + c.k);
     this.me.carry = null;
     this.avatar.setCarry(null);

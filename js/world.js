@@ -1,13 +1,13 @@
 import * as THREE from 'three';
-import { makeNoise2D, mulberry32 } from './noise.js?v=1.38.0';
-import { MUSHROOMS } from './data.js?v=1.38.0';
+import { makeNoise2D, mulberry32 } from './noise.js?v=1.39.0';
+import { MUSHROOMS } from './data.js?v=1.39.0';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mat, smoothstep, lerp, makeTextSprite, makeSignBoard, signWood, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.38.0';
-import { optimizeRig, flattenStatic } from './characters.js?v=1.38.0';
-import { ZONE_HALF, ZONES, DIRS, GROUND_Y, sqDist, clampSquare, buildBorderPosts, smoothRoad, ringRoad, RoadIndex, buildRoadMesh, ROAD_HW, FOREST, neighbour, openSides, buildTerrainFence, wood } from './zones.js?v=1.38.0';
-import { buildGardenHouse, buildGreenhouse, buildGateArch, buildFingerpost, buildRoadSign, HOUSE } from './farmyard.js?v=1.38.0';
-import { findPlaces, placeHeight, inPlace, buildPlaces, updatePlaces, placeBerries } from './places.js?v=1.38.0';
-import { raceFrame, yardWeight, inRaceYard, inLot, buildBarriers, buildStartPad, buildRaceYard, ROAD_END } from './racetrack.js?v=1.38.0';
+import { mat, smoothstep, lerp, makeTextSprite, makeSignBoard, signWood, canvasTexture, natureMaterial, leafTexture, spruceTexture, pineTexture, grassTexture, noiseTexture, windTime } from './util.js?v=1.39.0';
+import { optimizeRig, flattenStatic } from './characters.js?v=1.39.0';
+import { ZONE_HALF, ZONES, DIRS, GROUND_Y, sqDist, clampSquare, buildBorderPosts, smoothRoad, ringRoad, RoadIndex, buildRoadMesh, ROAD_HW, FOREST, neighbour, openSides, buildTerrainFence, wood } from './zones.js?v=1.39.0';
+import { buildGardenHouse, buildGreenhouse, buildGateArch, buildFingerpost, buildRoadSign, HOUSE } from './farmyard.js?v=1.39.0';
+import { findPlaces, placeHeight, inPlace, buildPlaces, updatePlaces, placeBerries } from './places.js?v=1.39.0';
+import { raceFrame, yardWeight, inRaceYard, inLot, buildBarriers, buildStartPad, buildRaceYard, ROAD_END } from './racetrack.js?v=1.39.0';
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
@@ -1112,13 +1112,13 @@ export class World {
     this.group.add(rm);
     rails.forEach((g) => g.dispose());
     // ceļa rādītājs pie krustojuma (stūrī starp ceļiem un 1. sētas žogu)
-    const fp = buildFingerpost([[0, -1, '❄️ Ziemas zeme'], [1, 0, '🌲 Mežs · 🛒 tirgus'], [-1, 0, '🏁 Sacīkšu trase'], [0, 1, '🏖️ Kāpas']]);
+    const fp = buildFingerpost([[0, -1, '❄️ Ziemas zeme'], [1, 0, '🌲 Mežs · 🛒 tirgus'], [-1, 0, '🏁 Sacīkšu trase'], [0, 1, '🧭 Piedzīvojumu mežs']]);
     fp.position.set(6.4, H(6.4, -6.4), -6.4);
     st.add(fp);
     this.addCollider(6.4, -6.4, 0.2);
     // ceļa malas zīmes 100 m no krustojuma (labajā pusē braucot prom); aizmugurē — atpakaļ uz sētu
     const R = 100, toB = ZONE_HALF - R;
-    for (const [dx, dz, txt] of [[0, -1, '❄️ Ziemas zeme'], [1, 0, '🌲 Mežs · 🛒 tirgus'], [-1, 0, '🏁 Sacīkšu trase'], [0, 1, '🏖️ Kāpas']]) {
+    for (const [dx, dz, txt] of [[0, -1, '❄️ Ziemas zeme'], [1, 0, '🌲 Mežs · 🛒 tirgus'], [-1, 0, '🏁 Sacīkšu trase'], [0, 1, '🧭 Piedzīvojumu mežs']]) {
       const px = dx ? dx * R : roadNS(dz * R), pz = dz ? dz * R : roadEW(dx * R);
       const rx = -dz, rz = dx, off = ROAD_HW + 1.6; // labā puse
       const x = px + rx * off, z = pz + rz * off;

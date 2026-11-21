@@ -1,10 +1,10 @@
 // Zemes (kartes): centrā Mežvidu sēta (4 spēlētāju lauki), austrumos mežs ar ciematu un tirgu,
-// rietumos sacīkšu trase, ziemeļos ziemas zeme, dienvidos kāpas. Katrā debespusē sava kvadrātveida zeme.
+// rietumos sacīkšu trase, ziemeļos ziemas zeme, dienvidos piedzīvojumu mežs ar jūru (2× garāka zeme). Katrā debespusē sava kvadrātveida zeme.
 // Katrai zemei ir savas lokālās koordinātas (centrs 0,0); kopējā kartē zeme ir nobīdīta par ZONE_SIZE.
 // Uz kaimiņu zemi var aiziet pa jebkuru robežas vietu.
 import * as THREE from 'three';
-import { canvasTexture } from './util.js?v=1.38.0';
-import { loadTexture } from './gfx.js?v=1.38.0';
+import { canvasTexture } from './util.js?v=1.39.0';
+import { loadTexture } from './gfx.js?v=1.39.0';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 export const ZONE_HALF = 315;              // spēles laukuma puse (kvadrāts 630 × 630 m)
@@ -22,10 +22,13 @@ export const ZONES = {
   c: { name: 'Mežvidu sēta', icon: '🏡', map: '#7fb24e', ground: '#5f8a34', splat: [0, 0, 0, 0], world: true },
   n: { name: 'Ziemas zeme', icon: '❄️', map: '#e9eff5', ground: '#eef2f6', tex: 'meadow', splat: [0, 0, 0, 0] },
   e: { name: 'Mežvidu mežs', icon: '🌲', map: '#4f7a44', ground: '#3a4f24', splat: [0.8, 0, 0, 0], world: true },
-  s: { name: 'Dienvidu kāpas', icon: '🏖️', map: '#e2cf94', ground: '#d8c48c', tex: 'sand', splat: [0, 1, 0, 0] },
+  s: { name: 'Piedzīvojumu mežs', icon: '🧭', map: '#4a7a3e', ground: '#5f8a34', tex: 'forest', splat: [0.6, 0, 0, 0] },
   w: { name: 'Sacīkšu trase', icon: '🏁', map: '#6f9a48', ground: '#577a36', splat: [0, 0, 0, 0], world: true },
 };
 
+// zemes robežas lokālās koordinātēs [x0, z0, x1, z1] (1.39.0: dienvidu zeme ir 2× garāka — stiepjas uz dienvidiem līdz jūrai)
+export const SOUTH_END = ZONE_HALF * 3;
+export function zoneBounds(id) { const H = ZONE_HALF; return [-H, -H, H, id === 's' ? SOUTH_END : H]; }
 export const zoneOffset = (id) => { const d = DIRS[id]; return d ? [d[0] * ZONE_SIZE, d[1] * ZONE_SIZE] : [0, 0]; };
 // kaimiņš zemei `id` virzienā `side` (vai null)
 export function neighbour(id, side) {
@@ -208,7 +211,7 @@ export function roadMaterial() {
 }
 
 // ceļu lente pa zemi (visi ceļi — viens zīmēšanas izsaukums); heightFn(x, z) — zemes augstums
-export function buildRoadMesh(lines, heightFn, lift = 0.05) {
+export function buildRoadMesh(lines, heightFn, lift = 0.05, hw = ROAD_HW, material = null) {
   const geos = [];
   const ACROSS = 4;
   for (const l of lines) {
@@ -219,9 +222,9 @@ export function buildRoadMesh(lines, heightFn, lift = 0.05) {
       let tx = b.x - a.x, tz = b.z - a.z; const tl = Math.hypot(tx, tz) || 1; tx /= tl; tz /= tl;
       if (i > 0) v += Math.hypot(l[i].x - l[i - 1].x, l[i].z - l[i - 1].z);
       for (let j = 0; j <= ACROSS; j++) {
-        const s = (j / ACROSS * 2 - 1) * ROAD_HW, x = l[i].x - tz * s, z = l[i].z + tx * s, k = i * (ACROSS + 1) + j;
+        const s = (j / ACROSS * 2 - 1) * hw, x = l[i].x - tz * s, z = l[i].z + tx * s, k = i * (ACROSS + 1) + j;
         P.set([x, heightFn(x, z) + lift, z], k * 3);
-        U.set([j / ACROSS, v / 9], k * 2);
+        U.set([j / ACROSS, v / (9 * hw / ROAD_HW)], k * 2);
       }
       if (i > 0) for (let j = 0; j < ACROSS; j++) {
         const c = i * (ACROSS + 1) + j, p = c - ACROSS - 1;
@@ -237,7 +240,7 @@ export function buildRoadMesh(lines, heightFn, lift = 0.05) {
   }
   const geo = mergeGeometries(geos);
   geos.forEach((g) => g.dispose());
-  const m = new THREE.Mesh(geo, roadMaterial());
+  const m = new THREE.Mesh(geo, material || roadMaterial());
   m.receiveShadow = true;
   m.renderOrder = 1;
   return m;

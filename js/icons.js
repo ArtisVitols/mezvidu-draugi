@@ -322,6 +322,14 @@ const HAT = {
     <path d="M12 54 L12 34 C12 18 22 10 32 10 C42 10 52 18 52 34 L52 54Z" fill="url(#kv)" stroke="#4a5058" stroke-width="1.4"/>
     <rect x="18" y="32" width="28" height="4" rx="2" fill="#1a1a1a"/><path d="M32 10 L32 54" stroke="#6a7078" stroke-width="2"/><path d="M12 46 H52" stroke="#d8b040" stroke-width="3"/>
     ${[0, 1, 2, 3].map((i) => `<ellipse cx="${34 + i * 3}" cy="${8 - i * 2}" rx="3" ry="5" fill="${i % 2 ? '#e8302a' : '#f4f4f4'}" transform="rotate(${20 + i * 15} ${34 + i * 3} ${8 - i * 2})"/>`).join('')}`,
+  jurnieks: () => `<defs>${lg('ju', '#ffffff', '#d8d4ca')}</defs>${shadow(32, 54, 26)}
+    <path d="M10 44 C10 52 54 52 54 44 L52 36 C52 42 12 42 12 36Z" fill="#1d2e5a" stroke="#0a1430"/>
+    <ellipse cx="32" cy="27" rx="27" ry="10" fill="url(#ju)" stroke="#8a8478" stroke-width="1.2"/>
+    <path d="M12 36 C12 30 52 30 52 36 L50 29 C46 34 18 34 14 29Z" fill="#e8e4da"/>
+    <path d="M14 46 C20 58 44 58 50 46 C42 50 22 50 14 46Z" fill="#111418"/>
+    <path d="M11 40 C24 44 40 44 53 40" stroke="#d8b040" stroke-width="2.2" fill="none"/>
+    <g transform="translate(32 40)" stroke="#d8b040" stroke-width="2" fill="none" stroke-linecap="round"><path d="M0 -6 V5"/><path d="M-4 -3 H4"/><path d="M-5 2 C-4 6 4 6 5 2"/><circle cx="0" cy="-7.5" r="1.6"/></g>
+    ${shine(22, 24, 6, 2.5, -10)}`,
   nagene: () => `<defs>${lg('na', '#4a8ae8', '#1a4aa8')}</defs>${shadow(32, 50, 26)}
     <path d="M8 40 C8 22 20 14 34 14 C48 14 56 24 56 40Z" fill="url(#na)" stroke="#0a2a68" stroke-width="1.2"/>
     <path d="M8 40 C4 42 2 46 6 48 C20 50 34 46 40 40Z" fill="#1a3a88" stroke="#0a2a68"/><path d="M34 14 C30 24 30 32 32 40 M20 18 C18 26 18 34 20 40 M46 18 C46 26 46 34 44 40" stroke="#2a5ab8" stroke-width="1.2" fill="none"/>
