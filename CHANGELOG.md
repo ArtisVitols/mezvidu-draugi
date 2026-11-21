@@ -1,5 +1,10 @@
 # Izmaiņu žurnāls
 
+## 1.40.0 — 2026-11-21
+- 🐍 Piedzīvojumu meža taka tagad lokās kā čūska (~2,5 km): cieši līkumi visā garumā, taisnāka tikai pie meža draugiem, tilta, ieejas un jūras.
+- ⛰️ Kalnaini apgabali starp meža draugiem (kores līdz ~35 m): taka kāpj kalnos un iet pa aizām ar stāvām akmens kraujām abās pusēs,
+  gar malām lieli laukakmeņi un klintis, citur cieša koku rinda. Pa stāvām kraujām uzkāpt nevar — jāiet pa taku.
+- 🌿 Meža draugi stāv līdzenās pļavās (uzdevumu vietas — līdzenas).
 ## 1.39.0 — 2026-11-21
 - 🧭 Jauna dienvidu zeme **Piedzīvojumu mežs** (kāpu vietā) — 630 × 1260 m, 2× lielāka par citām zemēm (eksperiments): pakalni, biezs mežs
   (egles, priedes, bērzi, ozoli, krūmi, papardes), līkumota ~2 km taka no sētas robežas līdz jūrai, strauts gravā, pludmale ar būdiņu un laivu, jūra ar putām.

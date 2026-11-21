@@ -6,15 +6,15 @@
 // TrailZone — zemes modelis (uzbūvē, ieejot, izmet, izejot). Trail — Game papildinājums (darbības, tīkls, panelis).
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { ZONE_HALF, SOUTH_END, GROUND_Y, CROSS_AT, smoothRoad, RoadIndex, buildRoadMesh, roadMaterial, disposeTree, buildBorderPosts, wood } from './zones.js?v=1.39.0';
-import { WATER_Y } from './world.js?v=1.39.0';
-import { makeTextSprite, makeTag, makeSignBoard, canvasTexture, smoothstep, lerp, clamp } from './util.js?v=1.39.0';
-import { buildAnimal } from './characters.js?v=1.39.0';
-import * as A from './assets.js?v=1.39.0';
-import { InstanceField } from './instancing.js?v=1.39.0';
-import { makeNoise2D, mulberry32 } from './noise.js?v=1.39.0';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, sfx } from './ui.js?v=1.39.0';
-import { HATS } from './data.js?v=1.39.0';
+import { ZONE_HALF, SOUTH_END, GROUND_Y, CROSS_AT, smoothRoad, RoadIndex, buildRoadMesh, roadMaterial, disposeTree, buildBorderPosts, wood } from './zones.js?v=1.40.0';
+import { WATER_Y } from './world.js?v=1.40.0';
+import { makeTextSprite, makeTag, makeSignBoard, canvasTexture, smoothstep, lerp, clamp } from './util.js?v=1.40.0';
+import { buildAnimal } from './characters.js?v=1.40.0';
+import * as A from './assets.js?v=1.40.0';
+import { InstanceField } from './instancing.js?v=1.40.0';
+import { makeNoise2D, mulberry32 } from './noise.js?v=1.40.0';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, sfx } from './ui.js?v=1.40.0';
+import { HATS } from './data.js?v=1.40.0';
 
 const SEED = 4711, TAU = Math.PI * 2, H = ZONE_HALF;
 // krasts (ūdens mala) un strauts — tīras funkcijas (tās izmanto arī karte)
@@ -73,12 +73,31 @@ const PTS = [[0, -345], [0, -315], [0, -290], [6, -262], [22, -232], [44, -208],
   [143, BZ + 26], [118, 672], [74, 702], [16, 724], [-30, 750], [-46, 782], [-30, 808], [-10, 820]];
 // vēlamās NPC vietas (precīzā vieta — 5,5 m no takas uz šo pusi)
 const WANT = [[78, -170], [-4, 116], [-150, 344], null, [14, 812]];
+// 1.40.0: vietas, kur taka nelokās un zeme ir līdzena (NPC pļavas, tilts)
+const KEEP = [...WANT.filter(Boolean), [BRIDGE.x, BZ]];
 
-let noiseA = null, noiseB = null;
+let noiseA = null, noiseB = null, noiseC = null;
+// kalnainums 0..1 — kalni visur starp NPC pļavām; pie ieejas, strauta, pludmales un NPC — līdzens
+export function mountAt(x, z) {
+  noiseC = noiseC || makeNoise2D(SEED + 17);
+  let m = 0.55 + 0.45 * smoothstep(-0.5, 0.4, noiseC(x * 0.004 + 1.7, z * 0.004 - 2.2));
+  m *= smoothstep(-255, -175, z);
+  m *= smoothstep(28, 80, Math.abs(z - streamZ(x)));
+  m *= 1 - smoothstep(shoreZ(x) - 175, shoreZ(x) - 105, z);
+  for (const [wx, wz] of KEEP) m *= smoothstep(38, 92, Math.hypot(x - wx, z - wz));
+  return m;
+}
 function landH(x, z) {
   noiseA = noiseA || makeNoise2D(SEED);
   const n1 = noiseA(x * 0.0045, z * 0.0045), n2 = noiseA(x * 0.017 + 3, z * 0.017 - 5), n3 = noiseA(x * 0.06 - 7, z * 0.06 + 2);
   let h = GROUND_Y + 0.6 + 3.2 * (n1 + 1) + 0.8 * (n2 + 1) + 0.3 * n3;
+  // kalni: asas kores (ridged noise)
+  const m = mountAt(x, z);
+  if (m > 0) {
+    noiseC = noiseC || makeNoise2D(SEED + 17);
+    const r1 = 1 - Math.abs(noiseC(x * 0.0085 + 11, z * 0.0085 - 4)), r2 = 1 - Math.abs(noiseC(x * 0.021 - 8, z * 0.021 + 13));
+    h += m * (5 + 30 * (0.68 * r1 * r1 + 0.32 * r2 * r2));
+  }
   h = lerp(GROUND_Y, h, smoothstep(-312, -235, z)); // pie sētas robežas līdzens
   return h;
 }
@@ -91,22 +110,37 @@ export function forestAt(x, z) {
   f *= 1 - smoothstep(shoreZ(x) - 62, shoreZ(x) - 48, z); // pludmale
   return f;
 }
+// NPC pļavu līdzenums (ap katru apstāšanās vietu)
+const plateauR = (s) => s.clear.r + (s.k === 0 ? 20 : 12);
+function plateau(h, x, z, stops) {
+  for (const s of stops) {
+    const pr = plateauR(s), d = Math.hypot(x - s.clear.x, z - s.clear.z);
+    if (d < pr + 26) h = lerp(h, s.ch ?? (s.ch = landH(s.clear.x, s.clear.z)), 1 - smoothstep(pr, pr + 26, d));
+  }
+  return h;
+}
+// 1.40.0: taka lokās kā čūska — mugurkaula līnijai (PTS) pieliek sānu viļņus; pie NPC, tilta, ieejas un jūras taisnāk
+function snakePts() {
+  noiseC = noiseC || makeNoise2D(SEED + 17);
+  const sp = smoothRoad(PTS, 3), out = [];
+  let ph = 0;
+  for (let i = 0; i < sp.length; i++) {
+    const p = sp[i], a0 = sp[Math.max(0, i - 1)], a1 = sp[Math.min(sp.length - 1, i + 1)];
+    const tx = a1.x - a0.x, tz = a1.z - a0.z, tl = Math.hypot(tx, tz) || 1;
+    if (i) ph += Math.hypot(p.x - sp[i - 1].x, p.z - sp[i - 1].z) * TAU / (82 + 22 * noiseC(i * 0.013, 4.5));
+    let a = smoothstep(-288, -240, p.z) * (1 - smoothstep(742, 788, p.z));
+    for (const [kx, kz] of KEEP) a *= smoothstep(20, 58, Math.hypot(p.x - kx, p.z - kz));
+    const o = Math.sin(ph) * a * (17 + 6 * noiseC(i * 0.009, 9.5));
+    out.push([p.x - tz / tl * o, p.z + tx / tl * o]);
+  }
+  return out;
+}
 
 let L = null;
 export function trailLayout() {
   if (L) return L;
-  const line = smoothRoad(PTS, 1.5);
-  // takas augstuma profils (izlīdzināts), tilta posmā taisna līnija
-  const raw = line.map((p) => landH(p.x, p.z));
-  const prof = raw.map((_, i) => { let s = 0, n = 0; for (let k = -8; k <= 8; k++) { const j = i + k; if (j >= 0 && j < raw.length) { s += raw[j]; n++; } } return s / n; });
-  const onBridge = (p) => Math.abs(p.x - BRIDGE.x) < 3 && Math.abs(p.z - BZ) < BRIDGE.hl + 0.5;
-  const bi = line.map((p, i) => (onBridge(p) ? i : -1)).filter((i) => i >= 0);
-  if (bi.length) {
-    const a = Math.max(0, bi[0] - 1), b = Math.min(line.length - 1, bi[bi.length - 1] + 1);
-    for (let i = a; i <= b; i++) prof[i] = lerp(prof[a], prof[b], (i - a) / Math.max(1, b - a));
-  }
-  line.forEach((p, i) => { p.h = prof[i]; p.i = i; });
-  const idx = new RoadIndex([line], 8, 1);        // ātrs (precīzs līdz ~8 m) — augstumiem, kokiem
+  noiseC = noiseC || makeNoise2D(SEED + 17);
+  const line = smoothRoad(snakePts(), 1.5);
   const wide = new RoadIndex([line], 16, 3);       // NPC vietām
   // NPC vietas
   const stops = TASKS.map((T, k) => {
@@ -121,6 +155,26 @@ export function trailLayout() {
     const clear = k === 3 ? { x: BRIDGE.x + 20, z: BZ - 30, r: 22 } : k === 4 ? { x: 0, z: 812, r: 16 } : { x: nx - dx * 9, z: nz - dz * 9, r: k === 2 ? 18 : 15 };
     return { k, x: nx, z: nz, face, clear };
   });
+  // takas augstuma profils (no reljefa ar NPC pļavām, izlīdzināts ±30 m), tilta posmā taisna līnija
+  const raw = line.map((p) => plateau(landH(p.x, p.z), p.x, p.z, stops));
+  const prof = raw.map((_, i) => { let s = 0, n = 0; for (let k = -20; k <= 20; k++) { const j = i + k; if (j >= 0 && j < raw.length) { s += raw[j]; n++; } } return s / n; });
+  const onBridge = (p) => Math.abs(p.x - BRIDGE.x) < 3 && Math.abs(p.z - BZ) < BRIDGE.hl + 0.5;
+  const bi = line.map((p, i) => (onBridge(p) ? i : -1)).filter((i) => i >= 0);
+  if (bi.length) {
+    const a = Math.max(0, bi[0] - 1), b = Math.min(line.length - 1, bi[bi.length - 1] + 1);
+    for (let i = a; i <= b; i++) prof[i] = lerp(prof[a], prof[b], (i - a) / Math.max(1, b - a));
+  }
+  // kraujas gar taku: g 0..1 (kalnos stāvas sienas abās pusēs — aiza), m = kalnainums takas vietā
+  line.forEach((p, i) => {
+    p.h = prof[i]; p.i = i;
+    p.m = mountAt(p.x, p.z);
+    p.g = p.m * (0.3 + 0.7 * smoothstep(-0.25, 0.3, noiseC(i * 0.006 + 31, 2.5)));
+  });
+  const idx = new RoadIndex([line], 8, 1);        // ātrs (precīzs līdz ~8 m) — kokiem, ceļa attālumam
+  const hidx = new RoadIndex([line], 8, 2);       // augstumiem (precīzs līdz 16 m — kraujas)
+  // 8 m šūnas, kurām taka ir tuvāk par 16 m (citur augstumam takas meklēšana nav vajadzīga — ātrāk)
+  const nearSet = new Set();
+  for (const p of line) { const cx = Math.floor(p.x / 8), cz = Math.floor(p.z / 8); for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) nearSet.add((cx + a + 500) * 1000 + cz + b + 500); }
   // nodošanas vietas (nesamajiem)
   const s0 = stops[0], s2 = stops[2];
   stops[0].drop = { x: s0.clear.x - Math.sin(s0.face) * 4, z: s0.clear.z - Math.cos(s0.face) * 4, face: s0.face, r: 3.2 }; // šķūnītis
@@ -132,7 +186,7 @@ export function trailLayout() {
   // lazdas ap vāveri
   const c1 = stops[1].clear;
   stops[1].bushes = [0, 1, 2, 3, 4, 5].map((i) => { const a = i / 6 * TAU + 0.4; return { x: c1.x + Math.sin(a) * (8 + (i % 2) * 3), z: c1.z + Math.cos(a) * (8 + (i % 2) * 3) }; });
-  L = { line, idx, stops };
+  L = { line, idx, hidx, nearSet, stops };
   // priekšmetu vietas katram uzdevumam
   const rnd = mulberry32(SEED + 21);
   const nearTrail = (x, z) => idx.near(x, z).d;
@@ -163,13 +217,16 @@ export function trailLayout() {
 // pilns augstums (bez tilta) — tīra funkcija
 export function trailHeight(x, z) {
   const lay = trailLayout();
-  let h = landH(x, z);
-  for (const s of lay.stops) {
-    const d = Math.hypot(x - s.clear.x, z - s.clear.z);
-    if (d < s.clear.r + 12) h = lerp(h, s.ch ?? (s.ch = landH(s.clear.x, s.clear.z)), 1 - smoothstep(s.clear.r, s.clear.r + 12, d));
+  let h = plateau(landH(x, z), x, z, lay.stops);
+  const tn = lay.nearSet.has((Math.floor(x / 8) + 500) * 1000 + Math.floor(z / 8) + 500) ? lay.hidx.near(x, z) : null;
+  if (tn && tn.p) {
+    // taka iegriezta reljefā; kalnos — stāvas kraujas (aiza) abās pusēs, tālāk atpakaļ dabiskais reljefs
+    const p = tn.p, d = tn.d;
+    noiseC = noiseC || makeNoise2D(SEED + 17);
+    const wall = p.g * (5.5 + 6 * (noiseC(x * 0.05 + 3, z * 0.05 - 1) + 1) * 0.5);
+    const side = lerp(Math.max(h, p.h + wall), h, smoothstep(9.5, 16, d));
+    h = lerp(p.h, side, smoothstep(lerp(TRAIL_HW + 0.3, TRAIL_HW + 1.4, p.m), lerp(7.5, TRAIL_HW + 5.6, p.m), d));
   }
-  const tn = lay.idx.near(x, z);
-  if (tn.p) h = lerp(h, tn.p.h, 1 - smoothstep(TRAIL_HW + 0.3, 7.5, tn.d));
   // strauts
   const sd = Math.abs(z - streamZ(x));
   if (sd < STREAM_HW + 8) h = lerp(h, WATER_Y - 1.7, 1 - smoothstep(STREAM_HW - 1.5, STREAM_HW + 7, sd));
@@ -182,34 +239,59 @@ export function trailHeight(x, z) {
   return h;
 }
 
-// koku un krūmu saraksti
-let treeList = null, underList = null;
+// koku un krūmu saraksti (+ 1.40.0 lieli laukakmeņi `rockList`)
+let treeList = null, underList = null, rockList = null;
 export function trailTrees() {
   if (treeList) return treeList;
   const lay = trailLayout(), rnd = mulberry32(SEED + 3);
   noiseB = noiseB || makeNoise2D(SEED + 9);
-  treeList = []; underList = [];
+  treeList = []; underList = []; rockList = [];
   const free = (x, z, m) => {
-    if (lay.idx.near(x, z).d < TRAIL_HW + 2.2 + m) return false;
+    if (lay.idx.near(x, z).d < TRAIL_HW + 1.7 + m) return false;
     for (const s of lay.stops) if (Math.hypot(x - s.clear.x, z - s.clear.z) < s.clear.r + 2 + m || Math.hypot(x - s.x, z - s.z) < 5) return false;
     if (Math.abs(z - streamZ(x)) < STREAM_HW + 4 + m) return false;
     if (z < -300 && Math.abs(x) < 30) return false;
     return true;
   };
+  const kindAt = (x, z, r2) => { const kn = noiseB(x * 0.02 + 50, z * 0.02); return kn < -0.08 ? 'egle' : kn > 0.32 ? 'priede' : r2 < 0.5 ? 'berzs' : 'ozols'; };
+  const steep = (x, z) => Math.hypot(trailHeight(x + 2, z) - trailHeight(x - 2, z), trailHeight(x, z + 2) - trailHeight(x, z - 2)) / 4;
   for (let gx = -394; gx < 394; gx += 6.5) for (let gz = -300; gz < 860; gz += 6.5) {
     const x = gx + (rnd() - 0.5) * 5.5, z = gz + (rnd() - 0.5) * 5.5, r1 = rnd(), r2 = rnd(), r3 = rnd();
     const sz = shoreZ(x);
     const f = forestAt(x, z), dune = z > sz - 64 && z < sz - 46;
-    const p = dune ? 0.22 : f * 0.78;
+    // kalnos mežs biezāks (arī pļavās — skuju koki)
+    const p = dune ? 0.22 : Math.max(f * 0.78, mountAt(x, z) * 0.5);
     if (r1 > p || z > sz - 46 || !free(x, z, 0)) continue;
-    const kn = noiseB(x * 0.02 + 50, z * 0.02);
-    const kind = dune ? 'priede' : kn < -0.08 ? 'egle' : kn > 0.32 ? 'priede' : r2 < 0.5 ? 'berzs' : 'ozols';
+    if (mountAt(x, z) > 0.1 && steep(x, z) > 0.95) continue; // uz stāvām kraujām koki neaug
+    const kind = dune ? 'priede' : f < 0.3 ? (r2 < 0.6 ? 'egle' : 'priede') : kindAt(x, z, r2);
     treeList.push({ id: treeList.length, kind, x, z, y: trailHeight(x, z) - 0.1, ry: r3 * TAU, s: 0.72 + r2 * 0.55 });
   }
-  // pamežs: krūmi, papardes, akmeņi; pļavās puķes
+  // gar taku: koku rinda tuvu malai, aizās — laukakmeņi
+  const line = lay.line;
+  for (let i = 0; i < line.length; i += 2) {
+    const p = line[i], q = line[Math.min(line.length - 1, i + 1)], o = line[Math.max(0, i - 1)];
+    const tx = q.x - o.x, tz = q.z - o.z, tl = Math.hypot(tx, tz) || 1, nx = -tz / tl, nz = tx / tl;
+    for (const side of [-1, 1]) {
+      const r1 = rnd(), r2 = rnd(), r3 = rnd(), r4 = rnd();
+      if (p.g > 0.2 && r1 < 0.16 + p.g * 0.22) {
+        const d = TRAIL_HW + 1.9 + r2 * 2.4, x = p.x + nx * d * side, z = p.z + nz * d * side, s = 0.9 + r3 * 1.4 + p.g * 0.8;
+        if (lay.idx.near(x, z).d < TRAIL_HW + 1.3 + s * 0.3 || !free(x, z, -2.4)) continue;
+        rockList.push({ id: rockList.length, kind: r4 < 0.5 ? 'kl' : 'kl2', x, z, y: trailHeight(x, z) - 0.25 * s, ry: r4 * TAU, s });
+      } else if (r1 < 0.32 && p.z > -280 && p.z < shoreZ(p.x) - 60) {
+        const d = TRAIL_HW + 2.1 + r2 * 3, x = p.x + nx * d * side, z = p.z + nz * d * side;
+        if (!free(x, z, -0.3) || treeList.some((t) => Math.abs(t.x - x) < 2.6 && Math.abs(t.z - z) < 2.6)) continue;
+        treeList.push({ id: treeList.length, kind: kindAt(x, z, r3), x, z, y: trailHeight(x, z) - 0.1, ry: r4 * TAU, s: 0.7 + r3 * 0.5 });
+      }
+    }
+  }
+  // pamežs: krūmi, papardes, akmeņi; pļavās puķes; stāvās nogāzēs — klintis
   for (let gx = -320; gx < 320; gx += 4.2) for (let gz = -300; gz < 850; gz += 4.2) {
     const x = gx + (rnd() - 0.5) * 3.6, z = gz + (rnd() - 0.5) * 3.6, r1 = rnd(), r2 = rnd(), r3 = rnd();
     if (z > shoreZ(x) - 44 || !free(x, z, -1.5)) continue;
+    if (r1 < 0.07 && mountAt(x, z) > 0.2 && steep(x, z) > 0.75) {
+      rockList.push({ id: rockList.length, kind: r2 < 0.5 ? 'kl' : 'kl2', x, z, y: trailHeight(x, z) - 0.4, ry: r3 * TAU, s: 1.2 + r2 * 2.2 });
+      continue;
+    }
     const f = forestAt(x, z);
     let kind = null;
     if (f > 0.4) { if (r1 < 0.16) kind = 'pa'; else if (r1 < 0.24) kind = 'kr'; else if (r1 < 0.255) kind = 'ak'; }
@@ -237,6 +319,8 @@ export function trailMap() {
     if (h < WATER_Y) col = h < -1.5 ? [44, 110, 170] : [70, 150, 205];
     else if (h < 1.5 && z > shoreZ(x) - 50) col = [226, 208, 150];
     else { const f = forestAt(x, z); col = [lerp(122, 48, f), lerp(176, 96, f), lerp(78, 40, f)]; }
+    const st = Math.hypot(hs[py * W + Math.min(W - 1, px + 1)] - h, hs[Math.min(Hh - 1, py + 1) * W + px] - h) / sx;
+    if (st > 0.55 && h >= WATER_Y) { const r = Math.min(1, (st - 0.55) * 2); col = col.map((v, j) => lerp(v, [128, 124, 116][j], r)); }
     const sh = Math.max(-22, Math.min(22, (hs[Math.max(0, py - 1) * W + Math.max(0, px - 1)] - h) * 3.5));
     const k = (py * W + px) * 4;
     img.data[k] = Math.max(0, Math.min(255, col[0] + sh)); img.data[k + 1] = Math.max(0, Math.min(255, col[1] + sh)); img.data[k + 2] = Math.max(0, Math.min(255, col[2] + sh)); img.data[k + 3] = 255;
@@ -310,6 +394,12 @@ function underTpl(kind) {
     else if (kind === 'pa') {
       const lf = G.leaf(0.75, 0.2, { rows: 5, fold: 0.35, bend: 0.45 });
       for (let i = 0; i < 7; i++) k.add(lf, i % 2 ? '#4f8f2e' : '#5c9c38', { p: [0, 0.05, 0], r: [-0.75, i / 7 * TAU, 0], ro: 'YXZ', rough: 0.8, sway: (v) => Math.min(1, v.y * 1.6) });
+    } else if (kind === 'kl') { // liels laukakmens
+      k.add(G.dodeca(1), '#8d8b84', { p: [0, 0.45, 0], s: [1.25, 0.85, 1], rough: 0.95, jit: 0.16, grad: [0.75, 1.08] });
+      k.add(G.dodeca(0.55), '#7d7c76', { p: [0.85, 0.25, 0.35], s: [1, 0.75, 1.1], rough: 0.95, jit: 0.14 });
+    } else if (kind === 'kl2') { // šķautnaina klints ar sūnām
+      k.add(G.ico(1, 0), '#94918a', { p: [0, 0.6, 0], s: [0.9, 1.35, 0.8], r: [0.1, 0.4, 0.15], rough: 0.95, jit: 0.12, fc: (c) => (c.y > 1.05 ? '#5d7a3a' : null) });
+      k.add(G.dodeca(0.5), '#85827b', { p: [-0.7, 0.2, 0.4], rough: 0.95, jit: 0.15 });
     } else if (kind === 'ak') { k.add(G.dodeca(0.5), '#8a8a82', { p: [0, 0.18, 0], s: [1.3, 0.7, 1], rough: 0.95, jit: 0.08 }); }
     else {
       const cols = ['#ffffff', '#ffd83a', '#b06ae0', '#ff6b8a'];
@@ -387,11 +477,26 @@ export class TrailZone {
     if (pos.z > SEA_LIMIT) { pos.z = SEA_LIMIT; hit = true; }
     const nl = -H - CROSS_AT - 3;
     if (pos.z < nl) { pos.z = nl; hit = true; }
+    // 1.40.0: stāvā krauja — uz augšu gandrīz netiek (taka aizā paliek taka); slīd gar sienu, ja var
+    const lp = this.lp;
+    if (lp && radius < 0.9) {
+      const dx = pos.x - lp.x, dz = pos.z - lp.z, d = Math.hypot(dx, dz);
+      if (d > 1e-4 && d < 2) {
+        const h0 = this.groundAt(lp.x, lp.z), ok = (x, z) => this.groundAt(x, z) - h0 <= Math.hypot(x - lp.x, z - lp.z) * 1.1 + 0.02;
+        if (!ok(pos.x, pos.z)) {
+          if (Math.abs(dx) > 1e-4 && ok(pos.x, lp.z)) pos.z = lp.z;
+          else if (Math.abs(dz) > 1e-4 && ok(lp.x, pos.z)) pos.x = lp.x;
+          else { pos.x = lp.x + dx * 0.1; pos.z = lp.z + dz * 0.1; }
+          hit = true;
+        }
+      }
+    }
     // strauts: kamēr nav tilta, pāri netiek (krasts kā siena)
     const sz = streamZ(pos.x), band = STREAM_HW + 3;
     if (!this.bridgeDone && Math.abs(pos.z - sz) < band) {
       pos.z = sz + this.lastSide * band; hit = true;
     } else if (Math.abs(pos.z - sz) >= band) this.lastSide = pos.z > sz ? 1 : -1;
+    this.lp = { x: pos.x, z: pos.z };
     return hit;
   }
   // vai šī vieta ir aiz strauta (dienvidos)
@@ -410,6 +515,8 @@ export class TrailZone {
     this.treesLo.update(x, z);
     this.under.view = Math.min(60, far);
     this.under.update(x, z);
+    this.rocks.view = Math.min(170, far);
+    this.rocks.update(x, z);
   }
   updateClouds() { /* */ }
 
@@ -425,6 +532,9 @@ export class TrailZone {
     this.treesLo = new InstanceField(trees, (k) => lowTree(k), { chunk: 48, view: 360, minView: 58 });
     this.treesLo.build(G);
     for (const u of underList) if (u.kind === 'ak') this.addCollider(u.x, u.z, 0.45 * u.s);
+    for (const r of rockList) this.addCollider(r.x, r.z, 1.05 * r.s);
+    this.rocks = new InstanceField(rockList, (k) => underTpl(k), { chunk: 48, view: 170 });
+    this.rocks.build(G);
     this.under = new InstanceField(underList, (k) => underTpl(k), { chunk: 48, view: 60 });
     this.under.build(G);
     // taka (šaurāks ceļš; pie tilta un pludmalē nezīmē)
@@ -456,7 +566,7 @@ export class TrailZone {
     const pos = new Float32Array(cnt * 3), nor = new Float32Array(cnt * 3), col = new Float32Array(cnt * 3), spl = new Float32Array(cnt * 4), uv = new Float32Array(cnt * 2);
     const hAt = (ix, iz) => Hh[clamp(iz, 0, NZ) * n + clamp(ix, 0, NX)];
     const c = new THREE.Color(), nv = new THREE.Vector3();
-    const GRASS = new THREE.Color(0.32, 0.46, 0.17), FLOOR = new THREE.Color(0.24, 0.25, 0.13), DIRT = new THREE.Color(0.42, 0.33, 0.22), SAND = new THREE.Color(0.58, 0.52, 0.38), WET = new THREE.Color(0.42, 0.37, 0.27);
+    const GRASS = new THREE.Color(0.32, 0.46, 0.17), FLOOR = new THREE.Color(0.24, 0.25, 0.13), DIRT = new THREE.Color(0.42, 0.33, 0.22), SAND = new THREE.Color(0.58, 0.52, 0.38), WET = new THREE.Color(0.42, 0.37, 0.27), ROCK = new THREE.Color(0.4, 0.39, 0.36);
     for (let iz = 0; iz <= NZ; iz++) for (let ix = 0; ix <= NX; ix++) {
       const i = iz * n + ix, x = X0 + ix * CELL, z = Z0 + iz * CELL, h = Hh[i];
       pos[i * 3] = x; pos[i * 3 + 1] = h; pos[i * 3 + 2] = z;
@@ -466,6 +576,7 @@ export class TrailZone {
       const f = forestAt(x, z), td = this.lay.idx.near(x, z).d, sd = Math.abs(z - streamZ(x)), sz = shoreZ(x);
       let wF = f * 0.85, wS = 0, wD = 0, wR = smoothstep(0.86, 0.7, nv.y);
       c.copy(GRASS).lerp(FLOOR, f);
+      if (wR > 0) c.lerp(ROCK, wR); // stāvas kraujas — akmens
       const tr = 1 - smoothstep(TRAIL_HW - 0.6, TRAIL_HW + 1.4, td);
       if (tr > 0) { wD = Math.max(wD, tr); c.lerp(DIRT, tr); }
       const bank = 1 - smoothstep(STREAM_HW, STREAM_HW + 6, sd);
