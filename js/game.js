@@ -1,34 +1,34 @@
 import * as THREE from 'three';
-import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, yardPart, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.42.0';
-import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.42.0';
-import { Controls } from './controls.js?v=1.42.0';
+import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, yardPart, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.43.0';
+import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.43.0';
+import { Controls } from './controls.js?v=1.43.0';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS, TREES, FRUITS, CLOTHES, SLOTS, DECOR } from './data.js?v=1.42.0';
-import { writeSave } from './save.js?v=1.42.0';
-import { Sound } from './sound.js?v=1.42.0';
-import { getVolume, setVolume } from './audio.js?v=1.42.0';
-import { BugSpot } from './bugspot.js?v=1.42.0';
-import { VERSION, BUILD_DATE } from './version.js?v=1.42.0';
-import { makeTextSprite, makeTag, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.42.0';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.42.0';
-import { icon, iconEl, fishSvg } from './icons.js?v=1.42.0';
-import { Activities, makeTeam } from './activities.js?v=1.42.0';
-import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel, statsWanted } from './quality.js?v=1.42.0';
-import { hdrEnvironment } from './gfx.js?v=1.42.0';
-import { buildRod, buildDecor } from './props.js?v=1.42.0';
-import { buildStall, buildBunting } from './market.js?v=1.42.0';
-import { InstanceField } from './instancing.js?v=1.42.0';
-import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.42.0';
-import { Vehicles } from './vehicles.js?v=1.42.0';
-import { Farm, fmtLeft } from './farm.js?v=1.42.0';
-import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, zoneBounds, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.42.0';
-import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.42.0';
-import { plotOf } from './world.js?v=1.42.0';
-import { kartClamp } from './racetrack.js?v=1.42.0';
-import { Bus, BUS_STOPS } from './bus.js?v=1.42.0';
-import { Garden, UNLOCK } from './garden.js?v=1.42.0';
-import { MZ } from './assets.js?v=1.42.0';
-import { TrailZone, Trail, trailMap, trailIcons, trailItem, TASKS as TRAIL_TASKS } from './trail.js?v=1.42.0';
+import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS, TREES, FRUITS, CLOTHES, SLOTS, DECOR } from './data.js?v=1.43.0';
+import { writeSave } from './save.js?v=1.43.0';
+import { Sound } from './sound.js?v=1.43.0';
+import { getVolume, setVolume } from './audio.js?v=1.43.0';
+import { BugSpot } from './bugspot.js?v=1.43.0';
+import { VERSION, BUILD_DATE } from './version.js?v=1.43.0';
+import { makeTextSprite, makeTag, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.43.0';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.43.0';
+import { icon, iconEl, fishSvg } from './icons.js?v=1.43.0';
+import { Activities, makeTeam } from './activities.js?v=1.43.0';
+import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel, statsWanted } from './quality.js?v=1.43.0';
+import { hdrEnvironment } from './gfx.js?v=1.43.0';
+import { buildRod, buildDecor } from './props.js?v=1.43.0';
+import { buildStall, buildBunting } from './market.js?v=1.43.0';
+import { InstanceField } from './instancing.js?v=1.43.0';
+import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.43.0';
+import { Vehicles } from './vehicles.js?v=1.43.0';
+import { Farm, fmtLeft } from './farm.js?v=1.43.0';
+import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, zoneBounds, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.43.0';
+import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.43.0';
+import { plotOf } from './world.js?v=1.43.0';
+import { kartClamp } from './racetrack.js?v=1.43.0';
+import { Bus, BUS_STOPS } from './bus.js?v=1.43.0';
+import { Garden, UNLOCK } from './garden.js?v=1.43.0';
+import { MZ } from './assets.js?v=1.43.0';
+import { TrailZone, Trail, trailMap, trailIcons, trailItem, TASKS as TRAIL_TASKS } from './trail.js?v=1.43.0';
 
 const ANIM = ['idle', 'walk', 'run', 'jump', 'swim', 'sit', 'pet', 'wave', 'fish', 'ski', 'lift', 'throw'];
 const MUSH_RESPAWN = 120000;
@@ -435,7 +435,7 @@ export class Game {
       }
       if (id === 's' && (labels || this.zone === 's')) {
         const step = this.trail ? this.trail.step : 0;
-        for (const [ic, x, z, k] of trailIcons()) { const [px, py] = toPx(ox + x, oz + z); this.mapIcon(g, ic, px, py, labels ? 15 : 11, k === step ? 'rgba(255,200,60,0.95)' : null); }
+        for (const [ic, x, z, k] of trailIcons(this.trail)) { const [px, py] = toPx(ox + x, oz + z); this.mapIcon(g, ic, px, py, labels ? 15 : 11, k === step ? 'rgba(255,200,60,0.95)' : null); }
       }
       g.strokeStyle = 'rgba(90,60,30,0.8)'; g.lineWidth = 1; g.strokeRect(x0, y0, x1 - x0, y1 - y0);
       if (labels === 'all') {
@@ -1587,7 +1587,7 @@ export class Game {
     const ox = Math.sin(this.cam.yaw) * cp, oy = Math.sin(this.cam.pitch), oz = Math.cos(this.cam.yaw) * cp;
     for (let s = 0.15; s <= 1.001; s += 0.085) {
       const d = s * dist;
-      if (this.terr.getHeight(tx + ox * d, tz + oz * d) + 0.5 > ty + oy * d) { dist = Math.max(1.8, d * 0.85); break; }
+      if (this.terr.getHeight(tx + ox * d, tz + oz * d) + 0.5 > ty + oy * d || (this.terr.camBlock && this.terr.camBlock(tx + ox * d, ty + oy * d, tz + oz * d))) { dist = Math.max(1.8, d * 0.85); break; }
     }
     let cx = tx + Math.sin(this.cam.yaw) * cp * dist;
     let cz = tz + Math.cos(this.cam.yaw) * cp * dist;

@@ -1,7 +1,7 @@
 // HUD palīgfunkcijas, paneļi un vienkāršas skaņas
 const $ = (id) => document.getElementById(id);
 export { $ };
-import { initSound, play, audioCtx } from './audio.js?v=1.42.0';
+import { initSound, play, audioCtx } from './audio.js?v=1.43.0';
 
 // 1.35.0: mazi paziņojumi, kas parādās un pamazām izgaist (garākiem tekstiem — mazliet ilgāk)
 export function toast(text, kind = '', ms = 2600) {
@@ -97,6 +97,7 @@ export function sfx(name, opts) {
     case 'coin': tone(988, 0.08, 'square', 0.08); tone(1319, 0.2, 'square', 0.08, 0.07); break;
     case 'star': [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, 'triangle', 0.12, i * 0.08)); break;
     case 'bad': tone(300, 0.3, 'sawtooth', 0.08, 0, -150); break;
+    case 'quack': { const v = (opts && opts.vol) || 1; tone(440, 0.09, 'sawtooth', 0.045 * v, 0, -150); tone(420, 0.12, 'sawtooth', 0.045 * v, 0.14, -170); break; } // pīle (1.43.0)
     case 'jump': tone(400, 0.15, 'sine', 0.1, 0, 300); break;
     case 'plant': tone(300, 0.08, 'triangle', 0.12); tone(450, 0.1, 'triangle', 0.1, 0.06); break;
     case 'beep': tone(520, 0.2, 'square', 0.08); break;

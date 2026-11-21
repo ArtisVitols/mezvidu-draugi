@@ -3,9 +3,9 @@
 // Vietas glabājas katra pārlūkā (localStorage `mezvidi_bugspots`, pēdējās 10) un paliek arī pēc lapas pārlādes / jaunas versijas.
 // Aprakstu var nokopēt un aizsūtīt izstrādātājam. Pēc labojuma saimnieks nospiež "▶ Turpināt" — visi (pēc vārda)
 // tiek pārcelti atpakaļ uz savām vietām, taka atjaunota, nesamie atkal rokās.
-import { ZONES, ZONE_IDS } from './zones.js?v=1.42.0';
-import { VERSION } from './version.js?v=1.42.0';
-import { toast, showPanel, refreshPanel, closePanel, panelOpen, el, sfx } from './ui.js?v=1.42.0';
+import { ZONES, ZONE_IDS } from './zones.js?v=1.43.0';
+import { VERSION } from './version.js?v=1.43.0';
+import { toast, showPanel, refreshPanel, closePanel, panelOpen, el, sfx } from './ui.js?v=1.43.0';
 
 const KEY = 'mezvidi_bugspots', MAX = 10, CARRY_MS = 180000;
 const load = () => { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { return []; } };
@@ -33,7 +33,7 @@ export const BugSpot = {
     const tr = s.trail;
     const lines = [`🐞 KĻŪDAS VIETA ${s.id} · v${s.ver} · ${fmtT(s.at)} · saglabāja ${s.by}`];
     if (s.note) lines.push('Kas notika: ' + s.note);
-    if (tr) lines.push(`Taka: solis ${tr.step + 1}/5, savākts ${tr.c}, uzdevums ${tr.acc ? 'pieņemts' : 'nav pieņemts'}, tilts ${tr.bridge ? 'ir' : 'nav'}, gājiens ${tr.run}`);
+    if (tr) lines.push(`Taka: solis ${tr.step + 1}/5, savākts ${tr.c}, uzdevums ${tr.acc ? 'pieņemts' : 'nav pieņemts'}, tilts ${tr.bridge ? 'ir' : 'nav'}, gājiens ${tr.run}, šķēršļi ${JSON.stringify(tr.ob || [])}`);
     for (const p of s.players) lines.push(`- ${p.name}: ${ZONES[p.zone] ? ZONES[p.zone].icon : ''} ${p.zone} x ${p.x} y ${p.y} z ${p.z} virziens ${p.h}${p.carry ? ` nes ${p.carry.replace(/^t:/, '')}` : ''}`);
     if (s.errs && s.errs.length) { lines.push('Kļūdas konsolē:'); for (const e of s.errs) lines.push('  ' + e); }
     return lines.join('\n');

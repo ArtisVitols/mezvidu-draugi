@@ -1,5 +1,16 @@
 # Izmaiņu žurnāls
 
+## 1.43.0 — 2026-11-21
+- 🌳 Piedzīvojumu taka vairs nav visur vienāda — 8 posmi, katram savi koki, pamežs un zemes krāsa, pie posma sākuma zīme un paziņojums:
+  jauktais mežs, 🌿 bērzu birzs (gaišas pļavas, papardes, puķes), 🌲 egļu biezoknis (sūnu ciņi, mušmires), 🌳 veco ozolu birzs,
+  🐸 purvs (ūdens acis, niedres, spilves, ūdensrozes; taka pa koka laipu), 🦫 bebru strauts, 🌲 priežu sils (virši, smilšaina zeme), 🏖️ jūrmala.
+- ⛰️ Kalnos klinšu tunelis (~40 m) ar koka balstiem un laternām; kamera paliek tunelī.
+- 🚧 Šķēršļi uz takas, kas jānovāc visiem kopā: 3 nogāzti koki (🪓 10 sitieni), akmeņu nogruvums tuneļa priekšā (⛏️ 12), ērkšķu biezoknis (✂️ 8).
+  Saimnieks skaita sitienus (`tHit`), virs šķēršļa — cik vēl; novākts paliek līdz piedzīvojuma sākšanai no jauna. Šķēršļi ir stāvās aizās — apiet nevar
+  (tikai ar ļoti garu kāpienu pāri kalniem). Kartē redzami nenovāktie šķēršļi un tunelis.
+- 🌊 Bebru strauts lokās kā čūska (2 viļņi, platums mainās), krastos niedres, ūdensrozes, akmeņi ūdenī, bebru mītne un apgrauzti celmi.
+- 🐸 Dzīvnieki (katram spēlētājam savi, parādās ap tevi): vardes (lec, kurkst, ielec ūdenī), pīles strautā, zaķi un stirnas (ganās, aizbēg),
+  stārķi purvā, tauriņi pļavās.
 ## 1.42.0 — 2026-11-21
 - ❌ Piedzīvojumu takas uzdevums var neizdoties: ja pēc uzdevuma pieņemšanas **visi** spēlētāji aiziet no uzdevuma vietas
   (pļava ap meža draugu ar visiem priekšmetiem, +30 m) vai uz citu zemi ilgāk par 4 s, uzdevums neizdodas — visiem paziņojums,

@@ -66,6 +66,9 @@ Datorā: WASD / bultiņas, atstarpe, E, peles vilkšana.
   🦫 Bebrs Dambītis — atnest 6 dēļus, lai uzbūvētu tiltu pāri strautam (bez tilta pāri netiek!) · 🦊 Lapsa Smilga pludmalē — salasīt 10 gliemežvākus.
   Runā ar draugu (dzeltenā poga „💬”), spied „🤝 Palīdzēsim!”, nes priekšmetus pa vienam. Par katru uzdevumu katram, kas ir šajā zemē, 🪙 un ⭐; visas takas beigās — ⚓ Jūrnieka cepure (tikai šeit). Progress redzams augšā joslā, uz kartes un burbulī virs drauga galvas. Pēc tam piedzīvojumu var sākt no jauna.
   ❌ Uzmanību: ja pēc uzdevuma pieņemšanas visi aiziet prom no uzdevuma vietas, uzdevums neizdodas un jāsāk no jauna.
+  Taka nav visur vienāda — posmi ar savu mežu: 🌳 jauktais mežs, 🌿 bērzu birzs, 🌲 egļu biezoknis, 🌳 veco ozolu birzs, 🐸 purvs ar koka laipu un ūdens acīm, 🦫 bebru strauts (līkumo kā čūska, ar niedrēm, ūdensrozēm un bebru mītni), 🌲 priežu sils ar viršiem un 🏖️ jūrmala. Kalnos — ⛰️ klinšu tunelis ar laternām.
+  🚧 Uz takas ir šķēršļi — 🌲 nogāzti koki, 🪨 akmeņu nogruvums tuneļa priekšā, 🌿 ērkšķu biezoknis. Lai tiktu tālāk, tie jānovāc kopā: stāvi pie šķēršļa un spied dzelteno pogu (🪓 zāģēt, ⛏️ skaldīt, ✂️ griezt) — sitieni saskaitās visiem. Sākot piedzīvojumu no jauna, šķēršļi atkal ir vietā.
+  🐸 Mežā dzīvo dzīvnieki: vardes kurkst un lec ūdenī, pīles peld pa strautu, zaķi un stirnas ganās (un aizbēg, ja pienāc tuvu), stārķi brien pa purvu, pļavās lido tauriņi.
 - ❄️ **Ziemas zeme** (uz ziemeļiem): sniegs, sniegputenis, sniegotas eglītes, Ziemassvētku egle, sniegavīri un ziemeļbrieži.
   Tēlam automātiski ir ziemas cepure, dūraiņi un plīvojoša šalle.
   - ⛷️ Liels slēpošanas kalns (~157 m augsts, ~330 m garš nobrauciens): brauc ar krēslu pacēlāju augšā un slēpo lejā (kursorsvira — stūrēt, uz leju — bremzēt, ⤒ — lēkt). Slēpot var visi kopā, un trasē slalomā brauc arī citi slēpotāji — zaķis, lapsa, kaķis un suns.
