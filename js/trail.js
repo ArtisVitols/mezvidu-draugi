@@ -6,15 +6,15 @@
 // TrailZone — zemes modelis (uzbūvē, ieejot, izmet, izejot). Trail — Game papildinājums (darbības, tīkls, panelis).
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { ZONE_HALF, SOUTH_END, GROUND_Y, CROSS_AT, smoothRoad, RoadIndex, buildRoadMesh, roadMaterial, disposeTree, buildBorderPosts, wood } from './zones.js?v=1.41.0';
-import { WATER_Y } from './world.js?v=1.41.0';
-import { makeTextSprite, makeTag, makeSignBoard, canvasTexture, smoothstep, lerp, clamp } from './util.js?v=1.41.0';
-import { buildAnimal } from './characters.js?v=1.41.0';
-import * as A from './assets.js?v=1.41.0';
-import { InstanceField } from './instancing.js?v=1.41.0';
-import { makeNoise2D, mulberry32 } from './noise.js?v=1.41.0';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, sfx } from './ui.js?v=1.41.0';
-import { HATS } from './data.js?v=1.41.0';
+import { ZONE_HALF, SOUTH_END, GROUND_Y, CROSS_AT, smoothRoad, RoadIndex, buildRoadMesh, roadMaterial, disposeTree, buildBorderPosts, wood } from './zones.js?v=1.41.1';
+import { WATER_Y } from './world.js?v=1.41.1';
+import { makeTextSprite, makeTag, makeSignBoard, canvasTexture, noiseTexture, smoothstep, lerp, clamp } from './util.js?v=1.41.1';
+import { buildAnimal } from './characters.js?v=1.41.1';
+import * as A from './assets.js?v=1.41.1';
+import { InstanceField } from './instancing.js?v=1.41.1';
+import { makeNoise2D, mulberry32 } from './noise.js?v=1.41.1';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, sfx } from './ui.js?v=1.41.1';
+import { HATS } from './data.js?v=1.41.1';
 
 const SEED = 4711, TAU = Math.PI * 2, H = ZONE_HALF;
 // krasts (ūdens mala) un strauts — tīras funkcijas (tās izmanto arī karte)
@@ -394,18 +394,69 @@ function underTpl(kind) {
     else if (kind === 'pa') {
       const lf = G.leaf(0.75, 0.2, { rows: 5, fold: 0.35, bend: 0.45 });
       for (let i = 0; i < 7; i++) k.add(lf, i % 2 ? '#4f8f2e' : '#5c9c38', { p: [0, 0.05, 0], r: [-0.75, i / 7 * TAU, 0], ro: 'YXZ', rough: 0.8, sway: (v) => Math.min(1, v.y * 1.6) });
-    } else if (kind === 'kl') { // liels laukakmens
-      k.add(G.dodeca(1), '#8d8b84', { p: [0, 0.45, 0], s: [1.25, 0.85, 1], rough: 0.95, jit: 0.16, grad: [0.75, 1.08] });
-      k.add(G.dodeca(0.55), '#7d7c76', { p: [0.85, 0.25, 0.35], s: [1, 0.75, 1.1], rough: 0.95, jit: 0.14 });
-    } else if (kind === 'kl2') { // šķautnaina klints ar sūnām
-      k.add(G.ico(1, 0), '#94918a', { p: [0, 0.6, 0], s: [0.9, 1.35, 0.8], r: [0.1, 0.4, 0.15], rough: 0.95, jit: 0.12, fc: (c) => (c.y > 1.05 ? '#5d7a3a' : null) });
-      k.add(G.dodeca(0.5), '#85827b', { p: [-0.7, 0.2, 0.4], rough: 0.95, jit: 0.15 });
     } else if (kind === 'ak') { k.add(G.dodeca(0.5), '#8a8a82', { p: [0, 0.18, 0], s: [1.3, 0.7, 1], rough: 0.95, jit: 0.08 }); }
     else {
       const cols = ['#ffffff', '#ffd83a', '#b06ae0', '#ff6b8a'];
       for (let i = 0; i < 5; i++) { const a = i * 1.3, r = 0.2 + (i % 2) * 0.15; k.add(G.cyl(0.008, 0.008, 0.32, 3), '#4f8f2e', { p: [Math.sin(a) * r, 0.16, Math.cos(a) * r], sway: 0.6 }); k.add(A.flowerGeo(0.06, 6, 0.01), cols[i % 4], { p: [Math.sin(a) * r, 0.33, Math.cos(a) * r], r: [-Math.PI / 2, 0, 0], sway: 1 }); }
     }
     return k.build({ name: 'under-' + kind });
+  });
+}
+
+// 1.41.0: lielie akmeņi — savs akmens materiāls ar faktūru (procedurāla; augstākā grafikā foto rock_c/rock_n kā meža akmeņiem)
+let rockM = null, rockNoise = null;
+function rockMaterial() {
+  if (rockM) return rockM;
+  rockNoise = noiseTexture('stone', 128); rockNoise.wrapS = rockNoise.wrapT = THREE.RepeatWrapping; rockNoise.repeat.set(2, 2);
+  rockM = new THREE.MeshStandardMaterial({ vertexColors: true, map: rockNoise, roughness: 0.95, metalness: 0 });
+  return rockM;
+}
+function setRockPhoto(on, game) {
+  const m = rockMaterial();
+  if (on && game.ensurePhoto) {
+    game.ensurePhoto().rock.then((r) => {
+      if (!r || !game.Q || !game.Q.photo) return;
+      const [map, nrm] = r;
+      m.map = map; m.normalMap = nrm; m.color.setScalar(2.2); m.needsUpdate = true;
+    });
+  } else if (m.map !== rockNoise) { m.map = rockNoise; m.normalMap = null; m.color.setScalar(1); m.needsUpdate = true; }
+}
+// akmens ģeometrija: deformēta ikosaedra lode, pelēka ar variācijām, sūnas augšpusē, tumšāka apakša
+function rockGeo(seed, detail, sy, amp, crisp) {
+  const rn = makeNoise2D(SEED + seed);
+  let g = new THREE.IcosahedronGeometry(1, detail);
+  if (crisp) g = g.toNonIndexed();
+  const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+    const k = 1 + rn(x * 1.1 + z * 0.7, y * 1.1) * amp + rn(x * 3.1 - z, y * 3.1 + z) * amp * 0.3;
+    p.setXYZ(i, x * k, Math.max(-0.35, y * k * sy), z * k);
+  }
+  g.computeVertexNormals();
+  const n = g.attributes.normal, col = new Float32Array(p.count * 3), c = new THREE.Color();
+  const stone = new THREE.Color('#8f8c84'), moss = new THREE.Color('#5d6e34');
+  for (let i = 0; i < p.count; i++) {
+    c.copy(stone).multiplyScalar(0.82 + rn(p.getX(i) * 4, p.getZ(i) * 4) * 0.16);
+    const up = n.getY(i);
+    if (up > 0.6) c.lerp(moss, Math.min(0.75, (up - 0.6) * 2.4 * (0.55 + 0.45 * rn(p.getX(i) * 2, p.getZ(i) * 2))));
+    if (p.getY(i) < 0) c.multiplyScalar(0.72);
+    col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  return g;
+}
+function rockTpl(kind) {
+  return kitTpl('rk-' + kind, () => {
+    const grp = new THREE.Group(), m = rockMaterial();
+    const add = (geo, x, y, z, sx, sy, sz, ry) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.scale.set(sx, sy, sz); o.rotation.y = ry; o.castShadow = true; o.receiveShadow = true; grp.add(o); };
+    if (kind === 'kl') { // apaļš laukakmens + mazs blakus
+      add(rockGeo(61, 2, 0.75, 0.2, false), 0, 0.42, 0, 1.25, 1, 1, 0);
+      add(rockGeo(62, 1, 0.8, 0.22, false), 0.95, 0.2, 0.35, 0.55, 0.55, 0.6, 1.1);
+    } else { // šķautnaina klints
+      add(rockGeo(63, 1, 1.35, 0.3, true), 0, 0.75, 0, 0.95, 1, 0.85, 0.4);
+      add(rockGeo(64, 1, 0.8, 0.25, true), -0.75, 0.2, 0.45, 0.5, 0.5, 0.5, 0.2);
+    }
+    return grp;
   });
 }
 
@@ -533,7 +584,7 @@ export class TrailZone {
     this.treesLo.build(G);
     for (const u of underList) if (u.kind === 'ak') this.addCollider(u.x, u.z, 0.45 * u.s);
     for (const r of rockList) this.addCollider(r.x, r.z, 1.05 * r.s);
-    this.rocks = new InstanceField(rockList, (k) => underTpl(k), { chunk: 48, view: 170 });
+    this.rocks = new InstanceField(rockList, (k) => rockTpl(k), { chunk: 48, view: 170 });
     this.rocks.build(G);
     this.under = new InstanceField(underList, (k) => underTpl(k), { chunk: 48, view: 60 });
     this.under.build(G);
@@ -647,6 +698,7 @@ export class TrailZone {
     if (Q && Q.photo && game.ensurePhoto) {
       this.photoReady = game.ensurePhoto().terrain.then((m) => { if (m && game.Q.photo && !this.disposed) { setMat(m); this.photoMat = m; } });
     } else setMat(this.baseMat);
+    setRockPhoto(!!(Q && Q.photo), game);
   }
 
   buildWater(G) {
@@ -880,8 +932,10 @@ export class TrailZone {
   dispose() {
     this.disposed = true;
     if (this.group.parent) this.group.parent.remove(this.group);
-    const keep = [A.toyMaterial(), wood(), roadMaterial(), pathMaterial(), pathMaterial().map, detailTex(), waterNormal(), foamTex()];
+    const rm = rockMaterial();
+    const keep = [A.toyMaterial(), rm, rm.map, rockNoise, wood(), roadMaterial(), pathMaterial(), pathMaterial().map, detailTex(), waterNormal(), foamTex()];
     if (this.photoMat) keep.push(this.photoMat);
+    if (rm.normalMap) keep.push(rm.normalMap);
     for (const k in tplCache) tplCache[k].traverse((o) => { if (o.geometry) keep.push(o.geometry); });
     for (const kind of Object.keys(A.TREE_TYPES)) keep.push(A.treeGeometry(kind));
     disposeTree(this.group, keep);

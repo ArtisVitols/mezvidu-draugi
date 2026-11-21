@@ -1,7 +1,7 @@
 // 🧸 Jaunie 3D objekti (2.0 komplekts, 1.37.0): viens kopīgs materiāls (toyMaterial), katrs objekts — viens tīkls.
 // Izveidots ar dizaina AI no katalogs.html; spēles moduļi (characters, props, vehicles, bus, farmyard, market) pārsūta savus build* šeit.
 // Mežvidu Draugi — 3D asset kit v2 (three.js r160). Generated 2026-11-20.
-// Usage: import * as A from './mezvidu-assets.js?v=1.41.0'; scene.add(A.buildAnimal({animal:'lapsa'}).root); each frame: A.MZ.time.value += dt;
+// Usage: import * as A from './mezvidu-assets.js?v=1.41.1'; scene.add(A.buildAnimal({animal:'lapsa'}).root); each frame: A.MZ.time.value += dt;
 import * as THREE from 'three';
 
 // =====================================================================

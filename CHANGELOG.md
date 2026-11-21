@@ -1,5 +1,7 @@
 # Izmaiņu žurnāls
 
+## 1.41.1 — 2026-11-21
+- 🪨 Piedzīvojumu meža lielajiem akmeņiem un klintīm tagad ir akmens faktūra (zemākā grafikā — zīmēta, augstākā — foto, kā meža akmeņiem), sūnas augšpusē.
 ## 1.41.0 — 2026-11-21
 - 🐞 **Kļūdas vieta** (☰ izvēlnē): spēlējot kopā, jebkurš var saglabāt vietu, kad redz kļūdu — tiek pierakstīts, kur stāv visi spēlētāji
   (zeme, precīza vieta, virziens), ko kurš nes, cik tālu ir piedzīvojumu taka, un konsoles kļūdas. Var pierakstīt, kas notika.
