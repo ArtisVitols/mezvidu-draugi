@@ -3,9 +3,9 @@
 // Vietas glabājas katra pārlūkā (localStorage `mezvidi_bugspots`, pēdējās 10) un paliek arī pēc lapas pārlādes / jaunas versijas.
 // Aprakstu var nokopēt un aizsūtīt izstrādātājam. Pēc labojuma saimnieks nospiež "▶ Turpināt" — visi (pēc vārda)
 // tiek pārcelti atpakaļ uz savām vietām, taka atjaunota, nesamie atkal rokās.
-import { ZONES, ZONE_IDS } from './zones.js?v=1.46.0';
-import { VERSION } from './version.js?v=1.46.0';
-import { toast, showPanel, refreshPanel, closePanel, panelOpen, el, sfx } from './ui.js?v=1.46.0';
+import { ZONES, ZONE_IDS } from './zones.js?v=1.47.0';
+import { VERSION } from './version.js?v=1.47.0';
+import { toast, showPanel, refreshPanel, closePanel, panelOpen, el, sfx } from './ui.js?v=1.47.0';
 
 const KEY = 'mezvidi_bugspots', MAX = 10, CARRY_MS = 180000;
 const load = () => { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { return []; } };

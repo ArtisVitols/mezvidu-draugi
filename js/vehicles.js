@@ -3,16 +3,16 @@
 // ja neviens cits ar to nebrauc; izkāpjot tas paliek tur, kur atstāts (arī citā zemē). Saimnieks glabā, kurš ar ko brauc
 // un kur katrs stāv (saimnieka saglabājumā `vehs`). Vehicles — Game papildinājums.
 import * as THREE from 'three';
-import { mat, lerp, clamp, makeBlobShadow, makeTextSprite } from './util.js?v=1.46.0';
-import { optimizeRig, tyreGeo } from './characters.js?v=1.46.0';
-import { $, toast, sfx } from './ui.js?v=1.46.0';
-import { DIRS, neighbour, FARM, FOREST, RACE, ZONE_IDS, zoneBounds } from './zones.js?v=1.46.0';
-import { WATER_Y, YARD, YARD_IN, rotPlot, rotPlotY, BIKE_RACK } from './world.js?v=1.46.0';
-import { SLED_SPOT } from './winter.js?v=1.46.0';
-import { BUS_CODE } from './bus.js?v=1.46.0';
-import { ZONES } from './zones.js?v=1.46.0';
-import * as A from './assets.js?v=1.46.0';
-import { BOAT_ID, BOAT_HOME, BOAT_DRAFT } from './trail.js?v=1.46.0';
+import { mat, lerp, clamp, makeBlobShadow, makeTextSprite } from './util.js?v=1.47.0';
+import { optimizeRig, tyreGeo } from './characters.js?v=1.47.0';
+import { $, toast, sfx } from './ui.js?v=1.47.0';
+import { DIRS, neighbour, FARM, FOREST, RACE, ZONE_IDS, zoneBounds } from './zones.js?v=1.47.0';
+import { WATER_Y, YARD, YARD_IN, rotPlot, rotPlotY, BIKE_RACK } from './world.js?v=1.47.0';
+import { SLED_SPOT } from './winter.js?v=1.47.0';
+import { BUS_CODE } from './bus.js?v=1.47.0';
+import { ZONES } from './zones.js?v=1.47.0';
+import * as A from './assets.js?v=1.47.0';
+import { BOAT_ID, BOAT_HOME, BOAT_DRAFT } from './trail.js?v=1.47.0';
 
 // tīkla kods (pos ziņas 6. lauks): 1 = kartings, 2 = mašīna, 3 = sniega motocikls, 5 = velosipēds, 7 = laiva (1.46.0)
 export const VEH_CODE = { car: 2, sled: 3, bike: 5, boat: 7 }; // 4 = pasažieris (p[8] — vadītāja id, p[9] — sēdvieta); p[10] — transporta id

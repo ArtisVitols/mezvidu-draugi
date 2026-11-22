@@ -68,6 +68,7 @@ Datorā: WASD / bultiņas, atstarpe, E, peles vilkšana.
   🐱 Kaķis Murris pie dīķa — katram iedod makšķeri: makšķerējiet krastā, noķerto zivi nesiet uz grozu un nāciet atpakaļ, kopā 10 zivis ·
   🦫 Bebrs Dambītis — atnest 6 dēļus, lai uzbūvētu tiltu pāri strautam (bez tilta pāri netiek!) · 🦊 Lapsa Smilga pludmalē — salasīt 10 gliemežvākus ·
   🦭 Ronis Viļņuks — vētra aiznesa viņa laivu jūrā: aizpeldi līdz tai, iekāp un atbrauc uz piestātni starp bojām. Pēc tam 🚣 laiva ir brīva — brauc ar to pa jūru, cik gribi (draugs var braukt līdzi).
+  ➡️ Kad uzdevums izpildīts, zaļa bulta virs takas rāda ceļu pie nākamā drauga.
   Runā ar draugu (dzeltenā poga „💬”), spied „🤝 Palīdzēsim!”, nes priekšmetus pa vienam. Par katru uzdevumu katram, kas ir šajā zemē, 🪙 un ⭐; visas takas beigās — ⚓ Jūrnieka cepure (tikai šeit). Progress redzams augšā joslā, uz kartes un burbulī virs drauga galvas. Pēc tam piedzīvojumu var sākt no jauna.
   ❌ Uzmanību: ja pēc uzdevuma pieņemšanas visi aiziet prom no uzdevuma vietas, uzdevums neizdodas un jāsāk no jauna.
   Taka nav visur vienāda — posmi ar savu mežu: 🌳 jauktais mežs, 🌿 bērzu birzs, 🌲 egļu biezoknis, 🌳 veco ozolu birzs, 🐸 purvs ar koka laipu un ūdens acīm, 🦫 bebru strauts (līkumo kā čūska, ar niedrēm, ūdensrozēm un bebru mītni), 🌲 priežu sils ar viršiem un 🏖️ jūrmala. Kalnos — ⛰️ klinšu tunelis ar laternām.

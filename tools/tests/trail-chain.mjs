@@ -161,6 +161,10 @@ for (let k = 0; k < TASKS.length; k++) {
   check(s.h.step === k + 1 && s.c.step === k + 1, `[${k}] ${T.name} pabeigts (solis ${s.h.step}, ${guard} cikli)`);
   check(coins1[0] - coins0[0] >= T.coins && coins1[1] - coins0[1] >= T.coins, `[${k}] balva abiem (+${coins1[0] - coins0[0]}, +${coins1[1] - coins0[1]})`);
   check(!s.h.carry && !s.c.carry && !s.h.fish && !s.c.fish, `[${k}] pēc uzdevuma nekas nav rokās / nemakšķerē`);
+  // 1.47.0: bultas — redzamas tieši izpildītajām pieturām (pēdējai nav)
+  const arr = await Promise.all(P.map((p) => p.evaluate(() => __game.terr.arrows.map((m) => m.visible))));
+  const wantA = arr[0].map((_, j) => j <= k);
+  check(arr.every((a) => JSON.stringify(a) === JSON.stringify(wantA)), `[${k}] bultas abiem: ${arr[0].map((v) => (v ? '➡️' : '·')).join('')}`);
   if (k === 3) {
     const fishCount = await cl.evaluate(() => __game.terr.fishes.count);
     check(fishCount === 10, `[3] grozā 10 zivis (${fishCount})`);
@@ -177,6 +181,7 @@ await sleep(1500);
 const rs = await st();
 check(rs.h.step === 0 && rs.c.step === 0 && !rs.h.acc, 'sākt no jauna — solis 0 abiem');
 check(await host.evaluate(() => __game.terr.fishes.count === 0 && __game.terr.logs.count === 0), 'grozi/šķūnis tukši pēc restartēšanas');
+check(await host.evaluate(() => __game.terr.arrows.every((m) => !m.visible)) && await cl.evaluate(() => __game.terr.arrows.every((m) => !m.visible)), 'bultas paslēptas pēc restartēšanas');
 log('KĻŪDAS:', errs.length ? errs.join('\n') : 'nav');
 log(fails ? `NEIZDEVĀS: ${fails}` : 'VISS IZDEVĀS');
 await browser.close();

@@ -6,17 +6,17 @@
 // TrailZone — zemes modelis (uzbūvē, ieejot, izmet, izejot). Trail — Game papildinājums (darbības, tīkls, panelis).
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { ZONE_HALF, SOUTH_END, GROUND_Y, CROSS_AT, smoothRoad, RoadIndex, buildRoadMesh, roadMaterial, disposeTree, buildBorderPosts, wood, ZONE_IDS } from './zones.js?v=1.46.0';
-import { WATER_Y } from './world.js?v=1.46.0';
-import { makeTextSprite, makeTag, makeSignBoard, canvasTexture, noiseTexture, smoothstep, lerp, clamp } from './util.js?v=1.46.0';
-import { buildAnimal } from './characters.js?v=1.46.0';
-import * as A from './assets.js?v=1.46.0';
-import { InstanceField } from './instancing.js?v=1.46.0';
-import { makeNoise2D, mulberry32 } from './noise.js?v=1.46.0';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, sfx } from './ui.js?v=1.46.0';
-import { HATS } from './data.js?v=1.46.0';
-import { TrailLife } from './wildlife.js?v=1.46.0';
-import { voice, stopVoice } from './audio.js?v=1.46.0';
+import { ZONE_HALF, SOUTH_END, GROUND_Y, CROSS_AT, smoothRoad, RoadIndex, buildRoadMesh, roadMaterial, disposeTree, buildBorderPosts, wood, ZONE_IDS } from './zones.js?v=1.47.0';
+import { WATER_Y } from './world.js?v=1.47.0';
+import { makeTextSprite, makeTag, makeSignBoard, canvasTexture, noiseTexture, smoothstep, lerp, clamp } from './util.js?v=1.47.0';
+import { buildAnimal } from './characters.js?v=1.47.0';
+import * as A from './assets.js?v=1.47.0';
+import { InstanceField } from './instancing.js?v=1.47.0';
+import { makeNoise2D, mulberry32 } from './noise.js?v=1.47.0';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, sfx } from './ui.js?v=1.47.0';
+import { HATS } from './data.js?v=1.47.0';
+import { TrailLife } from './wildlife.js?v=1.47.0';
+import { voice, stopVoice } from './audio.js?v=1.47.0';
 
 const SEED = 4711, TAU = Math.PI * 2, H = ZONE_HALF;
 // krasts (ūdens mala) un strauts — tīras funkcijas (tās izmanto arī karte)
@@ -387,6 +387,42 @@ export function trailLayout() {
   return L;
 }
 // vai vieta ir uzdevuma zonā
+// 1.47.0: bultas pēc izpildīta uzdevuma — viena virs takas, ~18 m aiz pieturas, rāda takas virzienu uz nākamo uzdevumu
+// (pēdējam — ronim — nākamā nav, tāpēc bultas nav). Tīra funkcija (testiem): [{k, x, z, dx, dz, i}]
+let AS = null;
+export function arrowSpots() {
+  if (AS) return AS;
+  const lay = trailLayout(), line = lay.line, T = lay.tunnel, out = [];
+  const bad = (p) => (Math.abs(p.x - BRIDGE.x) < 5 && Math.abs(p.z - BZ) < BRIDGE.hl + 3) || (T && p.i >= T.i0 - 8 && p.i <= T.i1 + 8);
+  for (let k = 0; k < TASKS.length - 1; k++) {
+    const i0 = lay.stopI[k], i1 = lay.stopI[k + 1], nx = lay.stops[k + 1];
+    let x, z, dx, dz, i = -1;
+    if (i1 - i0 > 40) {
+      i = i0 + 12;
+      while (i < i1 - 20 && bad(line[i])) i++;
+      const a = line[i - 4], b = line[i + 4];
+      x = line[i].x; z = line[i].z; dx = b.x - a.x; dz = b.z - a.z;
+    } else {
+      // takas gabals līdz nākamajai pieturai īss (pludmalē) — taisni uz to
+      const s = lay.stops[k], tx = nx.x - s.x, tz = nx.z - s.z, tl = Math.hypot(tx, tz) || 1;
+      x = s.x + tx / tl * 11; z = s.z + tz / tl * 11; dx = tx; dz = tz;
+    }
+    const dl = Math.hypot(dx, dz) || 1;
+    out.push({ k, x, z, dx: dx / dl, dz: dz / dl, i });
+  }
+  return (AS = out);
+}
+let arrowGeo = null;
+function arrowGeometry() {
+  if (arrowGeo) return arrowGeo;
+  // plakana bulta (smaile uz +z), ar nelielu biezumu
+  const sh = new THREE.Shape();
+  sh.moveTo(-0.32, -1.3); sh.lineTo(0.32, -1.3); sh.lineTo(0.32, 0.1); sh.lineTo(0.8, 0.1); sh.lineTo(0, 1.3); sh.lineTo(-0.8, 0.1); sh.lineTo(-0.32, 0.1); sh.closePath();
+  const g = new THREE.ExtrudeGeometry(sh, { depth: 0.1, bevelEnabled: false });
+  g.rotateX(Math.PI / 2); g.translate(0, 0.05, 0); // forma XY → guļus XZ (smaile uz +z)
+  g.scale(1.5, 1, 1.5); // ~3,9 m gara, 2,4 m plata — labi redzama no kameras
+  return (arrowGeo = g);
+}
 export function inQuestRange(k, x, z) { const s = trailLayout().stops[k]; return !!s && Math.hypot(x - s.clear.x, z - s.clear.z) < s.range; }
 const FAIL_MS = 4000; // cik ilgi visiem jābūt ārpus zonas, līdz uzdevums neizdodas
 
@@ -935,6 +971,7 @@ export class TrailZone {
     this.buildBoardwalk(G);
     this.buildObstacles(G);
     this.buildSectSigns(G);
+    this.buildArrows(G);
     this.buildLodge(G);
     this.buildFence(G);
     // 1.43.0: dzīvnieki (vardes, pīles, zaķi, stirnas, stārķi, tauriņi)
@@ -1349,6 +1386,23 @@ export class TrailZone {
     }
   }
 
+  // 1.47.0: zaļas puscaurspīdīgas bultas virs takas (redzamas, kad uzdevums izpildīts)
+  buildArrows(G) {
+    const mat = new THREE.MeshBasicMaterial({ color: 0x33dd55, transparent: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide });
+    this.arrowMat = mat;
+    this.arrows = arrowSpots().map((a) => {
+      const m = new THREE.Mesh(arrowGeometry(), mat);
+      // augstums: 1 m virs takas, bet aste (zemāk par smaili) nedrīkst ieiet zemē lejup slīpumā
+      const gnd = (d) => Math.max(this.groundAt(a.x + a.dx * d, a.z + a.dz * d), WATER_Y);
+      const y = Math.max(gnd(0) + 1, gnd(-1.95) + 1.1, gnd(1.95) + 0.2);
+      // smaile nedaudz uz augšu — no aizmugures nākot, bultas virsma vērsta pret kameru
+      m.position.set(a.x, y, a.z); m.rotation.order = 'YXZ'; m.rotation.y = Math.atan2(a.dx, a.dz); m.rotation.x = -0.35;
+      m.renderOrder = 2; m.visible = false; m.userData.y = y; m.userData.a = a;
+      G.add(m);
+      return m;
+    });
+  }
+
   // 1.43.0: bebru mītne strauta krastā un apgrauzti celmi
   buildLodge(G) {
     const x = 104, z = streamZ(104) - streamHW(104) + 0.6;
@@ -1439,6 +1493,7 @@ export class TrailZone {
     this.planks.count = tr.bridge ? this.planks.instanceMatrix.count : step === KB ? Math.round(tr.c / TASKS[KB].need * this.planks.instanceMatrix.count) : 0;
     this.rails.visible = !!tr.bridge;
     this.applyObstacles(tr);
+    for (const m of this.arrows || []) m.visible = step > m.userData.a.k;
     // priekšmeti
     const T = TASKS[step], key = T && tr.acc ? step + ':' + tr.run : null;
     if (key !== this.itemsFor) {
@@ -1460,6 +1515,8 @@ export class TrailZone {
     const t = performance.now() / 1000;
     if (this.waterMat) { const nm = this.waterMat.normalMap; nm.offset.x += dt * 0.006; nm.offset.y += dt * 0.0045; }
     if (this.foam) this.foam.material.opacity = 0.55 + 0.3 * Math.sin(t * 0.9);
+    // bultas viegli šūpojas un pulsē
+    if (this.arrows) { for (const m of this.arrows) if (m.visible) m.position.y = m.userData.y + Math.sin(t * 2 + m.userData.a.k) * 0.12; this.arrowMat.opacity = 0.6 + 0.1 * Math.sin(t * 3); }
     const me = game.me.pos;
     // brīdinājums, ja aizej no pieņemta uzdevuma zonas (ja visi aiziet — uzdevums neizdodas)
     const qt = game.trail;
@@ -1533,7 +1590,7 @@ export class TrailZone {
     this.disposed = true;
     if (this.group.parent) this.group.parent.remove(this.group);
     const rm = rockMaterial();
-    const keep = [A.toyMaterial(), rm, rm.map, rockNoise, wood(), roadMaterial(), pathMaterial(), pathMaterial().map, detailTex(), waterNormal(), foamTex()];
+    const keep = [A.toyMaterial(), rm, rm.map, rockNoise, wood(), roadMaterial(), pathMaterial(), pathMaterial().map, detailTex(), waterNormal(), foamTex(), arrowGeometry()];
     if (this.photoMat) keep.push(this.photoMat);
     if (rm.normalMap) keep.push(rm.normalMap);
     for (const k in tplCache) tplCache[k].traverse((o) => { if (o.geometry) keep.push(o.geometry); });

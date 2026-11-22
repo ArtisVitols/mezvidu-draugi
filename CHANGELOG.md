@@ -1,5 +1,10 @@
 # Izmaiņu žurnāls
 
+## 1.47.0 — 2026-11-22
+- ➡️ Takas bultas: kad draugam palīdzēts, aiz viņa virs takas parādās **zaļa puscaurspīdīga bulta**, kas rāda takas virzienu uz nākamo uzdevumu
+  (pie bebra — aiz tilta, pie lapsas — pa pludmali uz roni). Bulta viegli šūpojas; sākot piedzīvojumu no jauna, bultas pazūd.
+- 🧪 Jauns tests `tools/tests/trail-arrows.mjs` (vieta virs takas, virziens, augstums, redzamība katram solim abiem spēlētājiem); ķēdes tests pārbauda bultas pēc katra uzdevuma.
+
 ## 1.46.0 — 2026-11-22
 - 🦭 Jauns pēdējais takas uzdevums: **Ronis Viļņuks pludmalē**. Vētra aiznesa viņa laivu jūrā — aizpeldi līdz tai, iekāp
   (dzeltenā poga „🚣 Sēsties laivā”), airē ar ⛽, stūrē ar ◀ ▶ un iebrauc piestātnē starp bojām un stabiem ar glābšanas riņķiem.
