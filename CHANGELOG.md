@@ -1,5 +1,10 @@
 # Izmaiņu žurnāls
 
+## 1.44.1 — 2026-11-22
+- 🐞 Piedzīvojumu takā nevarēja atgriezties no Ezīša pie Lāča — neredzama siena: nogāztā koka barjera (līdz 45 m platumā) pārgrieza taku
+  vēlreiz tur, kur taka met loku atpakaļ (~50 m aiz koka). Barjera tagad apstājas pirms jebkuras citas takas daļas.
+- Šķēršļi aiztur tikai ejot uz priekšu — atpakaļ uz takas sākumu vienmēr var aiziet.
+- Saglabājumiem no laika pirms šķēršļiem (< 1.43.0) jau noietajā takas daļā šķēršļi skaitās novākti.
 ## 1.44.0 — 2026-11-22
 - 🗣️ Latviešu balsis: dzīvnieki runā! Takas draugi (🐻 🐿️ 🦔 🦫 🦊) izsaka savus lūgumus, padomus un pateicības, katram sava balss
   (lācis dziļa, vāverīte smalka). Tirgus pārdevēji sasveicinās, kaķis Kārlis autobusā paziņo pieturas, sacīkstēs „Trīs, divi, viens, aiziet!”,

@@ -6,17 +6,17 @@
 // TrailZone — zemes modelis (uzbūvē, ieejot, izmet, izejot). Trail — Game papildinājums (darbības, tīkls, panelis).
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { ZONE_HALF, SOUTH_END, GROUND_Y, CROSS_AT, smoothRoad, RoadIndex, buildRoadMesh, roadMaterial, disposeTree, buildBorderPosts, wood, ZONE_IDS } from './zones.js?v=1.44.0';
-import { WATER_Y } from './world.js?v=1.44.0';
-import { makeTextSprite, makeTag, makeSignBoard, canvasTexture, noiseTexture, smoothstep, lerp, clamp } from './util.js?v=1.44.0';
-import { buildAnimal } from './characters.js?v=1.44.0';
-import * as A from './assets.js?v=1.44.0';
-import { InstanceField } from './instancing.js?v=1.44.0';
-import { makeNoise2D, mulberry32 } from './noise.js?v=1.44.0';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, sfx } from './ui.js?v=1.44.0';
-import { HATS } from './data.js?v=1.44.0';
-import { TrailLife } from './wildlife.js?v=1.44.0';
-import { voice, stopVoice } from './audio.js?v=1.44.0';
+import { ZONE_HALF, SOUTH_END, GROUND_Y, CROSS_AT, smoothRoad, RoadIndex, buildRoadMesh, roadMaterial, disposeTree, buildBorderPosts, wood, ZONE_IDS } from './zones.js?v=1.44.1';
+import { WATER_Y } from './world.js?v=1.44.1';
+import { makeTextSprite, makeTag, makeSignBoard, canvasTexture, noiseTexture, smoothstep, lerp, clamp } from './util.js?v=1.44.1';
+import { buildAnimal } from './characters.js?v=1.44.1';
+import * as A from './assets.js?v=1.44.1';
+import { InstanceField } from './instancing.js?v=1.44.1';
+import { makeNoise2D, mulberry32 } from './noise.js?v=1.44.1';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, sfx } from './ui.js?v=1.44.1';
+import { HATS } from './data.js?v=1.44.1';
+import { TrailLife } from './wildlife.js?v=1.44.1';
+import { voice, stopVoice } from './audio.js?v=1.44.1';
 
 const SEED = 4711, TAU = Math.PI * 2, H = ZONE_HALF;
 // krasts (ūdens mala) un strauts — tīras funkcijas (tās izmanto arī karte)
@@ -275,13 +275,19 @@ export function trailLayout() {
   pickOb('koks', stopI[2] + 30, stopI[3] - 30);
   obst.sort((a, b) => a.i - b.i).forEach((o, k) => { o.o = k; });
   // šķērsļa barjeras garums uz katru pusi (līdz 45 m, bet ne līdz citam takas posmam)
-  {
-    const tmp = new RoadIndex([line], 8, 2);
-    for (const o of obst) for (const side of [-1, 1]) {
-      let w = 45;
-      for (let d = 6; d <= 45; d += 1) { const n = tmp.near(o.x + o.nx * d * side, o.z + o.nz * d * side); if (n.p && n.d < 12 && Math.abs(n.p.i - o.i) > 40) { w = Math.max(8, d - 12); break; } }
-      if (side < 0) o.wl = w; else o.wr = w;
+  // 1.44.1: precīzi pret visiem takas punktiem — barjera nedrīkst šķērsot taku vēlreiz, kur tā met loku atpakaļ
+  // (agrāk |Δi| > 40 ļāva tai pārgriezt taku ~50 m aiz šķēršļa — „neredzama siena”)
+  for (const o of obst) for (const side of [-1, 1]) {
+    let w = 45;
+    for (let d = 3; d <= 45 && w === 45; d += 0.5) {
+      const bx = o.x + o.nx * d * side, bz = o.z + o.nz * d * side;
+      for (let i = 0; i < line.length; i++) {
+        if (Math.abs(i - o.i) < 22) continue; // pašas takas vieta pie šķēršļa (±~33 m, arī līkumos)
+        const q = line[i], dx = q.x - bx, dz = q.z - bz;
+        if (dx * dx + dz * dz < 64) { w = Math.max(5, d - 7); break; }
+      }
     }
+    if (side < 0) o.wl = w; else o.wr = w;
   }
   // laipa purvā (ar mīkstiem galiem)
   const bwOn = line.map((p) => (p.bog > 0.35 ? 1 : 0));
@@ -796,9 +802,10 @@ export class TrailZone {
       if (dx * dx + dz * dz > 2200) continue;
       const along = dx * o.tx + dz * o.tz, across = dx * o.nx + dz * o.nz, w = OB_HALF + radius;
       if (Math.abs(along) < w && across > -o.wl && across < o.wr) {
-        // izstumj atpakaļ uz to pusi, no kuras nāk
-        const side = this.lp ? Math.sign((this.lp.x - o.x) * o.tx + (this.lp.z - o.z) * o.tz) || 1 : Math.sign(along) || 1;
-        pos.x += o.tx * (side * w - along); pos.z += o.tz * (side * w - along); hit = true;
+        // 1.44.1: aiztur tikai ejot uz priekšu (no takas sākuma puses, along < 0); atpakaļ uz sākumu vienmēr var
+        // (citādi var iesprūst aiz šķēršļa — piem., vecs saglabājums vai atgriešanās no tālākas vietas)
+        const side = this.lp ? Math.sign((this.lp.x - o.x) * o.tx + (this.lp.z - o.z) * o.tz) || -1 : Math.sign(along) || -1;
+        if (side < 0) { pos.x += o.tx * (-w - along); pos.z += o.tz * (-w - along); hit = true; }
       }
     }
     this.lp = { x: pos.x, z: pos.z };
@@ -1596,6 +1603,11 @@ export const Trail = {
     for (const k of STEP_KEYS) if (s[k] != null) tr[k] = s[k];
     tr.ob = Array.isArray(tr.ob) ? tr.ob.map((n) => n | 0) : [];
     tr.step = clamp(tr.step | 0, 0, TASKS.length);
+    // 1.44.1: saglabājums no laika pirms šķēršļiem (< 1.43.0) — jau noietajā takas daļā šķēršļi skaitās novākti
+    if (s.ob == null && tr.step > 0) {
+      const lay = trailLayout(), end = lay.stopI[Math.min(tr.step, TASKS.length - 1)];
+      for (const o of lay.obst) if (o.i < end || tr.step >= TASKS.length) tr.ob[o.o] = OB_TYPES[o.type].hits;
+    }
     this.hs.trail = tr;
   },
   trailZone() { return this.zone === 's' && this.terr instanceof TrailZone ? this.terr : null; },
