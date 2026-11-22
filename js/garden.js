@@ -5,12 +5,13 @@
 // Saglabājumā: save.gd = { xp, land } (land — LAND indekss).
 // Garden — Game papildinājums (mixin).
 import * as THREE from 'three';
-import { CROPS, TREES } from './data.js?v=1.43.0';
-import { TILE, GARDEN_T, rotPlot } from './world.js?v=1.43.0';
-import { mat } from './util.js?v=1.43.0';
-import { $, toast, sfx, showPanel, refreshPanel, el, itemRow } from './ui.js?v=1.43.0';
-import { iconEl } from './icons.js?v=1.43.0';
-import { FARM } from './zones.js?v=1.43.0';
+import { CROPS, TREES } from './data.js?v=1.44.0';
+import { TILE, GARDEN_T, rotPlot } from './world.js?v=1.44.0';
+import { mat } from './util.js?v=1.44.0';
+import { $, toast, sfx, showPanel, refreshPanel, el, itemRow } from './ui.js?v=1.44.0';
+import { iconEl } from './icons.js?v=1.44.0';
+import { FARM } from './zones.js?v=1.44.0';
+import { voice } from './audio.js?v=1.44.0';
 
 // cik XP vajag, lai sasniegtu līmeni n (1. līmenis — 0)
 export const MAX_LVL = 24;  // 1.36.0: bija 12
@@ -102,7 +103,7 @@ export const Garden = {
   gardenLevelUp(L) {
     const prize = L * 10;
     this.addCoins(prize, true);
-    sfx('j_level', { vol: 0.85 });
+    sfx('j_level', { vol: 0.85 }); voice('g_level', { delay: 0.8 });
     const opened = Object.keys(UNLOCK).filter((k) => UNLOCK[k] === L).map((k) => (CROPS[k] ? `${CROPS[k].icon} ${CROPS[k].name}` : `🌳 ${TREES[k].name}`));
     const land = LAND.findIndex((x, i) => i > this.save.gd.land && x.lvl === L);
     if (this.spawnFloat) this.spawnFloat('🎉', this.me.pos);

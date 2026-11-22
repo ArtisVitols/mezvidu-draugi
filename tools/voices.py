@@ -1,0 +1,119 @@
+#!/usr/bin/env python3
+# 🗣️ Latviešu balsis (1.44.0): ieraksta visas runātās frāzes uz assets/voice/<id>.mp3 ar Piper TTS
+# (balss lv_LV-aivars-medium, CC0). Katram tēlam sava balss augstums (pitch) un runas ātrums.
+# Takas tēlu teksti tiek nolasīti tieši no js/trail.js (TASKS), lai balss sakristu ar ekrāna tekstu.
+#
+# Lietošana:  python3 tools/voices.py <piper mape> [id ...]
+#   <piper mape> — mape ar `piper/piper` (https://github.com/rhasspy/piper/releases) un lv.onnx + lv.onnx.json
+#   (https://huggingface.co/rhasspy/piper-voices/tree/main/lv/lv_LV/aivars/medium). Bez id — ieraksta visu.
+import json, os, re, subprocess, sys, tempfile
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+OUT = os.path.join(ROOT, 'assets', 'voice')
+
+# tēls → (balss augstums, runas garums — >1 lēnāk)
+VOICES = {
+    'teicejs': (1.0, 1.0),     # stāstnieks (sacīkstes, līmeņi, paziņojumi)
+    'lacis': (0.78, 1.1),
+    'vavere': (1.32, 0.92),
+    'ezis': (1.2, 1.0),
+    'bebritis': (0.93, 1.0),
+    'lapsa': (1.12, 0.98),
+    'udrs': (0.95, 1.0),
+    'apsis': (0.84, 1.06),
+    'puce': (1.16, 1.0),
+    'suns': (1.06, 0.95),
+    'liene': (1.2, 1.0),
+    'kakis': (1.1, 1.0),
+}
+
+# skaitļi vārdiem (pareizā locījumā) — balss tos tad izrunā droši
+WORDS = [('8 pagales', 'astoņas pagales'), ('12 riekstus', 'divpadsmit riekstus'), ('8 ābolus', 'astoņus ābolus'),
+         ('6 dēļus', 'sešus dēļus'), ('Salasiet 10,', 'Salasiet desmit,')]
+
+
+def clean(t):
+    for a, b in WORDS:
+        t = t.replace(a, b)
+    t = re.sub(r'[\U0001F000-\U0001FFFF☀-➿️‍⚓]', '', t)
+    t = t.replace('—', ',').replace('„', '').replace('”', '')
+    return re.sub(r'\s+', ' ', re.sub(r'\s+([,.!?])', r'\1', t)).strip()
+
+
+def trail_tasks():
+    src = open(os.path.join(ROOT, 'js', 'trail.js'), encoding='utf-8').read()
+    block = src[src.index('export const TASKS'):src.index('export const GIFT_HAT')]
+    out = []
+    for part in block.split("npc: '")[1:]:
+        g = lambda k: re.search(k + r": '([^']*)'", part).group(1)
+        out.append({'npc': part[:part.index("'")], 'name': g('name'), 'ask': g('ask'), 'help': g('help'), 'thanks': g('thanks')})
+    return out
+
+
+# spokens nosaukums autobusa stacijām (STATIONS secībā bus.js)
+STATIONS = ['Ziemas laukums', 'Ziemeļu sēta', 'Rietumu sēta', 'Sacīkšu trase', 'Austrumu sēta', 'Mežvidu tirgus']
+
+
+def lines():
+    L = []
+    T = trail_tasks()
+    # datīvs „palīdziet kam” — vispirms jāpalīdz iepriekšējam
+    DAT = {'lacis': 'Lācim Brunim', 'vavere': 'Vāverītei Čiekuriņai', 'ezis': 'Ezītim Adatiņam', 'bebritis': 'Bebram Dambītim', 'lapsa': 'Lapsai Smilgai'}
+    for k, t in enumerate(T):
+        v = t['npc']
+        L += [(f't{k}_ask', v, t['ask']), (f't{k}_help', v, t['help']), (f't{k}_thanks', v, t['thanks'])]
+        if k < len(T) - 1:
+            L.append((f't{k}_again', v, 'Paldies vēlreiz par palīdzību! Visi meža draugi jums pateicīgi.'))
+        for p in range(k):
+            L.append((f't{k}_wait{p}', v, f'Sveiks! Man arī būs vajadzīga palīdzība, bet vispirms palīdziet {DAT[T[p]["npc"]]}, tas ir atpakaļ pa taku.'))
+    L += [
+        ('t_fail', 'teicejs', 'Ak vai! Uzdevums neizdevās, visi aizgāja par tālu. Sāciet vēlreiz!'),
+        ('t_done', 'teicejs', 'Paveikts kopā! Malači!'),
+        ('t_clear', 'teicejs', 'Ceļš brīvs!'),
+        ('t_restart', 'teicejs', 'Piedzīvojums sākas no jauna!'),
+        ('t_finish', 'teicejs', 'Urrā! Visa taka pabeigta!'),
+        ('r_3', 'teicejs', 'Trīs!'), ('r_2', 'teicejs', 'Divi!'), ('r_1', 'teicejs', 'Viens!'), ('r_go', 'teicejs', 'Aiziet!'),
+        ('g_level', 'teicejs', 'Jauns līmenis! Lieliski!'),
+        ('q_done', 'teicejs', 'Uzdevums izpildīts!'),
+        ('v_seeds', 'udrs', 'Sveiks! Man ir labākās sēklas visā Mežvidu ciemā, augļu koku stādi un makšķeres.'),
+        ('v_buyer', 'apsis', 'Es uzpērku sēnes, dārzeņus, augļus, zivis un ogas. Par lielu zivi maksāju vairāk!'),
+        ('v_pets', 'suns', 'Vau! Katram vajag draugu, kas visur skrien līdzi.'),
+        ('v_decor', 'liene', 'Padari savu sētu skaistāko ciemā!'),
+        ('v_hats', 'puce', 'Ū-hū! Cepures, krekli, brilles, apavi un vēl! Esi stilīgs!'),
+    ]
+    for i, s in enumerate(STATIONS):
+        L += [(f'b_in{i}', 'kakis', f'Laipni lūdzam! Paldies! Nākamā pietura, {s}.'),
+              (f'b_at{i}', 'kakis', f'Pietura, {s}.'),
+              (f'b_next{i}', 'kakis', f'Nākamā pietura, {s}.')]
+    return L
+
+
+def record(piper_dir, lid, voice, text):
+    pitch, ls = VOICES[voice]
+    exe = os.path.join(piper_dir, 'piper', 'piper')
+    with tempfile.TemporaryDirectory() as tmp:
+        wav = os.path.join(tmp, 'a.wav')
+        subprocess.run([exe, '-m', os.path.join(piper_dir, 'lv.onnx'), '--length_scale', str(ls), '--sentence_silence', '0.25', '-f', wav],
+                       input=clean(text).encode('utf-8'), check=True, stderr=subprocess.DEVNULL)
+        # augstums bez ātruma maiņas; dziļie basi nost (telefona skaļrunis), skaļums izlīdzināts; klusums galos nost
+        af = (f'asetrate={int(22050 * pitch)},aresample=22050,atempo={1 / pitch:.4f},highpass=f=130,'
+              'silenceremove=start_periods=1:start_threshold=-45dB,areverse,silenceremove=start_periods=1:start_threshold=-45dB,areverse,'
+              'apad=pad_dur=0.08,loudnorm=I=-16:TP=-1.5:LRA=11')
+        subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', wav, '-af', af, '-ac', '1', '-ar', '22050', '-b:a', '48k',
+                        os.path.join(OUT, lid + '.mp3')], check=True)
+
+
+def main():
+    if len(sys.argv) < 2:
+        print(__doc__ or 'python3 tools/voices.py <piper mape> [id ...]'); sys.exit(1)
+    os.makedirs(OUT, exist_ok=True)
+    only = set(sys.argv[2:])
+    L = lines()
+    for lid, voice, text in L:
+        if only and lid not in only: continue
+        record(sys.argv[1], lid, voice, text)
+        print(lid, voice, clean(text))
+    json.dump(sorted(lid for lid, _, _ in L), open(os.path.join(OUT, 'list.json'), 'w'), ensure_ascii=False)
+
+
+main()

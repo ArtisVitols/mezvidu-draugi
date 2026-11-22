@@ -1,5 +1,11 @@
 # Izmaiņu žurnāls
 
+## 1.44.0 — 2026-11-22
+- 🗣️ Latviešu balsis: dzīvnieki runā! Takas draugi (🐻 🐿️ 🦔 🦫 🦊) izsaka savus lūgumus, padomus un pateicības, katram sava balss
+  (lācis dziļa, vāverīte smalka). Tirgus pārdevēji sasveicinās, kaķis Kārlis autobusā paziņo pieturas, sacīkstēs „Trīs, divi, viens, aiziet!”,
+  stāstnieks — jauns līmenis, izpildīts uzdevums, ceļš brīvs, neizdevies uzdevums.
+- Balsis ierakstītas ar Piper TTS (latviešu balss „Aivars”, CC0) — `tools/voices.py`, faili `assets/voice/` (ielādē tikai, kad vajag).
+- ⚙️ Iestatījumos 🗣️ Balsis — ieslēgt/izslēgt.
 ## 1.43.0 — 2026-11-21
 - 🌳 Piedzīvojumu taka vairs nav visur vienāda — 8 posmi, katram savi koki, pamežs un zemes krāsa, pie posma sākuma zīme un paziņojums:
   jauktais mežs, 🌿 bērzu birzs (gaišas pļavas, papardes, puķes), 🌲 egļu biezoknis (sūnu ciņi, mušmires), 🌳 veco ozolu birzs,

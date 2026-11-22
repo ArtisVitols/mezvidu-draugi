@@ -1,0 +1,3 @@
+Balsis — ierakstītas ar Piper TTS (https://github.com/rhasspy/piper, MIT) ar latviešu balsi lv_LV-aivars-medium
+(https://huggingface.co/rhasspy/piper-voices — dati: https://huggingface.co/RaivisDejus/Piper-lv_LV-Aivars-medium, licence CC0 1.0).
+Pārģenerēt: python3 tools/voices.py <piper mape>

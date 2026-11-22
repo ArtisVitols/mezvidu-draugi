@@ -6,16 +6,17 @@
 // TrailZone — zemes modelis (uzbūvē, ieejot, izmet, izejot). Trail — Game papildinājums (darbības, tīkls, panelis).
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { ZONE_HALF, SOUTH_END, GROUND_Y, CROSS_AT, smoothRoad, RoadIndex, buildRoadMesh, roadMaterial, disposeTree, buildBorderPosts, wood, ZONE_IDS } from './zones.js?v=1.43.0';
-import { WATER_Y } from './world.js?v=1.43.0';
-import { makeTextSprite, makeTag, makeSignBoard, canvasTexture, noiseTexture, smoothstep, lerp, clamp } from './util.js?v=1.43.0';
-import { buildAnimal } from './characters.js?v=1.43.0';
-import * as A from './assets.js?v=1.43.0';
-import { InstanceField } from './instancing.js?v=1.43.0';
-import { makeNoise2D, mulberry32 } from './noise.js?v=1.43.0';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, sfx } from './ui.js?v=1.43.0';
-import { HATS } from './data.js?v=1.43.0';
-import { TrailLife } from './wildlife.js?v=1.43.0';
+import { ZONE_HALF, SOUTH_END, GROUND_Y, CROSS_AT, smoothRoad, RoadIndex, buildRoadMesh, roadMaterial, disposeTree, buildBorderPosts, wood, ZONE_IDS } from './zones.js?v=1.44.0';
+import { WATER_Y } from './world.js?v=1.44.0';
+import { makeTextSprite, makeTag, makeSignBoard, canvasTexture, noiseTexture, smoothstep, lerp, clamp } from './util.js?v=1.44.0';
+import { buildAnimal } from './characters.js?v=1.44.0';
+import * as A from './assets.js?v=1.44.0';
+import { InstanceField } from './instancing.js?v=1.44.0';
+import { makeNoise2D, mulberry32 } from './noise.js?v=1.44.0';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, sfx } from './ui.js?v=1.44.0';
+import { HATS } from './data.js?v=1.44.0';
+import { TrailLife } from './wildlife.js?v=1.44.0';
+import { voice, stopVoice } from './audio.js?v=1.44.0';
 
 const SEED = 4711, TAU = Math.PI * 2, H = ZONE_HALF;
 // krasts (ūdens mala) un strauts — tīras funkcijas (tās izmanto arī karte)
@@ -1649,7 +1650,7 @@ export const Trail = {
     }
     if (ev.k === 'drop' && ev.by === this.myId) { sfx('j_star', { vol: 0.6 }); this.spawnFloat('✨', this.me.pos); }
     if (ev.k === 'acc' && here && T) { sfx('j_quest', { vol: 0.6 }); toast(`${T.icon} Jauns uzdevums: ${T.title}! ${T.help}`, 'good', 5000); }
-    if (ev.k === 'fail' && T) { sfx('bad'); toast(`❌ Uzdevums neizdevās: ${T.title} — visi aizgāja prom no ${T.icon}. ${T.icon} ${T.name} gaida — sāciet vēlreiz!`, 'bad', 6000); }
+    if (ev.k === 'fail' && T) { sfx('bad'); voice('t_fail', { delay: 0.4 }); toast(`❌ Uzdevums neizdevās: ${T.title} — visi aizgāja prom no ${T.icon}. ${T.icon} ${T.name} gaida — sāciet vēlreiz!`, 'bad', 6000); }
     if ((ev.k === 'hit' || ev.k === 'clear') && here) {
       const Z = this.trailZone(), O = trailLayout().obst[ev.o], OT = O && OB_TYPES[O.type];
       if (Z && O) {
@@ -1658,10 +1659,11 @@ export const Trail = {
         if (ev.k === 'clear') {
           sfx(OT.end, { at: { x: O.x, z: O.z }, vol: 0.9 });
           this.spawnFloat('✨', new THREE.Vector3(O.x, O.h + 1, O.z));
-          if (Math.hypot(O.x - this.me.pos.x, O.z - this.me.pos.z) < 80) toast(`${OT.icon} ${OT.name} novākts — ceļš brīvs! 💪`, 'good', 3500);
+          if (Math.hypot(O.x - this.me.pos.x, O.z - this.me.pos.z) < 80) { toast(`${OT.icon} ${OT.name} novākts — ceļš brīvs! 💪`, 'good', 3500); voice('t_clear', { delay: 0.6 }); }
         }
       }
     }
+    if (ev.k === 'restart' && here) voice('t_restart');
     if (ev.k === 'restart' && here) toast('🔁 Piedzīvojums sākas no jauna — ej pie 🐻 Lāča Bruņa!', 'good', 4500);
     if (ev.done != null && here) {
       const D = TASKS[ev.done];
@@ -1669,6 +1671,7 @@ export const Trail = {
       if (this.gardenXp) this.gardenXp(D.xp, this.me.pos);
       sfx('j_quest');
       toast(`${D.icon} ${D.title} — paveikts kopā! +${D.coins}🪙`, 'good', 5000);
+      voice(`t${ev.done}_thanks`, { delay: 0.9 }); // tēls pateicas pats
       if (ev.done === TASKS.length - 1) this.trailFinish();
       this.persist();
     }
@@ -1747,30 +1750,31 @@ export const Trail = {
     this.trailPanel = k;
     const build = (b) => {
       b.append(el('div', { style: 'display:flex;gap:12px;align-items:center;margin-bottom:8px' }, el('div', { style: 'font-size:46px;line-height:1' }, T.icon), el('div', {}, el('b', {}, T.name), el('div', { style: 'opacity:.75;font-size:13px' }, `${k + 1}. pietura no ${TASKS.length}`))));
-      const say = (txt) => b.append(el('div', { style: 'background:#fff8e6;color:#3a2a12;border-radius:14px;padding:10px 12px;margin:6px 0;font-size:15px;line-height:1.35' }, `„${txt}”`));
+      // 1.44.0: tēls frāzi arī pasaka (tikai atverot, ne atjaunojot paneli)
+      const say = (txt, vid) => { if (!refresh && vid) voice(vid); b.append(el('div', { style: 'background:#fff8e6;color:#3a2a12;border-radius:14px;padding:10px 12px;margin:6px 0;font-size:15px;line-height:1.35' }, `„${txt}”`)); };
       const btn = (label, fn, bg = null) => { const x = el('button', { className: 'pbtn', onclick: fn }, label); if (bg) x.style.background = bg; b.append(x); };
       if (tr.step >= TASKS.length) {
-        say(k === TASKS.length - 1 ? T.thanks : 'Paldies vēlreiz par palīdzību! Visi meža draugi jums pateicīgi.');
+        say(k === TASKS.length - 1 ? T.thanks : 'Paldies vēlreiz par palīdzību! Visi meža draugi jums pateicīgi.', k === TASKS.length - 1 ? `t${k}_thanks` : `t${k}_again`);
         b.append(el('p', {}, '🎉 Visa taka pabeigta kopā! Piedzīvojumu var sākt no jauna — atkal nopelnīsiet 🪙.'));
         btn('🔁 Sākt piedzīvojumu no jauna', () => { this.trailSend({ t: 'tRestart' }); closePanel(); });
       } else if (tr.step < k) {
         const P = TASKS[tr.step];
-        say(`Sveiks! Man arī būs vajadzīga palīdzība, bet vispirms palīdziet ${P.icon} ${P.name} — tas ir atpakaļ pa taku.`);
+        say(`Sveiks! Man arī būs vajadzīga palīdzība, bet vispirms palīdziet ${P.icon} ${P.name} — tas ir atpakaļ pa taku.`, `t${k}_wait${tr.step}`);
       } else if (tr.step > k) {
-        say(T.thanks);
+        say(T.thanks, `t${k}_thanks`);
       } else if (!tr.acc) {
-        say(T.ask);
+        say(T.ask, `t${k}_ask`);
         b.append(el('p', { style: 'font-size:13px;opacity:.8' }, `Uzdevums visai komandai — palīdzēt var visi, kas ir šajā zemē. Balva katram: +${T.coins}🪙 un +${T.xp}⭐`));
         btn('🤝 Palīdzēsim!', () => { this.trailSend({ t: 'tAcc', step: k }); closePanel(); }, '#3a9a4a');
       } else {
-        say(T.help);
+        say(T.help, `t${k}_help`);
         const pct = Math.round(tr.c / T.need * 100);
         b.append(el('div', { style: 'margin:8px 0 4px' }, `${T.itemIcon} ${T.title}: ${tr.c}/${T.need}`));
         b.append(el('div', { style: 'height:12px;background:#0003;border-radius:6px;overflow:hidden' }, el('div', { style: `height:100%;width:${pct}%;background:#f2b81a` })));
       }
     };
     if (refresh) refreshPanel(build);
-    else showPanel(`${T.icon} ${T.name}`, build, () => { this.trailPanel = null; });
+    else showPanel(`${T.icon} ${T.name}`, build, () => { this.trailPanel = null; stopVoice(); });
   },
 
   trailBarText() {

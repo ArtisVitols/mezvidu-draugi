@@ -244,3 +244,50 @@ export function stopAllLoops() {
 
 // atkļūdošanai: kuras cilpas tagad skan un cik skaļi
 export function loopInfo() { return [...loops.entries()].map(([id, l]) => `${id}:${l.g.gain.value.toFixed(2)}`).concat([...engines.entries()].map(([id, e]) => `⚙${id}:${e.out.gain.value.toFixed(2)}@${e.o1.frequency.value.toFixed(0)}Hz`)); }
+
+// 🗣️ 1.44.0: latviešu balsis (assets/voice, ierakstītas ar tools/voices.py). Ielādē tikai pēc vajadzības;
+// vienlaikus skan viena balss — jauna frāze aptur iepriekšējo. Izslēdzamas iestatījumos (mezvidi_voice).
+const VBASE = 'assets/voice/', VOICE_KEY = 'mezvidi_voice';
+const vbuf = new Map(); // id → Promise<AudioBuffer|null>
+let vOn = true, vCur = null, vSeq = 0;
+try { vOn = localStorage.getItem(VOICE_KEY) !== '0'; } catch (e) { /* */ }
+export function voiceOn() { return vOn; }
+export function setVoiceOn(on) {
+  vOn = !!on;
+  try { localStorage.setItem(VOICE_KEY, vOn ? '1' : '0'); } catch (e) { /* */ }
+  if (!vOn) stopVoice();
+}
+function loadVoice(id) {
+  if (!vbuf.has(id)) vbuf.set(id, (async () => {
+    try {
+      const r = await fetch(VBASE + id + '.mp3');
+      if (!r.ok) return null;
+      const ab = await r.arrayBuffer();
+      return await new Promise((res) => ctx.decodeAudioData(ab, res, () => res(null)));
+    } catch (e) { return null; }
+  })());
+  return vbuf.get(id);
+}
+// sagatavo frāzes iepriekš (piem., ienākot takā), lai tās sāk skanēt uzreiz
+export function preloadVoice(ids) { if (ctx && vOn) for (const id of ids) loadVoice(id); }
+export function stopVoice() {
+  vSeq++;
+  if (vCur) { try { vCur.stop(); } catch (e) { /* */ } vCur = null; }
+}
+// atskaņo frāzi; opts: {vol, delay (s), at: {x, z} — skaļums pēc attāluma, keep — neapturēt iepriekšējo}
+export async function voice(id, opts = {}) {
+  if (!ctx || !vOn || !vol) return;
+  if (!opts.keep) stopVoice();
+  const seq = vSeq, b = await loadVoice(id);
+  if (!b || seq !== vSeq) return; // kamēr ielādēja, sākās cita frāze
+  let g = opts.vol == null ? 1 : opts.vol, pan = 0;
+  if (opts.at) { const s = spatial(opts.at.x, opts.at.z, 10, 60); if (!s) return; g *= s.g; pan = s.pan * 0.5; }
+  const src = ctx.createBufferSource(); src.buffer = b;
+  const gn = ctx.createGain(); gn.gain.value = g;
+  let node = gn;
+  if (pan && ctx.createStereoPanner) { const p = ctx.createStereoPanner(); p.pan.value = pan; gn.connect(p); node = p; }
+  src.connect(gn); node.connect(master);
+  src.onended = () => { if (vCur === src) vCur = null; };
+  src.start(ctx.currentTime + (opts.delay || 0));
+  vCur = src;
+}
