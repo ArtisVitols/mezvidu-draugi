@@ -1,5 +1,15 @@
 # Izmaiņu žurnāls
 
+## 1.46.0 — 2026-11-22
+- 🦭 Jauns pēdējais takas uzdevums: **Ronis Viļņuks pludmalē**. Vētra aiznesa viņa laivu jūrā — aizpeldi līdz tai, iekāp
+  (dzeltenā poga „🚣 Sēsties laivā”), airē ar ⛽, stūrē ar ◀ ▶ un iebrauc piestātnē starp bojām un stabiem ar glābšanas riņķiem.
+  Laivā var braukt līdzi draugs. Jūrnieka cepure ⚓ tagad ir par roņa uzdevumu (visas takas beigas).
+- 🚣 Pēc uzdevuma **laiva ir brīva visiem** — brauc pa jūru, cik gribi (tikai pa ūdeni: seklumā apstājas, tālu jūrā — robeža). Laiva šūpojas viļņos, airi airē.
+  Saimnieks atceras, kur laiva atstāta; sākot piedzīvojumu no jauna, laiva paliek brīva.
+- Lapsa tagad sūta pie roņa; vecie saglabājumi: kas bija pabeidzis visu taku, var izpildīt roņa uzdevumu.
+- 🐞 Transportu vietas dienvidu zemē (garāka par 330 m) saglabājumā tika atmestas — tagad pēc zemes izmēra.
+- 🧪 Jauns tests `tools/tests/trail-boat.mjs` (peld un airē ar īsto fiziku); ķēdes tests iziet arī roņa uzdevumu.
+
 ## 1.45.0 — 2026-11-22
 - 🐱 Jauns takas uzdevums: **Kaķis Murris pie dīķa** (starp ezīti un bebru, pie purva malas). Kaķis katram iedod makšķeri;
   makšķerē dīķa krastā (pludiņš, kodiens, „🐟 VILKT!”), noķerto zivi nes uz grozu blakus kaķim un nāc atpakaļ — kopā 10 zivis.

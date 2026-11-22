@@ -13,7 +13,7 @@
 ## Blakus zemes (1.7.0 — pagaidām līdzenas)
 - [x] ❄️ Ziemas zeme (1.10.0): slēpošanas kalns ar pacēlāju, sniega piku kauja, sniegputenis, ziemeļbrieži.
 - [x] 1.14.0: 🏡 sēta centrā (lauksaimniecība), 🌲 mežs austrumos, 🏁 trase ar tuneļiem rietumos.
-- [x] Dienvidu zeme — 🧭 Piedzīvojumu mežs ar taku, NPC uzdevumiem un jūru (1.39.0); 1.45.0 — 6 draugi (Kaķis Murris ar zivju uzdevumu pie dīķa). Var pievienot vēl NPC un uzdevumus — pēc izmaiņām palaid `tools/tests/` takas testus.
+- [x] Dienvidu zeme — 🧭 Piedzīvojumu mežs ar taku, NPC uzdevumiem un jūru (1.39.0); 1.45.0 — 6 draugi (Kaķis Murris ar zivju uzdevumu pie dīķa); 1.46.0 — 7 (Ronis Viļņuks, laiva jūrā, pēc tam brīva). Var pievienot vēl NPC un uzdevumus — pēc izmaiņām palaid `tools/tests/` takas testus.
 - [ ] Sētā: ēkas (klēts, šķūnis), dzīvnieki (vistas, govis), traktors aršanai vairākiem lauciņiem uzreiz.
 - [ ] Ziemas zemē: slēpošanas sacensības ar laiku visiem, ragaviņas, slidotava.
       Zemes stāvoklim ir rezervēts `save.zones`; kopīgām lietām (kā sēnes) vajadzēs saimnieka stāvokli pa zemēm.
@@ -31,4 +31,5 @@
 - [ ] Ķeramā atpakaļskaitīšana viesim headless testā rādīja nepareizu laiku (droši vien testa lēnuma dēļ) — pārbaudīt uz īstiem telefoniem.
 - [ ] Pārbaudīt, cik ātri jāspiež „VILKT!” uz īsta telefona (logs ~1,7 s) — arī takas kaķa dīķī.
 - [ ] Noklausīties Kaķa Murra balsi (1.45.0) uz telefona — vai augstums/ātrums der.
+- [ ] Uz telefona pārbaudīt laivas vadīšanu (stūre, ātrums) un roņa balsi (1.46.0).
 - [ ] Ātrāks ceļš uz jūru (lai nav jāiet viss uzdevumu ceļš): saimnieka „izlaist” poga vai agrāks brasls/tilts — vēl jāizlemj.

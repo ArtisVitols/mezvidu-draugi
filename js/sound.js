@@ -1,7 +1,7 @@
 // 🔊 Pastāvīgās skaņas (1.31.0): soļi pēc virsmas, vide pēc zemes (putni, vējš, ūdens, purva sienāži), uguns pie ugunskura,
 // dzinēji (kartings, mašīna, autobuss), velosipēda spieķi, slēpošanas vējš. Mixin uz Game.prototype; updateSound(dt) katru kadru.
-import { loop, loopAt, play, setListener, stopAllLoops, engine } from './audio.js?v=1.45.0';
-import { FOREST, FARM, RACE } from './zones.js?v=1.45.0';
+import { loop, loopAt, play, setListener, stopAllLoops, engine } from './audio.js?v=1.46.0';
+import { FOREST, FARM, RACE } from './zones.js?v=1.46.0';
 
 const STEP = 0.78;   // m starp soļiem ejot (skrienot — garāki)
 const rd = (T, x, z) => { if (!T || !T.roadDist) return 99; const r = T.roadDist(x, z); return typeof r === 'number' ? r : r ? r.d : 99; };
@@ -98,11 +98,13 @@ export const Sound = {
       if (V.kind === 'car') { car = 1; carR = Math.min(1.2, v / 26); carL = Math.max(thr, 0.15); }
       else if (V.kind === 'bike') { whirr = Math.min(0.5, v / 12); coast = v; }
       else if (V.kind === 'sled') hiss = Math.min(0.7, v / 12);
+      else if (V.kind === 'boat') hiss = Math.min(0.22, v / 20); // 1.46.0: ūdens šalkoņa gar laivu
     } else if (me.ride) {
       const v = this.remoteSpeed ? this.remoteSpeed(me.ride.driver) : 0, d = this.remotes.get(me.ride.driver);
       if (d && d.vehCode === 2) { car = 0.9; carR = Math.min(1.2, v / 26); carL = 0.4; }
       else if (d && d.vehCode === 3) hiss = Math.min(0.6, v / 12);
       else if (d && d.vehCode === 5) whirr = Math.min(0.4, v / 12);
+      else if (d && d.vehCode === 7) hiss = Math.min(0.2, v / 20);
     }
     if (me.ski) hiss = Math.max(hiss, Math.min(0.75, (me.ski.v || 0) / 14));
     engine('my_kart', 'kart', kartR, kartL, kart);

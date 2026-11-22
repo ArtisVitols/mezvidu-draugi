@@ -35,7 +35,23 @@ const helpers = () => {
       if (want && !a.label.includes(want)) return 'WRONG:' + a.label;
       a.fn(); return a.label;
     },
-    st() { const g = __game; return { step: g.trail.step, acc: g.trail.acc, c: g.trail.c, carry: g.me.carry ? g.me.carry.k : null, fish: g.fishing ? g.fishing.phase : null, coins: g.save.coins }; },
+    st() { const g = __game; return { step: g.trail.step, acc: g.trail.acc, c: g.trail.c, carry: g.me.carry ? g.me.carry.k : null, fish: g.fishing ? g.fishing.phase : null, coins: g.save.coins, veh: g.me.veh ? g.me.veh.id : null }; },
+    // 1.46.0: peld (īstā updateWalk) un airē (īstā updateVehicle) uz mērķi
+    walkTo(x, z, near = 2.4, maxS = 6000) {
+      const g = __game, me = g.me; let n = 0;
+      for (; n < maxS && Math.hypot(x - me.pos.x, z - me.pos.z) >= near; n++) { g.cam.yaw = Math.atan2(-(x - me.pos.x), -(z - me.pos.z)); g.updateWalk(1 / 30, { x: 0, y: 1, run: false }, false); }
+      return Math.hypot(x - me.pos.x, z - me.pos.z);
+    },
+    rowTo(x, z, near = 2, maxS = 8000) {
+      const g = __game, me = g.me;
+      for (let n = 0; n < maxS && me.veh; n++) {
+        const dx = x - me.pos.x, dz = z - me.pos.z, d = Math.hypot(dx, dz);
+        if (d < near) break;
+        let e = Math.atan2(dx, dz) - me.veh.heading; e = Math.atan2(Math.sin(e), Math.cos(e));
+        g.updateVehicle(1 / 30, { x: Math.max(-1, Math.min(1, -e * 2)), y: Math.abs(e) > 1.2 ? 0.15 : d < 6 ? 0.45 : 1 });
+      }
+      return Math.hypot(x - me.pos.x, z - me.pos.z);
+    },
   };
 };
 for (const p of [host, cl]) await p.evaluate(helpers);
@@ -127,8 +143,18 @@ for (let k = 0; k < TASKS.length; k++) {
         if (/WRONG|NONE|no |stopped|nefishing/.test(r)) log('  fish?', r);
       }
       await sleep(1700);
+    } else if (T.kind === 'boat') {
+      // 1.46.0: viens aizpeld līdz laivai, iekāpj un airē uz piestātni
+      const r = await who.evaluate(() => {
+        const g = __game, b = g.vehs.boat1;
+        if (!g.me.veh) { const d = TT.walkTo(b.x, b.z); return 'swim ' + d.toFixed(1) + ' / ' + TT.act('Sēsties laivā'); }
+        const D = g.terr.lay.stops[6].drop; return 'row ' + TT.rowTo(D.x, D.z).toFixed(1);
+      });
+      if (/WRONG|NONE/.test(r)) log('  boat?', r);
+      await sleep(2500);
     }
   }
+  for (const p of P) await p.evaluate(() => { if (__game.me.veh) __game.exitVehicle(); });
   await sleep(1500);
   s = await st();
   const coins1 = [s.h.coins, s.c.coins];

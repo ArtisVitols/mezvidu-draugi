@@ -47,6 +47,9 @@ const res = await page.evaluate(() => {
       }
     }
     if (s.drop && !walk(st, s.drop, s.drop.r + 1)) bad.push('npc→drop');
+    // 1.46.0: roņa laiva jūrā — aizpeldēt no roņa; ronis sasniedzams no lapsas
+    if (s.boat && !walk(st, s.boat, 2.5)) bad.push('npc→laiva');
+    if (s.boat) { const f = L.stops[k - 1]; if (!walk({ x: f.x + Math.sin(f.face) * 1.6, z: f.z + Math.cos(f.face) * 1.6 }, st, 1.5)) bad.push('lapsa→ronis'); }
     out.push(`${k}: priekšmeti ${s.items.length}, nesasniedzami: ${bad.length ? bad.join(',') : 'nav'}`);
   });
   return out;

@@ -26,6 +26,7 @@ VOICES = {
     'liene': (1.2, 1.0),
     'kakis': (1.1, 1.0),       # autobusa šoferis Kārlis
     'murris': (1.22, 0.96),    # 1.45.0: takas kaķis pie dīķa
+    'ronis': (0.88, 1.05),     # 1.46.0: ronis jūrmalā
 }
 
 # skaitļi vārdiem (pareizā locījumā) — balss tos tad izrunā droši
@@ -59,7 +60,7 @@ def lines():
     L = []
     T = trail_tasks()
     # datīvs „palīdziet kam” — vispirms jāpalīdz iepriekšējam
-    DAT = {'lacis': 'Lācim Brunim', 'vavere': 'Vāverītei Čiekuriņai', 'ezis': 'Ezītim Adatiņam', 'bebritis': 'Bebram Dambītim', 'lapsa': 'Lapsai Smilgai', 'kakis': 'Kaķim Murrim'}
+    DAT = {'lacis': 'Lācim Brunim', 'vavere': 'Vāverītei Čiekuriņai', 'ezis': 'Ezītim Adatiņam', 'bebritis': 'Bebram Dambītim', 'lapsa': 'Lapsai Smilgai', 'kakis': 'Kaķim Murrim', 'ronis': 'Ronim Viļņukam'}
     for k, t in enumerate(T):
         v = 'murris' if t['npc'] == 'kakis' else t['npc']
         L += [(f't{k}_ask', v, t['ask']), (f't{k}_help', v, t['help']), (f't{k}_thanks', v, t['thanks'])]

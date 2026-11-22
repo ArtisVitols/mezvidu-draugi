@@ -1,16 +1,16 @@
 // Jaunās nodarbes, pievienotas Game klasei: makšķerēšana, ogas, mājdzīvnieki, dārza rotājumi,
 // īpašās vietas ar dārgumu, ķeramais un paslēpes, nedēļas kopīgais mērķis.
 import * as THREE from 'three';
-import { WATER_Y, GARDEN_SLOTS, VILLAGE_Y, rotPlot, rotPlotY } from './world.js?v=1.45.0';
-import { buildNPC } from './characters.js?v=1.45.0';
-import { InstanceField } from './instancing.js?v=1.45.0';
-import { berryTemplate, buildDecor, DECOR_SPOTS, buildRod, buildBobber } from './props.js?v=1.45.0';
-import { buildScroll } from './places.js?v=1.45.0';
-import { ZONE_IDS, FOREST } from './zones.js?v=1.45.0';
-import { FISH, ROD_PRICE, BERRIES, COOKED, PETS, DECOR, PLACES, MAP_PIECES, weekNumber, weeklyGoal, WEEKLY_REWARD, rollFish, CROPS, TREES, CLOTHES, HATS, WISH_PRICE } from './data.js?v=1.45.0';
-import { icon, iconEl, fishSvg } from './icons.js?v=1.45.0';
-import { makeTextSprite, makeTag, angleLerp } from './util.js?v=1.45.0';
-import { $, toast, showPanel, refreshPanel, closePanel, el, itemRow, sfx, fmtTime } from './ui.js?v=1.45.0';
+import { WATER_Y, GARDEN_SLOTS, VILLAGE_Y, rotPlot, rotPlotY } from './world.js?v=1.46.0';
+import { buildNPC } from './characters.js?v=1.46.0';
+import { InstanceField } from './instancing.js?v=1.46.0';
+import { berryTemplate, buildDecor, DECOR_SPOTS, buildRod, buildBobber } from './props.js?v=1.46.0';
+import { buildScroll } from './places.js?v=1.46.0';
+import { ZONE_IDS, FOREST } from './zones.js?v=1.46.0';
+import { FISH, ROD_PRICE, BERRIES, COOKED, PETS, DECOR, PLACES, MAP_PIECES, weekNumber, weeklyGoal, WEEKLY_REWARD, rollFish, CROPS, TREES, CLOTHES, HATS, WISH_PRICE } from './data.js?v=1.46.0';
+import { icon, iconEl, fishSvg } from './icons.js?v=1.46.0';
+import { makeTextSprite, makeTag, angleLerp } from './util.js?v=1.46.0';
+import { $, toast, showPanel, refreshPanel, closePanel, el, itemRow, sfx, fmtTime } from './ui.js?v=1.46.0';
 
 const BERRY_RESPAWN = 150000;
 const MG_NAMES = { tag: '🏃 Ķeramais', hide: '🙈 Paslēpes' };
@@ -396,7 +396,7 @@ export const Activities = {
       if (me.ride) { const d = this.remotes.get(me.ride.driver); return d && d.vehObj ? [d.vehObj, me.ride.seat] : null; }
       return null;
     }
-    if (r.vehObj && (r.vehCode === 2 || r.vehCode === 3 || r.vehCode === 5)) return [r.vehObj, 0];
+    if (r.vehObj && (r.vehCode === 2 || r.vehCode === 3 || r.vehCode === 5 || r.vehCode === 7)) return [r.vehObj, 0];
     if (r.vehCode === 1 && r.kart) return [r.kart, 0];
     if (r.vehCode === 6) { const n = r.rideSeat || 0, B = this.buses && (this.buses[Math.floor(n / 12)] || this.buses[0]); return B ? [B.obj, n % 12] : null; }
     if (r.anim === 'lift' && r.avatar && r.avatar.liftChair) return [r.avatar.liftChair, 0];

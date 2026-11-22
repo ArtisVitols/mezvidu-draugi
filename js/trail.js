@@ -6,17 +6,17 @@
 // TrailZone — zemes modelis (uzbūvē, ieejot, izmet, izejot). Trail — Game papildinājums (darbības, tīkls, panelis).
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { ZONE_HALF, SOUTH_END, GROUND_Y, CROSS_AT, smoothRoad, RoadIndex, buildRoadMesh, roadMaterial, disposeTree, buildBorderPosts, wood, ZONE_IDS } from './zones.js?v=1.45.0';
-import { WATER_Y } from './world.js?v=1.45.0';
-import { makeTextSprite, makeTag, makeSignBoard, canvasTexture, noiseTexture, smoothstep, lerp, clamp } from './util.js?v=1.45.0';
-import { buildAnimal } from './characters.js?v=1.45.0';
-import * as A from './assets.js?v=1.45.0';
-import { InstanceField } from './instancing.js?v=1.45.0';
-import { makeNoise2D, mulberry32 } from './noise.js?v=1.45.0';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, sfx } from './ui.js?v=1.45.0';
-import { HATS } from './data.js?v=1.45.0';
-import { TrailLife } from './wildlife.js?v=1.45.0';
-import { voice, stopVoice } from './audio.js?v=1.45.0';
+import { ZONE_HALF, SOUTH_END, GROUND_Y, CROSS_AT, smoothRoad, RoadIndex, buildRoadMesh, roadMaterial, disposeTree, buildBorderPosts, wood, ZONE_IDS } from './zones.js?v=1.46.0';
+import { WATER_Y } from './world.js?v=1.46.0';
+import { makeTextSprite, makeTag, makeSignBoard, canvasTexture, noiseTexture, smoothstep, lerp, clamp } from './util.js?v=1.46.0';
+import { buildAnimal } from './characters.js?v=1.46.0';
+import * as A from './assets.js?v=1.46.0';
+import { InstanceField } from './instancing.js?v=1.46.0';
+import { makeNoise2D, mulberry32 } from './noise.js?v=1.46.0';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, sfx } from './ui.js?v=1.46.0';
+import { HATS } from './data.js?v=1.46.0';
+import { TrailLife } from './wildlife.js?v=1.46.0';
+import { voice, stopVoice } from './audio.js?v=1.46.0';
 
 const SEED = 4711, TAU = Math.PI * 2, H = ZONE_HALF;
 // krasts (ūdens mala) un strauts — tīras funkcijas (tās izmanto arī karte)
@@ -114,8 +114,16 @@ export const TASKS = [
   {
     npc: 'lapsa', name: 'Lapsa Smilga', icon: '🦊', kind: 'pick', item: 'gliemezis', itemName: 'gliemežvāks', itemIcon: '🐚', need: 10, items: 14, coins: 40, xp: 15,
     title: 'Gliemežvāki pludmalē', wear: { top: 'svitrains' },
-    ask: 'Sveicināti jūrmalā! Viļņi naktī izskaloja krastā skaistus gliemežvākus. Salasiet 10, un es jums iedošu īpašu dāvanu!',
-    help: 'Gliemežvāki mētājas pa visu pludmali.', thanks: 'Jūs esat īsta komanda! Te jums katram jūrnieka cepure ⚓ — tikai tiem, kas izgājuši visu taku!',
+    ask: 'Sveicināti jūrmalā! Viļņi naktī izskaloja krastā skaistus gliemežvākus. Salasiet 10, lūdzu — no tiem es taisīšu krellītes!',
+    help: 'Gliemežvāki mētājas pa visu pludmali.', thanks: 'Jūs esat īsta komanda! Paldies! Tālāk pludmalē dzīvo Ronis Viļņuks — vētra viņam aiznesa laivu jūrā!',
+  },
+  // 1.46.0: ronis — jāaizpeld līdz laivai jūrā un jāatbrauc ar to uz piestātni; pēc tam laiva brīva visiem
+  {
+    npc: 'ronis', name: 'Ronis Viļņuks', icon: '🦭', kind: 'boat', item: 'laiva', itemName: 'laiva', itemIcon: '🚣', need: 1, items: 0, coins: 45, xp: 16,
+    title: 'Laiva krastā', shirt: '#1f4aa8', hat: 'jurnieks',
+    ask: 'Sveiki, draugi! Vētra norāva manu laiviņu no krasta, un tagad tā šūpojas jūrā. Es gan peldu labi, bet airēt nemāku! Aizpeldiet līdz laivai un atbrauciet ar to uz manu piestātni!',
+    help: 'Laiva šūpojas jūrā. Aizpeldi līdz tai, iekāp un brauc uz piestātni pie Roņa — starp diviem stabiem ar glābšanas riņķiem.',
+    thanks: 'Paldies, jūrnieki! Tagad laiva ir jūsu — brauciet ar to pa jūru, cik vien gribat! Un te jums katram jūrnieka cepure ⚓ — tikai tiem, kas izgājuši visu taku!',
   },
 ];
 export const GIFT_HAT = 'jurnieks';
@@ -130,9 +138,15 @@ const PTS = [[0, -345], [0, -315], [0, -290], [6, -262], [22, -232], [44, -208],
   [BRIDGE.x, BZ - BRIDGE.hl], [BRIDGE.x, BZ + BRIDGE.hl],
   [143, BZ + 26], [118, 672], [74, 702], [16, 724], [-30, 750], [-46, 782], [-30, 808], [-10, 820]];
 // vēlamās NPC vietas (precīzā vieta — 5,5 m no takas uz šo pusi)
-const WANT = [[78, -170], [-4, 116], [-150, 344], [16, 392], null, [14, 812]];
-// pieturu numuri (TASKS secība; saglabājumā step — 1.45.0 kaķis ielikts kā 3., sk. hostInitTrail)
-const KL = 0, KV = 1, KE = 2, KK = 3, KB = 4, KF = 5;
+const WANT = [[78, -170], [-4, 116], [-150, 344], [16, 392], null, [14, 812], null];
+// pieturu numuri (TASKS secība; saglabājumā step — 1.45.0 kaķis ielikts kā 3., sk. hostInitTrail; 1.46.0 ronis pēdējais)
+const KL = 0, KV = 1, KE = 2, KK = 3, KB = 4, KF = 5, KS = 6;
+// 1.46.0: roņa vieta pludmalē, piestātne (laivai jāiebrauc aplī) un laivas sākuma vieta jūrā — tīras funkcijas (arī vehicles.js)
+export const SEAL = { x: 74, z: shoreZ(74) - 5 };
+export const DOCK = { x: 74, z: shoreZ(74) + 8, r: 5 };
+export const BOAT_ID = 'boat1';
+export const BOAT_HOME = { x: 112, z: shoreZ(112) + 38, h: -2.3 };
+export const BOAT_DRAFT = 0.4; // laivai vajag vismaz tik dziļu ūdeni
 // 1.40.0: vietas, kur taka nelokās un zeme ir līdzena (NPC pļavas, tilts)
 const KEEP = [...WANT.filter(Boolean), [BRIDGE.x, BZ]];
 
@@ -210,13 +224,14 @@ export function trailLayout() {
   const stops = TASKS.map((T, k) => {
     let nx, nz, face;
     if (k === KB) { nx = BRIDGE.x + 4.2; nz = BZ - BRIDGE.hl - 3.5; face = Math.atan2(-4.2, 1.5); }
+    else if (k === KS) { nx = SEAL.x; nz = SEAL.z; face = Math.atan2(14 - SEAL.x, 812 - SEAL.z); } // skatās uz lapsas pusi
     else {
       const [wx, wz] = WANT[k], np = wide.near(wx, wz).p;
       const dx = wx - np.x, dz = wz - np.z, d = Math.hypot(dx, dz) || 1;
       nx = np.x + dx / d * 5.5; nz = np.z + dz / d * 5.5; face = Math.atan2(-dx, -dz);
     }
     const dx = Math.sin(face), dz = Math.cos(face); // uz taku
-    const clear = k === KB ? { x: BRIDGE.x + 20, z: BZ - 30, r: 22 } : k === KF ? { x: 0, z: 812, r: 16 } : { x: nx - dx * 9, z: nz - dz * 9, r: k === KE ? 18 : k === KK ? 21 : 15 };
+    const clear = k === KB ? { x: BRIDGE.x + 20, z: BZ - 30, r: 22 } : k === KF ? { x: 0, z: 812, r: 16 } : k === KS ? { x: SEAL.x, z: SEAL.z - 4, r: 12 } : { x: nx - dx * 9, z: nz - dz * 9, r: k === KE ? 18 : k === KK ? 21 : 15 };
     // 1.45.0: dīķis aiz kaķa (krasts ~3 m aiz viņa)
     const pond = k === KK ? { x: nx - dx * 15, z: nz - dz * 15, r: 9 } : null;
     return { k, x: nx, z: nz, face, clear, pond };
@@ -324,6 +339,8 @@ export function trailLayout() {
   stops[KE].drop = { x: s2.x + Math.cos(s2.face) * 2, z: s2.z - Math.sin(s2.face) * 2, face: s2.face, r: 2.2 };              // grozs
   stops[KK].drop = { x: sk.x + Math.cos(sk.face) * 2.6 + Math.sin(sk.face) * 0.8, z: sk.z - Math.sin(sk.face) * 2.6 + Math.cos(sk.face) * 0.8, face: sk.face, r: 2.2 }; // zivju grozs
   stops[KB].drop = { x: BRIDGE.x, z: BZ - BRIDGE.hl - 1.2, face: 0, r: 3 };                                              // tilta gals
+  stops[KS].drop = { ...DOCK, face: 0 };                                                                                  // piestātne
+  stops[KS].boat = BOAT_HOME;
   // ābeles ap ezīša pļaviņu
   const c2 = s2.clear;
   stops[KE].trees = [0, 1, 2, 3, 4].map((i) => { const a = s2.face + Math.PI + (i - 2) * 0.75; return { x: c2.x + Math.sin(a) * 9.5, z: c2.z + Math.cos(a) * 9.5 }; });
@@ -342,7 +359,7 @@ export function trailLayout() {
     let guard = 0;
     while (out.length < T.items && guard++ < 4000) {
       let x, z;
-      if (k === KF) { x = -95 + rnd() * 190; const sz = shoreZ(x); z = sz - 32 + rnd() * 28; }
+      if (k === KF) { x = -95 + rnd() * 190; const sz = shoreZ(x); z = sz - 32 + rnd() * 28; if (Math.hypot(x - SEAL.x, z - SEAL.z) < 5) continue; }
       else if (k === KE) { const t = s.trees[Math.floor(rnd() * s.trees.length)], a = rnd() * TAU, r = 1.2 + rnd() * 3.2; x = t.x + Math.sin(a) * r; z = t.z + Math.cos(a) * r; }
       else {
         const a = rnd() * TAU, r = k === KL ? 10 + rnd() * 26 : k === KV ? 3 + rnd() * 20 : 3 + rnd() * 22;
@@ -364,6 +381,7 @@ export function trailLayout() {
     for (const it of s.items) r = Math.max(r, Math.hypot(it.x - s.clear.x, it.z - s.clear.z));
     if (s.drop) r = Math.max(r, Math.hypot(s.drop.x - s.clear.x, s.drop.z - s.clear.z));
     if (s.pond) r = Math.max(r, Math.hypot(s.pond.x - s.clear.x, s.pond.z - s.clear.z) + s.pond.r + 4);
+    if (s.boat) r = Math.max(r, Math.hypot(s.boat.x - s.clear.x, s.boat.z - s.clear.z) + 15); // laivai var apbraukt apkārt
     s.range = r + 30;
   }
   return L;
@@ -1125,9 +1143,8 @@ export class TrailZone {
     const hut = beachHutModel(); const hx = s4.x - 7, hz = s4.z - 6;
     hut.position.set(hx, this.getHeight(hx, hz), hz); hut.rotation.y = 0.3; st.add(hut);
     this.addCollider(hx, hz, 1.6);
-    const boat = boatModel(); const bx = 44, bz = shoreZ(44) - 2;
-    boat.position.set(bx, Math.max(this.getHeight(bx, bz), WATER_Y) + 0.05, bz); boat.rotation.y = 1.2; boat.rotation.z = 0.08; st.add(boat);
-    this.addCollider(bx, bz, 1.4);
+    // 1.46.0: roņa piestātne — divi stabi ar glābšanas riņķiem, virve, laipiņa krastā (laiva pati ir transports, vehicles.js)
+    st.add(dockModel(this));
     // zīmes pie katra NPC
     this.lay.stops.forEach((s, k) => {
       const T = TASKS[k];
@@ -1508,6 +1525,7 @@ export class TrailZone {
     if (tr.step < k) return '💤';
     if (tr.step > k) return '😊';
     if (!tr.acc) return '❗ Palīgā!';
+    if (T.kind === 'boat') return '🚣 Atvediet laivu!';
     return `${T.itemIcon} ${tr.c}/${T.need}`;
   }
 
@@ -1654,17 +1672,41 @@ function beachHutModel() {
   k.add(G.sph(0.25, 12, 8), '#ff5a5a', { p: [-1.2, 0.25, 1.9], rough: 0.4, fc: (c) => (c.y > 0.25 ? '#ffffff' : c.x > -1.2 ? '#ffd23a' : null) }); // bumba
   return k.build({ name: 'trail-hut' });
 }
-function boatModel() {
-  const k = new A.Kit(85), G = A.G;
-  k.add(G.lathe([[0, 0], [0.55, 0.08], [0.72, 0.5], [0.68, 0.55]], 16), '#c0503a', { s: [1, 1, 2.6], rough: 0.7, double: true, fc: (c) => (c.y > 0.42 ? '#f4f0e4' : null) });
-  k.add(G.rbox(1.2, 0.06, 0.3, 0.02), '#8a5e38', { p: [0, 0.4, 0.3], rough: 0.85 });
-  k.add(G.rbox(0.06, 0.05, 1.9, 0.02), '#a07040', { p: [0.4, 0.5, -0.2], r: [0, 0.2, 0], rough: 0.85 });
-  return k.build({ name: 'trail-boat' });
+// 1.46.0: roņa piestātne — divi stabi ūdenī ar glābšanas riņķiem, virve starp tiem, bojas ap iebraukšanas vietu
+function dockModel(Z) {
+  const k = new A.Kit(86), G = A.G, D = DOCK;
+  const pz = D.z - D.r - 0.6;
+  for (const s of [-1, 1]) {
+    const x = D.x + s * (D.r + 0.9), z = pz, bot = Z.getHeight(x, z) - 0.2, top = WATER_Y + 1.5;
+    k.add(G.cyl(0.16, 0.19, top - bot, 8), '#6b4a2e', { p: [x, (top + bot) / 2, z], rough: 0.95 });
+    k.add(G.cyl(0.2, 0.2, 0.08, 8), '#4a3220', { p: [x, top + 0.04, z], rough: 0.9 });
+    k.add(G.torus(0.3, 0.075, 8, 18), '#e8352a', { p: [x + s * 0.2, top - 0.45, z], r: [0, Math.PI / 2, 0], rough: 0.55, fc: (c) => (Math.floor((Math.atan2(c.y - (top - 0.45), c.z - z) + Math.PI) / (Math.PI / 4)) % 2 ? '#f6f3ea' : null) });
+    Z.addCollider(x, z, 0.3);
+  }
+  // virve ar nokari
+  const N = 12, ry = WATER_Y + 1.2;
+  for (let i = 0; i < N; i++) {
+    const t0 = i / N, t1 = (i + 1) / N, x0 = D.x - (D.r + 0.9) + t0 * 2 * (D.r + 0.9), x1 = D.x - (D.r + 0.9) + t1 * 2 * (D.r + 0.9);
+    const y0 = ry - Math.sin(t0 * Math.PI) * 0.45, y1 = ry - Math.sin(t1 * Math.PI) * 0.45;
+    A.rod(k, [x0, y0, pz], [x1, y1, pz], 0.025, '#d8c8a0', { rough: 0.9, seg: 5 });
+  }
+  // dzeltenas bojas — iebrauc starp tām
+  for (const [dx, dz] of [[-1, 0.2], [1, 0.2], [-0.75, 1], [0.75, 1]]) {
+    const x = D.x + dx * D.r, z = D.z + dz * D.r * 0.8;
+    k.add(G.sph(0.32, 12, 8), '#f2c12e', { p: [x, WATER_Y + 0.08, z], s: [1, 0.7, 1], rough: 0.5, fc: (c) => (c.y > WATER_Y + 0.12 ? '#e8352a' : null) });
+    k.add(G.cyl(0.03, 0.03, 0.6, 5), '#2a2c30', { p: [x, WATER_Y + 0.4, z], rough: 0.6 });
+  }
+  // mietiņš un zīme krastā
+  const sx = D.x + 3.2, sz = SEAL.z + 1.5, sy = Z.getHeight(sx, sz);
+  k.add(G.cyl(0.12, 0.14, 0.7, 8), '#4a3220', { p: [sx, sy + 0.35, sz], rough: 0.9 });
+  k.add(G.torus(0.16, 0.03, 5, 12), '#9aa0a6', { p: [sx, sy + 0.62, sz], r: [Math.PI / 2, 0, 0], rough: 0.4, metal: 0.6 });
+  Z.addCollider(sx, sz, 0.2);
+  return k.build({ name: 'trail-dock' });
 }
 
 // ======================= Game papildinājums =======================
-const defState = () => ({ run: 0, step: 0, c: 0, acc: false, bridge: false, taken: {}, ob: [] });
-const STEP_KEYS = ['run', 'step', 'c', 'acc', 'bridge', 'ob'];
+const defState = () => ({ run: 0, step: 0, c: 0, acc: false, bridge: false, boat: false, taken: {}, ob: [] });
+const STEP_KEYS = ['run', 'step', 'c', 'acc', 'bridge', 'boat', 'ob'];
 const OB_GAP = 250; // saimnieks: min. laiks starp viena spēlētāja sitieniem (ms)
 
 export const Trail = {
@@ -1743,7 +1785,8 @@ export const Trail = {
     if (ev.k === 'drop' && ev.by === this.myId) { sfx('j_star', { vol: 0.6 }); this.spawnFloat('✨', this.me.pos); }
     if (ev.k === 'acc' && here && T) {
       sfx('j_quest', { vol: 0.6 });
-      toast(T.kind === 'fish' ? `🎣 ${T.name} iedeva katram makšķeri! Noķeriet kopā ${T.need} zivis un nesiet uz grozu.` : `${T.icon} Jauns uzdevums: ${T.title}! ${T.help}`, 'good', 5500);
+      toast(T.kind === 'fish' ? `🎣 ${T.name} iedeva katram makšķeri! Noķeriet kopā ${T.need} zivis un nesiet uz grozu.`
+        : T.kind === 'boat' ? `🚣 Laiva šūpojas jūrā! Aizpeldiet līdz tai, iekāpiet un brauciet uz ${T.icon} piestātni.` : `${T.icon} Jauns uzdevums: ${T.title}! ${T.help}`, 'good', 5500);
     }
     if (ev.k === 'fail' && T) { sfx('bad'); voice('t_fail', { delay: 0.4 }); toast(`❌ Uzdevums neizdevās: ${T.title} — visi aizgāja prom no ${T.icon}. ${T.icon} ${T.name} gaida — sāciet vēlreiz!`, 'bad', 6000); }
     if ((ev.k === 'hit' || ev.k === 'clear') && here) {
@@ -1767,6 +1810,7 @@ export const Trail = {
       sfx('j_quest');
       toast(`${D.icon} ${D.title} — paveikts kopā! +${D.coins}🪙`, 'good', 5000);
       voice(`t${ev.done}_thanks`, { delay: 0.9 }); // tēls pateicas pats
+      if (ev.done === KS) toast('🚣 Laiva tagad ir brīva — braukt ar to pa jūru var visi!', 'good', 5000);
       if (ev.done === TASKS.length - 1) this.trailFinish();
       this.persist();
     }
@@ -1887,6 +1931,7 @@ export const Trail = {
         btn('🤝 Palīdzēsim!', () => { this.trailSend({ t: 'tAcc', step: k }); closePanel(); }, '#3a9a4a');
       } else {
         say(T.help, `t${k}_help`);
+        if (T.kind === 'boat') { b.append(el('p', {}, '🚣 Laiva jūrā — aizpeldi līdz tai (dzeltenā poga „Sēsties”), brauc ar ⛽ un stūrē ar ◀ ▶. Iebrauc starp bojām pie piestātnes!')); return; }
         const pct = Math.round(tr.c / T.need * 100);
         b.append(el('div', { style: 'margin:8px 0 4px' }, `${T.itemIcon} ${T.title}: ${tr.c}/${T.need}`));
         b.append(el('div', { style: 'height:12px;background:#0003;border-radius:6px;overflow:hidden' }, el('div', { style: `height:100%;width:${pct}%;background:#f2b81a` })));
@@ -1900,6 +1945,7 @@ export const Trail = {
     const tr = this.trail, T = TASKS[tr.step];
     if (!T) return '🧭 Taka pabeigta! 🎉';
     if (!tr.acc) return `🧭 Ej pie: ${T.icon} ${T.name}`;
+    if (T.kind === 'boat') return `🧭 ${T.icon} Peldi pie laivas un brauc uz piestātni!`;
     return `🧭 ${T.icon} ${T.title}: ${tr.c}/${T.need}`;
   },
 
@@ -1914,6 +1960,7 @@ export const Trail = {
         if (!T || tr.acc || m.step !== tr.step) return true;
         tr.acc = true; tr.c = 0; tr.taken = {};
         ev = { k: 'acc', step: tr.step, by: from };
+        if (T.kind === 'boat') this.hostBoatHome(); // 1.46.0: laiva atpakaļ jūrā (ja neviens ar to nebrauc)
         break;
       case 'tPick': {
         const i = m.i | 0;
@@ -1983,12 +2030,13 @@ export const Trail = {
     const tr = this.hs.trail;
     ev.done = tr.step;
     if (tr.step === KB) tr.bridge = true;
+    if (tr.step === KS) tr.boat = true; // 1.46.0: pēc roņa uzdevuma laiva brīva visiem
     tr.step++; tr.c = 0; tr.acc = false; tr.taken = {};
   },
   hostTrailSend(ev) {
     const tr = this.hs.trail, s = {};
     for (const k of STEP_KEYS) s[k] = k === 'ob' ? (tr.ob || []).slice() : tr[k];
-    s.v = 2; // 1.45.0: pieturu secība ar kaķi
+    s.v = 3; // 1.45.0: pieturu secība ar kaķi (v 2); 1.46.0: ronis pēdējais (v 3 — vecie soļi der bez izmaiņām)
     this.save.trail = s;
     this.net.broadcast({ t: 'trail', tr, ev });
     if (ev && (ev.done != null || ev.k === 'clear')) this.persist();
@@ -2021,6 +2069,26 @@ export const Trail = {
     let ch = false;
     for (const i in tr.taken) { const tk = tr.taken[i]; if (tk[0] === id && tk[1] > 0) { delete tr.taken[i]; ch = true; } }
     if (ch) this.hostTrailSend(null);
+  },
+  // 1.46.0: vai drīkst kāpt roņa laivā (pēc uzdevuma — vienmēr; uzdevuma laikā — jā; pirms tam — nē)
+  boatOk(tr = this.trail) { return !!tr && (!!tr.boat || (tr.step === KS && !!tr.acc)); },
+  hostBoatOk() { return this.boatOk(this.hs && this.hs.trail); },
+  // saimnieks: stāvošā laiva atpakaļ sākuma vietā jūrā
+  hostBoatHome() {
+    const v = this.hs.vehs && this.hs.vehs[BOAT_ID];
+    if (!v || v.d !== -1) return;
+    v.zone = 's'; v.x = BOAT_HOME.x; v.z = BOAT_HOME.z; v.h = BOAT_HOME.h;
+    this.vehDirty = true;
+    this.net.broadcast({ t: 'veh', v: { ...v } });
+  },
+  // saimnieks: laiva iebraukusi piestātnē — uzdevums izpildīts (izsauc no hostVehPos / vehDrop)
+  hostBoatCheck(v) {
+    const tr = this.hs && this.hs.trail;
+    if (!tr || !v || v.id !== BOAT_ID || v.zone !== 's' || tr.step !== KS || !tr.acc) return;
+    if (Math.hypot(v.x - DOCK.x, v.z - DOCK.z) > DOCK.r) return;
+    const ev = { k: 'boat', step: tr.step, by: v.d };
+    this.hostTrailNext(ev);
+    this.hostTrailSend(ev);
   },
   onTrailMessage(m) {
     if (m.t !== 'trail') return false;

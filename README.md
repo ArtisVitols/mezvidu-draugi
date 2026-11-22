@@ -63,10 +63,11 @@ Datorā: WASD / bultiņas, atstarpe, E, peles vilkšana.
   Pār robežu var pāriet jebkurā vietā, kur aiz tās ir cita zeme (robežu iezīmē sarkanbalti stabiņi, ārējās malās — žogs)
 - 🐞 **Kļūdas vieta** (☰ izvēlnē): redzi kļūdu? Saglabā vietu — tiek pierakstīts, kur stāv visi spēlētāji un cik tālu ir taka. Nokopē aprakstu un aizsūti; pēc labojuma istabas saimnieks nospiež "▶ Turpināt no šejienes", un visi atgriežas tieši tur pat.
 - 🧭 **Piedzīvojumu mežs** (uz dienvidiem, 630 × 1260 m — 2× lielāks par citām zemēm): biezs mežs un kalni ar čūskveida taku no sētas līdz jūrai — kalnos taka iet pa aizām starp stāvām klinšu kraujām; meža draugi stāv līdzenās pļavās.
-  Pa ceļam satiec 6 meža draugus, kas stāv uz divām kājām un lūdz palīdzību — uzdevumi ir visai komandai kopā, un nākamais draugs dod uzdevumu tikai tad, kad iepriekšējais izpildīts:
+  Pa ceļam satiec 7 meža draugus, kas stāv uz divām kājām un lūdz palīdzību — uzdevumi ir visai komandai kopā, un nākamais draugs dod uzdevumu tikai tad, kad iepriekšējais izpildīts:
   🐻 Lācis Brunis — sanest 8 malkas pagales šķūnītī · 🐿️ Vāverīte Čiekuriņa — salasīt 12 riekstus · 🦔 Ezītis Adatiņš — ienest 8 ābolus grozā ·
   🐱 Kaķis Murris pie dīķa — katram iedod makšķeri: makšķerējiet krastā, noķerto zivi nesiet uz grozu un nāciet atpakaļ, kopā 10 zivis ·
-  🦫 Bebrs Dambītis — atnest 6 dēļus, lai uzbūvētu tiltu pāri strautam (bez tilta pāri netiek!) · 🦊 Lapsa Smilga pludmalē — salasīt 10 gliemežvākus.
+  🦫 Bebrs Dambītis — atnest 6 dēļus, lai uzbūvētu tiltu pāri strautam (bez tilta pāri netiek!) · 🦊 Lapsa Smilga pludmalē — salasīt 10 gliemežvākus ·
+  🦭 Ronis Viļņuks — vētra aiznesa viņa laivu jūrā: aizpeldi līdz tai, iekāp un atbrauc uz piestātni starp bojām. Pēc tam 🚣 laiva ir brīva — brauc ar to pa jūru, cik gribi (draugs var braukt līdzi).
   Runā ar draugu (dzeltenā poga „💬”), spied „🤝 Palīdzēsim!”, nes priekšmetus pa vienam. Par katru uzdevumu katram, kas ir šajā zemē, 🪙 un ⭐; visas takas beigās — ⚓ Jūrnieka cepure (tikai šeit). Progress redzams augšā joslā, uz kartes un burbulī virs drauga galvas. Pēc tam piedzīvojumu var sākt no jauna.
   ❌ Uzmanību: ja pēc uzdevuma pieņemšanas visi aiziet prom no uzdevuma vietas, uzdevums neizdodas un jāsāk no jauna.
   Taka nav visur vienāda — posmi ar savu mežu: 🌳 jauktais mežs, 🌿 bērzu birzs, 🌲 egļu biezoknis, 🌳 veco ozolu birzs, 🐸 purvs ar koka laipu un ūdens acīm, 🦫 bebru strauts (līkumo kā čūska, ar niedrēm, ūdensrozēm un bebru mītni), 🌲 priežu sils ar viršiem un 🏖️ jūrmala. Kalnos — ⛰️ klinšu tunelis ar laternām.

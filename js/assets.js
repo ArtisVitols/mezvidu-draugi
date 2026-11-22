@@ -1,7 +1,7 @@
 // 🧸 Jaunie 3D objekti (2.0 komplekts, 1.37.0): viens kopīgs materiāls (toyMaterial), katrs objekts — viens tīkls.
 // Izveidots ar dizaina AI no katalogs.html; spēles moduļi (characters, props, vehicles, bus, farmyard, market) pārsūta savus build* šeit.
 // Mežvidu Draugi — 3D asset kit v2 (three.js r160). Generated 2026-11-20.
-// Usage: import * as A from './mezvidu-assets.js?v=1.45.0'; scene.add(A.buildAnimal({animal:'lapsa'}).root); each frame: A.MZ.time.value += dt;
+// Usage: import * as A from './mezvidu-assets.js?v=1.46.0'; scene.add(A.buildAnimal({animal:'lapsa'}).root); each frame: A.MZ.time.value += dt;
 import * as THREE from 'three';
 
 // =====================================================================
@@ -534,6 +534,8 @@ export const SPECIES = {
   vavere: { name: 'Vāvere', fur: '#b8582a', bulk: 0.9, head: [1.0, 0.98, 0.98], ears: 'squirrel', muzzle: 'bunny', nose: '#4a2a1e', chest: '#f6e4c6', tail: 'squirrel' },
   ezis: { name: 'Ezis', fur: '#c9a27a', bulk: 1.05, head: [0.98, 0.92, 1.05], ears: 'round', muzzle: 'snout', nose: '#1b1310', chest: '#efe0c4', tail: 'none', spikes: '#5a4232' },
   bebritis: { name: 'Bebrs', fur: '#7a4c2c', bulk: 1.16, head: [1.04, 0.96, 1.02], ears: 'round', muzzle: 'bunny', nose: '#2a1a12', chest: '#a87a52', tail: 'beaver' },
+  // 1.46.0: ronis jūrmalā (gluda pelēka āda ar plankumiem, ūsas, bez ausīm, pleznas)
+  ronis: { name: 'Ronis', fur: '#8a949c', bulk: 1.18, head: [1.06, 0.98, 1.1], ears: 'none', muzzle: 'cat', nose: '#1d1d22', chest: '#c6ccd2', skin: 0.45, tail: 'seal', feet: 1.35, seal: true },
 };
 
 /** shirt patterns: fn(y, angle) → colour or null (base). y in spine space */
@@ -831,6 +833,8 @@ export function buildAnimal({ animal = 'lacis', fur = null, shirt = '#d23b3b', h
     }
   }
 
+  // 1.46.0: roņa plankumi
+  if (P.seal) { const R1 = rng(23); for (let i = 0; i < 14; i++) onFace(G.sph(0.014 + R1() * 0.012, 6, 4), shade(fur, -0.3), Math.PI * (R1() * 1.6 - 0.8) + (i % 2 ? Math.PI : 0), R1() * 1.1 - 0.2, [1, 1, 0.25], { out: 0.99, rough: 0.5 }); }
   // eža adatas arī pakausī (1.39.0)
   if (P.spikes) for (let row = 0; row < 4; row++) for (let i = 0; i < 8; i++) {
     const p = surf(Math.PI + (i - 3.5) * 0.36 + (row % 2) * 0.18, -0.25 + row * 0.3, 0.93), n = nrm(p);
@@ -863,6 +867,9 @@ export function buildAnimal({ animal = 'lacis', fur = null, shirt = '#d23b3b', h
       break;
     case 'beaver':
       k.add(G.rbox(0.17, 0.035, 0.3, 0.016), '#4a3a32', { ...TB, p: [0, -0.1, -0.16], r: [0.5, 0, 0], rough: 0.7, fc: (c) => ((Math.floor(c.x * 40) + Math.floor(c.z * 40)) % 2 ? '#3c2f28' : null) });
+      break;
+    case 'seal': // 1.46.0: divas pakaļējās pleznas
+      for (const s of [-1, 1]) k.add(G.sph(0.06, 10, 7), shade(fur, -0.18), F({ ...TB, p: [s * 0.05, -0.14, -0.07], r: [0.3, s * 0.4, 0], s: [0.9, 0.35, 1.6] }));
       break;
     case 'duck':
       for (const s of [-1, 0, 1]) k.add(G.cone(0.035, 0.12, 6), fur, F({ ...TB, p: [s * 0.03, 0.06, -0.05], r: [-2.0, 0, s * 0.3], s: [1, 1, 0.5] }));

@@ -2,8 +2,8 @@
 // Visu būvē „vietējās” koordinātēs (durvis uz +x), sēta to novieto un pagriež.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { makeSignBoard, signWood } from './util.js?v=1.45.0';
-import * as A from './assets.js?v=1.45.0';
+import { makeSignBoard, signWood } from './util.js?v=1.46.0';
+import * as A from './assets.js?v=1.46.0';
 
 // daudzas kastes ar krāsām → viena ģeometrija (virsotņu krāsas)
 // b: [w, h, d, x, y, z, krāsa, rx?, ry?, rz?]

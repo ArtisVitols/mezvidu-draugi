@@ -1,34 +1,34 @@
 import * as THREE from 'three';
-import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, yardPart, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.45.0';
-import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.45.0';
-import { Controls } from './controls.js?v=1.45.0';
+import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, yardPart, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.46.0';
+import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.46.0';
+import { Controls } from './controls.js?v=1.46.0';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS, TREES, FRUITS, CLOTHES, SLOTS, DECOR } from './data.js?v=1.45.0';
-import { writeSave } from './save.js?v=1.45.0';
-import { Sound } from './sound.js?v=1.45.0';
-import { getVolume, setVolume, voice, voiceOn, setVoiceOn } from './audio.js?v=1.45.0';
-import { BugSpot } from './bugspot.js?v=1.45.0';
-import { VERSION, BUILD_DATE } from './version.js?v=1.45.0';
-import { makeTextSprite, makeTag, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.45.0';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.45.0';
-import { icon, iconEl, fishSvg } from './icons.js?v=1.45.0';
-import { Activities, makeTeam } from './activities.js?v=1.45.0';
-import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel, statsWanted } from './quality.js?v=1.45.0';
-import { hdrEnvironment } from './gfx.js?v=1.45.0';
-import { buildRod, buildDecor } from './props.js?v=1.45.0';
-import { buildStall, buildBunting } from './market.js?v=1.45.0';
-import { InstanceField } from './instancing.js?v=1.45.0';
-import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.45.0';
-import { Vehicles } from './vehicles.js?v=1.45.0';
-import { Farm, fmtLeft } from './farm.js?v=1.45.0';
-import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, zoneBounds, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.45.0';
-import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.45.0';
-import { plotOf } from './world.js?v=1.45.0';
-import { kartClamp } from './racetrack.js?v=1.45.0';
-import { Bus, BUS_STOPS } from './bus.js?v=1.45.0';
-import { Garden, UNLOCK } from './garden.js?v=1.45.0';
-import { MZ } from './assets.js?v=1.45.0';
-import { TrailZone, Trail, trailMap, trailIcons, trailItem, TASKS as TRAIL_TASKS } from './trail.js?v=1.45.0';
+import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS, TREES, FRUITS, CLOTHES, SLOTS, DECOR } from './data.js?v=1.46.0';
+import { writeSave } from './save.js?v=1.46.0';
+import { Sound } from './sound.js?v=1.46.0';
+import { getVolume, setVolume, voice, voiceOn, setVoiceOn } from './audio.js?v=1.46.0';
+import { BugSpot } from './bugspot.js?v=1.46.0';
+import { VERSION, BUILD_DATE } from './version.js?v=1.46.0';
+import { makeTextSprite, makeTag, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.46.0';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.46.0';
+import { icon, iconEl, fishSvg } from './icons.js?v=1.46.0';
+import { Activities, makeTeam } from './activities.js?v=1.46.0';
+import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel, statsWanted } from './quality.js?v=1.46.0';
+import { hdrEnvironment } from './gfx.js?v=1.46.0';
+import { buildRod, buildDecor } from './props.js?v=1.46.0';
+import { buildStall, buildBunting } from './market.js?v=1.46.0';
+import { InstanceField } from './instancing.js?v=1.46.0';
+import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.46.0';
+import { Vehicles } from './vehicles.js?v=1.46.0';
+import { Farm, fmtLeft } from './farm.js?v=1.46.0';
+import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, zoneBounds, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.46.0';
+import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.46.0';
+import { plotOf } from './world.js?v=1.46.0';
+import { kartClamp } from './racetrack.js?v=1.46.0';
+import { Bus, BUS_STOPS } from './bus.js?v=1.46.0';
+import { Garden, UNLOCK } from './garden.js?v=1.46.0';
+import { MZ } from './assets.js?v=1.46.0';
+import { TrailZone, Trail, trailMap, trailIcons, trailItem, TASKS as TRAIL_TASKS } from './trail.js?v=1.46.0';
 
 const ANIM = ['idle', 'walk', 'run', 'jump', 'swim', 'sit', 'pet', 'wave', 'fish', 'ski', 'lift', 'throw'];
 const MUSH_RESPAWN = 120000;
@@ -511,7 +511,7 @@ export class Game {
     for (const v of this.vehMarkers()) {
       if (v.driven) continue; // braucošo rāda pie braucēja
       const [px, py] = toPx0(...this.globalPos(v.zone, v.x, v.z));
-      this.mapIcon(g, v.kind === 'car' ? '🚙' : v.kind === 'bike' ? '🚲' : '🛷', px, py, zoom === 1 ? 17 : zoom === 2 ? 12 : 10, v.color);
+      this.mapIcon(g, v.kind === 'car' ? '🚙' : v.kind === 'bike' ? '🚲' : v.kind === 'boat' ? '🚣' : '🛷', px, py, zoom === 1 ? 17 : zoom === 2 ? 12 : 10, v.color);
     }
     // autobuss un pieturas (globālās koordinātēs)
     if (this.bus && this.bus.zone) {
@@ -531,7 +531,7 @@ export class Game {
       if (!r.seen || (this.mgHidden && this.mgHidden(r.id))) continue;
       const [px, py] = toPx0(...this.globalPos(r.zone, r.pos.x, r.pos.z));
       const col = PLAYER_DOT[(r.prof.slot || 0) % 4];
-      const vk = r.vehCode === 2 ? '🚙' : r.vehCode === 5 ? '🚲' : r.vehCode === 3 ? '🛷' : r.vehCode === 1 ? '🏎️' : null;
+      const vk = r.vehCode === 2 ? '🚙' : r.vehCode === 5 ? '🚲' : r.vehCode === 3 ? '🛷' : r.vehCode === 1 ? '🏎️' : r.vehCode === 7 ? '🚣' : null;
       if (vk && big) this.mapIcon(g, vk, px, py, zoom === 1 ? 17 : 12, col);
       this.mapArrow(g, px, py, r.ry, rot, big ? (zoom === 1 ? 1.6 : 1.2) : 1, col, '#fff');
       if (big) this.mapLabel(g, r.prof.name, px, py - (zoom === 1 ? 20 : 14), zoom === 1 ? 14 : 11);
@@ -1358,6 +1358,7 @@ export class Game {
       this.updateMg(dt, t);
       this.updateFishing(dt, t); // 1.45.0: makšķerēšana arī takas dīķī
       if (!T.isWorld && T.update) T.update(dt, this);
+      if (this.zone === 's') this.updateBoats(dt); // 1.46.0: stāvošā laiva šūpojas
       if (this.zone === 'n') this.updateWinter(dt);
       if (this.zone === FARM) this.updateFarm(dt);
     }

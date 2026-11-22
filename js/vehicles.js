@@ -3,25 +3,28 @@
 // ja neviens cits ar to nebrauc; izkāpjot tas paliek tur, kur atstāts (arī citā zemē). Saimnieks glabā, kurš ar ko brauc
 // un kur katrs stāv (saimnieka saglabājumā `vehs`). Vehicles — Game papildinājums.
 import * as THREE from 'three';
-import { mat, lerp, clamp, makeBlobShadow, makeTextSprite } from './util.js?v=1.45.0';
-import { optimizeRig, tyreGeo } from './characters.js?v=1.45.0';
-import { $, toast, sfx } from './ui.js?v=1.45.0';
-import { DIRS, neighbour, FARM, FOREST, RACE, ZONE_IDS } from './zones.js?v=1.45.0';
-import { WATER_Y, YARD, YARD_IN, rotPlot, rotPlotY, BIKE_RACK } from './world.js?v=1.45.0';
-import { SLED_SPOT } from './winter.js?v=1.45.0';
-import { BUS_CODE } from './bus.js?v=1.45.0';
-import { ZONES } from './zones.js?v=1.45.0';
-import * as A from './assets.js?v=1.45.0';
+import { mat, lerp, clamp, makeBlobShadow, makeTextSprite } from './util.js?v=1.46.0';
+import { optimizeRig, tyreGeo } from './characters.js?v=1.46.0';
+import { $, toast, sfx } from './ui.js?v=1.46.0';
+import { DIRS, neighbour, FARM, FOREST, RACE, ZONE_IDS, zoneBounds } from './zones.js?v=1.46.0';
+import { WATER_Y, YARD, YARD_IN, rotPlot, rotPlotY, BIKE_RACK } from './world.js?v=1.46.0';
+import { SLED_SPOT } from './winter.js?v=1.46.0';
+import { BUS_CODE } from './bus.js?v=1.46.0';
+import { ZONES } from './zones.js?v=1.46.0';
+import * as A from './assets.js?v=1.46.0';
+import { BOAT_ID, BOAT_HOME, BOAT_DRAFT } from './trail.js?v=1.46.0';
 
-// tīkla kods (pos ziņas 6. lauks): 1 = kartings, 2 = mašīna, 3 = sniega motocikls, 5 = velosipēds
-export const VEH_CODE = { car: 2, sled: 3, bike: 5 }; // 4 = pasažieris (p[8] — vadītāja id, p[9] — sēdvieta); p[10] — transporta id
+// tīkla kods (pos ziņas 6. lauks): 1 = kartings, 2 = mašīna, 3 = sniega motocikls, 5 = velosipēds, 7 = laiva (1.46.0)
+export const VEH_CODE = { car: 2, sled: 3, bike: 5, boat: 7 }; // 4 = pasažieris (p[8] — vadītāja id, p[9] — sēdvieta); p[10] — transporta id
 export const RIDE_CODE = 4;
-const CODE_KIND = { 2: 'car', 3: 'sled', 5: 'bike' };
-const DRIVE_CODES = new Set([2, 3, 5]);
+const CODE_KIND = { 2: 'car', 3: 'sled', 5: 'bike', 7: 'boat' };
+const DRIVE_CODES = new Set([2, 3, 5, 7]);
 export const DEF = {
   car: { name: 'mašīna', icon: '🚙', road: 19, off: 10, snowOff: 6.5, accel: 9, brake: 16, turn: 1.7, radius: 1.75, len: 1.26, wid: 1.04, cam: 10.5 },
   sled: { name: 'sniega motocikls', icon: '🛷', road: 17, off: 20, snowOff: 20, accel: 11, brake: 14, turn: 2.1, radius: 1.1, len: 0.9, wid: 0.46, cam: 8 },
   bike: { name: 'velosipēds', icon: '🚲', road: 12.5, off: 8.5, snowOff: 4, accel: 7.5, brake: 13, turn: 2.6, radius: 0.75, len: 0.55, wid: 0.14, cam: 7 },
+  // 1.46.0: roņa airu laiva (tikai pa ūdeni, takas zemes jūrā)
+  boat: { name: 'laiva', icon: '🚣', road: 6.5, off: 6.5, snowOff: 6.5, accel: 3.2, brake: 5, turn: 1.25, radius: 1.25, len: 1.6, wid: 0.7, cam: 9 },
 };
 // visi transportlīdzekļi pasaulē (sākuma vietas). Sētas krustojums: ceļi x≈0 un z≈0, sētas sākas 9 m no ceļa
 export const VEHICLES = [
@@ -42,7 +45,10 @@ VEHICLES.push({ id: 'bike10', kind: 'bike', color: '#c8c8c8', name: 'Sudraba vel
 for (let i = 0; i < 4; i++) {
   VEHICLES.push({ id: 'bike' + (i + 5), kind: 'bike', color: BIKE_COL[i + 4][0], name: BIKE_COL[i + 4][1] + ' velosipēds', zone: FOREST, x: BIKE_RACK.x, z: BIKE_RACK.z + i * 1.25, h: Math.PI / 2 });
 }
+// 1.46.0: roņa laiva Piedzīvojumu meža jūrā (sākumā tālu jūrā; iekāpt var roņa uzdevuma laikā un pēc tā)
+VEHICLES.push({ id: BOAT_ID, kind: 'boat', color: '#c0503a', name: 'Roņa laiva', zone: 's', x: BOAT_HOME.x, z: BOAT_HOME.z, h: BOAT_HOME.h });
 const VDEF = Object.fromEntries(VEHICLES.map((v) => [v.id, v]));
+const BOAT_Y = WATER_Y - 0.12; // laivas pamata augstums (iegrimst ūdenī)
 
 // ---------- modeļi ----------
 const shared = {};
@@ -76,7 +82,32 @@ export const buildSled = A.buildSled; // 1.37.0: jaunais modelis (assets.js)
 
 export const buildBike = A.buildBike; // 1.37.0: jaunais modelis (assets.js)
 
-const buildVeh = (kind, color) => (kind === 'car' ? buildCar(color) : kind === 'bike' ? buildBike(color) : buildSled(color));
+const buildVeh = (kind, color) => (kind === 'car' ? buildCar(color) : kind === 'bike' ? buildBike(color) : kind === 'boat' ? buildBoat(color) : buildSled(color));
+
+// 1.46.0: koka airu laiva — korpuss, soliņi, divi airi (kustīgi: o.oars), vadītājs sēž vidū, pasažieris aizmugurē
+export function buildBoat(color = '#c0503a') {
+  const k = new A.Kit(25), G = A.G;
+  const root = k.root, body = k.group('body', root);
+  const B = { bone: body };
+  k.add(G.lathe([[0, 0], [0.5, 0.06], [0.7, 0.34], [0.78, 0.62], [0.74, 0.66]], 18), color, { ...B, s: [1, 1, 2.45], rough: 0.65, double: true, fc: (c) => (c.y > 0.55 ? '#f4f0e4' : c.y < 0.2 ? '#3a4a5a' : null) });
+  k.add(G.rbox(0.9, 0.04, 3.0, 0.02), '#9a6a40', { ...B, p: [0, 0.12, 0], rough: 0.9, fc: (c) => (Math.floor((c.x + 1) * 9) % 2 ? '#8a5e38' : null) }); // grīda
+  for (const [z, w] of [[0.15, 1.36], [-1.05, 1.16], [1.25, 0.86]]) k.add(G.rbox(w, 0.06, 0.32, 0.02), '#b07a48', { ...B, p: [0, 0.42, z], rough: 0.85 });
+  k.add(G.rbox(0.08, 0.1, 0.5, 0.02), '#7a5232', { ...B, p: [0, 0.6, 1.88], r: [0.4, 0, 0], rough: 0.9 }); // priekšgals
+  k.add(G.rbox(1.0, 0.05, 0.06, 0.02), '#7a5232', { ...B, p: [0, 0.64, -1.78], rough: 0.9 });
+  k.add(G.torus(0.13, 0.035, 6, 14), '#e8352a', { ...B, p: [0, 0.5, -1.72], r: [0, 0, 0], rough: 0.55, fc: (c) => (Math.floor((Math.atan2(c.y - 0.5, c.x) + Math.PI) / (Math.PI / 4)) % 2 ? '#f6f3ea' : null) });
+  const oars = [];
+  for (const sd of [-1, 1]) {
+    k.add(G.cyl(0.03, 0.03, 0.14, 6), '#9aa0a6', { ...B, p: [sd * 0.77, 0.7, 0.2], rough: 0.4, metal: 0.6 }); // airu turētājs
+    const o = k.group(sd < 0 ? 'oarR' : 'oarL', body, [sd * 0.77, 0.74, 0.2]);
+    A.rod(k, [-sd * 0.55, 0.06, 0], [sd * 1.5, -0.62, 0], 0.03, '#c8964a', { bone: o, rough: 0.8, seg: 6 });
+    k.add(G.rbox(0.5, 0.03, 0.17, 0.02), '#c8964a', { bone: o, p: [sd * 1.62, -0.68, 0], r: [0, 0, -sd * 0.42], rough: 0.8 });
+    oars.push(o);
+  }
+  const seats = [k.marker('seat', body, [0, 0.3, 0.15]), k.marker('seat', body, [0, 0.3, -1.05])];
+  const pet = k.marker('pet', body, [0, 0.46, 1.25]);
+  k.build({ name: 'boat' });
+  return { kind: 'boat', root, body, wheels: [], steer: [], seat: seats[0], seats, petSpots: [pet], wheelR: 1, oars };
+}
 
 // zemes slīpums: kāpums uz priekšu un uz sāniem (reljefa funkcija h)
 // Mērām pie riteņiem (abās asīs/pusēs vidēji), lai virsbūve nedrebētu uz reljefa trijstūru malām.
@@ -91,8 +122,9 @@ const r2 = (v) => Math.round(v * 100) / 100;
 // saglabātais stāvoklis → derīgs transporta ieraksts (vai sākuma vieta)
 function cleanVeh(def, saved) {
   const v = { id: def.id, kind: def.kind, color: def.color, zone: def.zone, x: def.x, z: def.z, h: def.h, d: -1 };
-  if (saved && ZONES[saved.zone] && Number.isFinite(saved.x) && Number.isFinite(saved.z) && Math.abs(saved.x) < 330 && Math.abs(saved.z) < 330) {
-    if (def.kind !== 'sled' || saved.zone === 'n') { v.zone = saved.zone; v.x = saved.x; v.z = saved.z; v.h = Number.isFinite(saved.h) ? saved.h : def.h; }
+  const bd = saved && ZONES[saved.zone] ? zoneBounds(saved.zone) : null; // 1.46.0: dienvidu zeme garāka
+  if (bd && Number.isFinite(saved.x) && Number.isFinite(saved.z) && saved.x > bd[0] - 15 && saved.x < bd[2] + 15 && saved.z > bd[1] - 15 && saved.z < bd[3] + 15) {
+    if ((def.kind !== 'sled' || saved.zone === 'n') && (def.kind !== 'boat' || saved.zone === 's')) { v.zone = saved.zone; v.x = saved.x; v.z = saved.z; v.h = Number.isFinite(saved.h) ? saved.h : def.h; }
   }
   return v;
 }
@@ -165,6 +197,10 @@ export const Vehicles = {
       const o = this.vehObj(id);
       if (o.root.parent !== this.stage) this.stage.add(o.root);
       const D = DEF[v.kind];
+      if (v.kind === 'boat') { // peld ūdenī (šūpošana — updateBoats)
+        o.root.position.set(v.x, BOAT_Y, v.z); o.root.rotation.y = v.h; o.body.rotation.set(0, 0, 0); o.root.visible = true; o.visY = null;
+        continue;
+      }
       const sl = slopeAt((x, z) => this.terr.getHeight(x, z), v.x, v.z, v.h, D.len, D.wid);
       o.root.position.set(v.x, sl.y, v.z);
       o.root.rotation.y = v.h;
@@ -191,6 +227,12 @@ export const Vehicles = {
       const v = this.vehs[id];
       if (v.d !== -1 || v.zone !== this.zone) continue;
       const k = v.kind;
+      if (k === 'boat') { // 1.46.0: roņa laiva — tikai uzdevuma laikā vai pēc tā
+        const d = d2(v.x, v.z);
+        if (this.boatOk && this.boatOk()) consider(d < 3.6 ? 0.1 : d, 3.6, `🚣 Sēsties laivā: ${VDEF[id].name}`, () => this.requestVehicle(id));
+        else consider(d < 3.6 ? 0.1 : d, 3.6, '🦭 Roņa laiva', () => toast('🦭 Šī ir Roņa Viļņuka laiva — vispirms aprunājies ar viņu pludmalē!'));
+        continue;
+      }
       consider(near(d2(v.x, v.z), k), k === 'car' ? 4.2 : k === 'bike' ? 2.6 : 3.2, `${DEF[k].icon} ${k === 'bike' ? 'Braukt' : 'Sēsties'}: ${VDEF[id].name}`, () => this.requestVehicle(id));
     }
   },
@@ -213,7 +255,7 @@ export const Vehicles = {
     obj.root.visible = true;
     me.veh = { id, kind, obj, speed: 0, heading: v.h, steer: 0, vy: 0, air: false, visY: null };
     if (kind === 'sled') this.stat('sledRides');
-    me.pos.set(v.x, this.terr.getHeight(v.x, v.z), v.z);
+    me.pos.set(v.x, kind === 'boat' ? WATER_Y : this.terr.getHeight(v.x, v.z), v.z);
     this.stage.remove(this.avatar.root);
     obj.seat.add(this.avatar.root);
     this.avatar.root.position.set(0, 0, 0);
@@ -223,7 +265,8 @@ export const Vehicles = {
     this.cam.yaw = v.h + Math.PI;
     $('btn-exit-kart').classList.remove('hidden');
     $('btn-jump').classList.add('hidden');
-    { const k = this.vehs[id] && this.vehs[id].kind; sfx(k === 'bike' ? 'bike_bell' : k === 'sled' ? 'st_snow' : 'car_door', { vol: 0.7 }); }
+    { const k = this.vehs[id] && this.vehs[id].kind; sfx(k === 'bike' ? 'bike_bell' : k === 'sled' ? 'st_snow' : k === 'boat' ? 'splash_s' : 'car_door', { vol: 0.7 }); }
+    if (kind === 'boat') { this.me.vy = 0; toast(this.trail && this.trail.boat ? '🚣 Airē ar ⛽, atpakaļ — 🛑, stūrē ar ◀ ▶. Laiva brauc tikai pa ūdeni — pie krasta izkāp!' : '🚣 Tu esi laivā! Airē ar ⛽, stūrē ar ◀ ▶ un brauc uz 🦭 piestātni starp bojām!', 'good', 5000); return; }
     toast(kind === 'car'
       ? '🚙 Kreisajā pusē ⛽ gāze un 🛑 bremze/atpakaļgaita, labajā ◀ ▶ stūre. Pa grants ceļu var aizbraukt uz citām zemēm!'
       : kind === 'bike' ? '🚲 Min pedāļus ar ⛽, bremzē ar 🛑, stūrē ar ◀ ▶. Groziņā var braukt tavs mājdzīvnieks!'
@@ -245,8 +288,10 @@ export const Vehicles = {
     // izkāpj kreisajā pusē
     const out = DEF[v.kind].radius + 0.6;
     me.pos.x += side.x * out; me.pos.z += side.z * out;
+    this.terr.lp = null; // 1.46.0: no laivas (citādi slīpuma pārbaude salīdzina ar laivas vietu)
     this.terr.collide(me.pos, 0.4);
     me.pos.y = this.terr.groundAt(me.pos.x, me.pos.z) + 0.3;
+    if (v.kind === 'boat') { me.pos.y = Math.max(me.pos.y, WATER_Y - 0.75); me.vy = 0; sfx('splash_s', { vol: 0.6 }); }
     me.heading = h;
     me.veh = null; me.state = 'idle';
     $('btn-exit-kart').classList.add('hidden');
@@ -255,6 +300,7 @@ export const Vehicles = {
   },
 
   updateVehicle(dt, mv) {
+    if (this.me.veh.kind === 'boat') return this.updateBoat(dt, mv);
     const me = this.me, v = me.veh, D = DEF[v.kind], T = this.terr;
     const H = (x, z) => T.getHeight(x, z);
     const ground = H(me.pos.x, me.pos.z);
@@ -327,8 +373,71 @@ export const Vehicles = {
     this.avatar.head.rotation.y = -v.steer * 0.35;
   },
 
+  // 1.46.0: laiva — tikai pa ūdeni (seklumā apstājas), viegli šūpojas, airi kustas
+  updateBoat(dt, mv) {
+    const me = this.me, v = me.veh, D = DEF.boat, T = this.terr;
+    const thr = mv.y; v.thr = thr;
+    if (thr > 0.1) v.speed += D.accel * thr * dt;
+    else if (thr < -0.1) v.speed -= (v.speed > 0.3 ? D.brake : D.accel * 0.7) * -thr * dt;
+    else v.speed *= 1 - 0.55 * dt;
+    v.speed = clamp(v.speed, -2.4, D.road);
+    v.steer = lerp(v.steer, -mv.x, 1 - Math.exp(-dt * 5));
+    // laiva griežas arī uz vietas (airē ar vienu airi)
+    v.heading += v.steer * D.turn * (0.45 + 0.55 * Math.min(1, Math.abs(v.speed) / 3)) * (v.speed < -0.2 ? -1 : 1) * dt;
+    const ox = me.pos.x, oz = me.pos.z, dir = v.speed < 0 ? -1 : 1;
+    me.pos.x += Math.sin(v.heading) * v.speed * dt;
+    me.pos.z += Math.cos(v.heading) * v.speed * dt;
+    T.collide(me.pos, D.radius);
+    // seklums: priekšgals (braukšanas virzienā) vai pati laiva nedrīkst uzbraukt krastā
+    const deep = (x, z) => T.getHeight(x, z) < WATER_Y - BOAT_DRAFT;
+    const fx = me.pos.x + Math.sin(v.heading) * D.len * dir, fz = me.pos.z + Math.cos(v.heading) * D.len * dir;
+    if (!deep(me.pos.x, me.pos.z) || !deep(fx, fz)) {
+      me.pos.x = ox; me.pos.z = oz;
+      if (Math.abs(v.speed) > 1.2 && !(v.bumpT > 0)) { sfx('splash_s', { vol: 0.5, rate: 0.8 }); v.bumpT = 1.5; if (!(this.boatShoreT > performance.now())) { this.boatShoreT = performance.now() + 8000; toast('🏖️ Te ir sekls — laiva tālāk netiek. Izkāp ar pogu vai brauc atpakaļ!'); } }
+      v.speed = 0;
+    }
+    v.bumpT = (v.bumpT || 0) - dt;
+    me.pos.y = WATER_Y;
+    me.vy = 0;
+    const t = performance.now() / 1000, o = v.obj;
+    this.boatPose(o, me.pos.x, me.pos.z, v.heading, Math.abs(v.speed), v.steer, dt, t, Math.abs(thr) > 0.1 || Math.abs(v.steer) > 0.3);
+    me.heading = v.heading;
+    me.state = 'sit';
+    this.avatar.pedal = null;
+    this.avatar.animate(dt, 'sit', 0);
+  },
+  // laivas izskats: šūpojas viļņos, sasveras līkumā, airi airē (arī draugu laivai)
+  boatPose(o, x, z, h, sp, steer, dt, t, rowing) {
+    o.root.position.set(x, BOAT_Y + Math.sin(t * 1.7 + x * 0.3) * 0.035, z);
+    o.root.rotation.y = h;
+    o.body.rotation.order = 'YXZ';
+    o.body.rotation.x = Math.sin(t * 1.3 + z * 0.2) * 0.025 - Math.min(0.04, sp * 0.006);
+    o.body.rotation.z = Math.sin(t * 1.1) * 0.03 - steer * Math.min(1, sp / 4) * 0.05;
+    o.rowT = (o.rowT || 0) + dt * (rowing || sp > 0.4 ? 2.6 + sp * 0.35 : 0);
+    const ph = o.rowT, was = o.rowS || 0, now = Math.sin(ph);
+    for (const oar of o.oars || []) {
+      const s = oar.name === 'oarR' ? -1 : 1;
+      oar.rotation.y = s * Math.sin(ph) * 0.5;
+      oar.rotation.z = s * (Math.cos(ph) * 0.14 + 0.02);
+    }
+    // aira iegremdēšana — šļakata skaņa
+    if (rowing && was < 0 && now >= 0 && Math.abs(x - this.me.pos.x) < 30 && Math.abs(z - this.me.pos.z) < 30) sfx('splash_s', { vol: 0.18, rate: 1.2 + Math.random() * 0.2, at: { x, z } });
+    o.rowS = now;
+  },
+  // stāvošās laivas šūpojas (izsauc katru kadru takas zemē)
+  updateBoats(dt) {
+    if (!this.vehs || this.zone !== 's') return;
+    const t = performance.now() / 1000;
+    for (const id in this.vehs) {
+      const v = this.vehs[id];
+      if (v.kind !== 'boat' || v.d !== -1 || v.zone !== 's' || !v.obj || !v.obj.root.parent) continue;
+      this.boatPose(v.obj, v.x, v.z, v.h, 0, 0, dt, t, false);
+    }
+  },
+
   // pie robežas: sniega motocikls paliek Ziemas zemē
   vehicleBlocksExit(warn) {
+    if (this.me.veh && this.me.veh.kind === 'boat') { warn('🚣 Laiva peld tikai jūrā!'); return true; }
     if (this.me.veh && this.me.veh.kind === 'sled') { warn('🛷 Sniega motocikls brauc tikai pa sniegu — izkāp un ej kājām vai ņem mašīnu!'); return true; }
     return false;
   },
@@ -386,8 +495,10 @@ export const Vehicles = {
     // izkāpj blakus mašīnai (kreisās vietas — pa kreisi, labās — pa labi)
     const side = R.seat % 2 === 0 ? 1 : -1, h = me.heading;
     me.pos.x += Math.cos(h) * 2.3 * side; me.pos.z -= Math.sin(h) * 2.3 * side;
+    this.terr.lp = null;
     this.terr.collide(me.pos, 0.4);
     me.pos.y = this.terr.groundAt(me.pos.x, me.pos.z) + 0.3;
+    if (R.kind === 'boat') { me.pos.y = Math.max(me.pos.y, WATER_Y - 0.75); me.vy = 0; }
     this.avatar.root.position.copy(me.pos);
     me.state = 'idle';
     $('btn-exit-kart').classList.add('hidden');
@@ -482,6 +593,15 @@ export const Vehicles = {
       r.avatar.root.visible = true;
     }
     const o = r.vehObj, H = (x, z) => this.terr.getHeight(x, z);
+    if (kind === 'boat') {
+      const sp = prev.distanceTo(r.pos) / Math.max(dt, 0.001);
+      let dh = r.ry - (r.prevRy == null ? r.ry : r.prevRy); dh = Math.atan2(Math.sin(dh), Math.cos(dh)); r.prevRy = r.ry;
+      r.steerS = lerp(r.steerS || 0, clamp(dh / Math.max(dt, 1e-3), -1, 1), 1 - Math.exp(-dt * 6));
+      this.boatPose(o, r.pos.x, r.pos.z, r.ry, sp, r.steerS, dt, performance.now() / 1000, sp > 0.3 || Math.abs(r.steerS) > 0.2);
+      r.avatar.pedal = null;
+      r.avatar.animate(dt, 'sit', 0);
+      return true;
+    }
     const sl = slopeAt(H, r.pos.x, r.pos.z, r.ry, DEF[kind].len, DEF[kind].wid);
     // uz zemes — vidējais augstums zem riteņiem; sniega motocikls lēcienā var būt augstāk
     const ty = kind === 'sled' ? Math.max(sl.y, r.pos.y) : sl.y;
@@ -536,13 +656,15 @@ export const Vehicles = {
     if (!v) return true;
     if (m.t === 'vehTake') {
       if (v.d !== -1 && hs.profiles.has(v.d) && v.d !== from) { this.net.sendTo(from, { t: 'veh', v: { ...v } }); return true; }
+      if (v.kind === 'boat' && this.hostBoatOk && !this.hostBoatOk()) { this.net.sendTo(from, { t: 'veh', v: { ...v } }); return true; } // 1.46.0: roņa laiva vēl aizliegta
       // katram var būt tikai viens transports
       for (const o of Object.values(hs.vehs)) if (o.d === from && o !== v) { o.d = -1; this.net.broadcast({ t: 'veh', v: { ...o } }); }
       v.d = from;
     } else if (m.t === 'vehDrop') {
       if (v.d !== from) return true;
       v.d = -1;
-      if (ZONES[m.zone] && Number.isFinite(m.x) && Number.isFinite(m.z)) { v.zone = m.zone; v.x = m.x; v.z = m.z; v.h = Number.isFinite(m.h) ? m.h : v.h; }
+      if (ZONES[m.zone] && Number.isFinite(m.x) && Number.isFinite(m.z) && (v.kind !== 'boat' || m.zone === 's')) { v.zone = m.zone; v.x = m.x; v.z = m.z; v.h = Number.isFinite(m.h) ? m.h : v.h; }
+      if (this.hostBoatCheck) this.hostBoatCheck(v);
     }
     this.vehDirty = true;
     this.net.broadcast({ t: 'veh', v: { ...v } });
@@ -554,6 +676,7 @@ export const Vehicles = {
     if (!v || v.d !== from || !DRIVE_CODES.has(p[5])) return;
     v.zone = ZONE_IDS[p[7] | 0] || v.zone; v.x = p[0]; v.z = p[2]; v.h = p[3];
     this.vehDirty = true;
+    if (this.hostBoatCheck) this.hostBoatCheck(v); // 1.46.0: laiva piestātnē → roņa uzdevums izpildīts
   },
   hostVehLeave(id) {
     for (const v of Object.values(this.hs.vehs || {})) if (v.d === id) { v.d = -1; this.vehDirty = true; this.net.broadcast({ t: 'veh', v: { ...v } }); }

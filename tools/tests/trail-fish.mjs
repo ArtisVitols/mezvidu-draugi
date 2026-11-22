@@ -26,9 +26,9 @@ const mig = await page.evaluate(() => {
 });
 console.log(JSON.stringify(mig));
 check(mig.old0 === '0:0' && mig.old2acc === '2a:3' && mig.old3 === '4a:2' && mig.old4 === '5:0' && mig.old5done === '6:0' && mig.new3 === '3:0' && mig.new6 === '6:0', 'vecu saglabājumu pārvēršana (kaķis ievietots)');
-// saglabātais pēc nosūtīšanas satur v: 2
+// saglabātais pēc nosūtīšanas satur v: 3 (1.46.0 — ronis)
 const sv = await page.evaluate(() => { const g = __game; g.save.trail = { step: 3, v: 2, ob: [] }; g.hostInitTrail(); g.hostTrailSend(null); return g.save.trail.v; });
-check(sv === 2, 'saglabājumā v: 2');
+check(sv === 3, 'saglabājumā v: 3');
 await sleep(800);
 const H = () => page.evaluate(() => { const g = __game; return { step: g.trail.step, acc: g.trail.acc, c: g.trail.c, carry: g.me.carry && g.me.carry.k, fish: g.fishing && g.fishing.phase }; });
 await page.evaluate(() => {
