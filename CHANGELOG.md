@@ -1,5 +1,13 @@
 # Izmaiņu žurnāls
 
+## 1.45.0 — 2026-11-22
+- 🐱 Jauns takas uzdevums: **Kaķis Murris pie dīķa** (starp ezīti un bebru, pie purva malas). Kaķis katram iedod makšķeri;
+  makšķerē dīķa krastā (pludiņš, kodiens, „🐟 VILKT!”), noķerto zivi nes uz grozu blakus kaķim un nāc atpakaļ — kopā 10 zivis.
+  Grozā redzamas zivis, kaķim sava balss. Dīķis ar lēzenu krastu, niedrēm, ūdensrozēm un makšķeru statīvu.
+- Taka tagad ar 6 draugiem; vecie saglabājumi pārvērsti (ja biji pie bebra vai lapsas — paliec tur pat).
+- 🐞 Makšķerēšana strādā arī ārpus meža (agrāk kodiens nāca tikai meža zemē).
+- 🐞 Lielas klintis kalnu nogāzēs vairs nestāv uz takas malas (to sadursmes aplis varēja aizsprostot pusi takas) — sadursme nekad nesniedzas uz takas.
+- 🧪 Takas testi `tools/tests/` — 2 spēlētāji iziet visu taku ar īstajām pogām, kaķa uzdevuma robežgadījumi, vai visi priekšmeti sasniedzami kājām.
 ## 1.44.1 — 2026-11-22
 - 🐞 Piedzīvojumu takā nevarēja atgriezties no Ezīša pie Lāča — neredzama siena: nogāztā koka barjera (līdz 45 m platumā) pārgrieza taku
   vēlreiz tur, kur taka met loku atpakaļ (~50 m aiz koka). Barjera tagad apstājas pirms jebkuras citas takas daļas.

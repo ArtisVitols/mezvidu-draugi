@@ -1,7 +1,7 @@
 // 🔊 Pastāvīgās skaņas (1.31.0): soļi pēc virsmas, vide pēc zemes (putni, vējš, ūdens, purva sienāži), uguns pie ugunskura,
 // dzinēji (kartings, mašīna, autobuss), velosipēda spieķi, slēpošanas vējš. Mixin uz Game.prototype; updateSound(dt) katru kadru.
-import { loop, loopAt, play, setListener, stopAllLoops, engine } from './audio.js?v=1.44.1';
-import { FOREST, FARM, RACE } from './zones.js?v=1.44.1';
+import { loop, loopAt, play, setListener, stopAllLoops, engine } from './audio.js?v=1.45.0';
+import { FOREST, FARM, RACE } from './zones.js?v=1.45.0';
 
 const STEP = 0.78;   // m starp soļiem ejot (skrienot — garāki)
 const rd = (T, x, z) => { if (!T || !T.roadDist) return 99; const r = T.roadDist(x, z); return typeof r === 'number' ? r : r ? r.d : 99; };

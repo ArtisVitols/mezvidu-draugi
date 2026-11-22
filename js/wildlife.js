@@ -2,10 +2,10 @@
 // Dzīvo ap spēlētāju (katram savi, nav tīklā): parādās nejaušās piemērotās vietās 10–90 m attālumā, pazūd, kad aizej tālu.
 // Vardes lec un kurkst, ielec ūdenī; pīles peld pa strautu; zaķi un stirnas ganās un aizbēg; stārķi brien pa purvu; tauriņi lido pļavās.
 import * as THREE from 'three';
-import * as A from './assets.js?v=1.44.1';
-import { WATER_Y } from './world.js?v=1.44.1';
-import { canvasTexture } from './util.js?v=1.44.1';
-import { sfx } from './ui.js?v=1.44.1';
+import * as A from './assets.js?v=1.45.0';
+import { WATER_Y } from './world.js?v=1.45.0';
+import { canvasTexture } from './util.js?v=1.45.0';
+import { sfx } from './ui.js?v=1.45.0';
 
 const TAU = Math.PI * 2;
 // n — cik vienlaikus, near/far — kur parādās (m no spēlētāja), out — kur pazūd
@@ -119,7 +119,7 @@ export class TrailLife {
         const wet = Z.getHeight(x + 2, z) < WATER_Y || Z.getHeight(x - 2, z) < WATER_Y || Z.getHeight(x, z + 2) < WATER_Y || Z.getHeight(x, z - 2) < WATER_Y;
         return wet ? Math.max(h, WATER_Y) : null;
       }
-      case 'pile': return h < WATER_Y - 0.6 && Z.getHeight(x + 2.5, z) < WATER_Y - 0.3 && Z.getHeight(x - 2.5, z) < WATER_Y - 0.3 && z < L.stops[4].z - 60 && !Z.onBridge(x, z) ? WATER_Y : null;
+      case 'pile': return h < WATER_Y - 0.6 && Z.getHeight(x + 2.5, z) < WATER_Y - 0.3 && Z.getHeight(x - 2.5, z) < WATER_Y - 0.3 && z < L.stops[L.stops.length - 1].z - 60 && !Z.onBridge(x, z) ? WATER_Y : null;
       case 'starkis': return Z.bogAt(x, z) > 0.55 && h > WATER_Y - 0.3 && h < WATER_Y + 0.35 ? Math.max(h, WATER_Y - 0.25) : null;
       case 'taurenis': return h > WATER_Y + 0.2 && Z.forestAt(x, z) < 0.55 && z < Z.shoreZ(x) - 40 ? h : null;
       default: { // zaķis, stirna — sausā, līdzenā vietā (stirnas — pļavās)

@@ -3,9 +3,9 @@
 // Vietas glabājas katra pārlūkā (localStorage `mezvidi_bugspots`, pēdējās 10) un paliek arī pēc lapas pārlādes / jaunas versijas.
 // Aprakstu var nokopēt un aizsūtīt izstrādātājam. Pēc labojuma saimnieks nospiež "▶ Turpināt" — visi (pēc vārda)
 // tiek pārcelti atpakaļ uz savām vietām, taka atjaunota, nesamie atkal rokās.
-import { ZONES, ZONE_IDS } from './zones.js?v=1.44.1';
-import { VERSION } from './version.js?v=1.44.1';
-import { toast, showPanel, refreshPanel, closePanel, panelOpen, el, sfx } from './ui.js?v=1.44.1';
+import { ZONES, ZONE_IDS } from './zones.js?v=1.45.0';
+import { VERSION } from './version.js?v=1.45.0';
+import { toast, showPanel, refreshPanel, closePanel, panelOpen, el, sfx } from './ui.js?v=1.45.0';
 
 const KEY = 'mezvidi_bugspots', MAX = 10, CARRY_MS = 180000;
 const load = () => { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { return []; } };
@@ -159,6 +159,7 @@ export const BugSpot = {
       this.me.pos.set(p.x, Math.max(p.y, this.terr.groundAt(p.x, p.z)), p.z);
       this.me.heading = p.h; this.cam.yaw = p.h + Math.PI;
       if (m.carry && this.trailEvent) this.trailEvent({ k: 'take', by: this.myId, i: m.carry.i, step: m.carry.step });
+      else if (p.carry === 't:zivs' && this.trailCatch) this.trailCatch({ x: p.x, z: p.z }); // 1.45.0: zivs kaķim (nav saimnieka sarakstā)
       toast('▶ Turpinām no kļūdas vietas', 'good');
     };
     setTimeout(wait, 500);

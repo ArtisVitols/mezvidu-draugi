@@ -1,16 +1,16 @@
 // Jaunās nodarbes, pievienotas Game klasei: makšķerēšana, ogas, mājdzīvnieki, dārza rotājumi,
 // īpašās vietas ar dārgumu, ķeramais un paslēpes, nedēļas kopīgais mērķis.
 import * as THREE from 'three';
-import { WATER_Y, GARDEN_SLOTS, VILLAGE_Y, rotPlot, rotPlotY } from './world.js?v=1.44.1';
-import { buildNPC } from './characters.js?v=1.44.1';
-import { InstanceField } from './instancing.js?v=1.44.1';
-import { berryTemplate, buildDecor, DECOR_SPOTS, buildRod, buildBobber } from './props.js?v=1.44.1';
-import { buildScroll } from './places.js?v=1.44.1';
-import { ZONE_IDS, FOREST } from './zones.js?v=1.44.1';
-import { FISH, ROD_PRICE, BERRIES, COOKED, PETS, DECOR, PLACES, MAP_PIECES, weekNumber, weeklyGoal, WEEKLY_REWARD, rollFish, CROPS, TREES, CLOTHES, HATS, WISH_PRICE } from './data.js?v=1.44.1';
-import { icon, iconEl, fishSvg } from './icons.js?v=1.44.1';
-import { makeTextSprite, makeTag, angleLerp } from './util.js?v=1.44.1';
-import { $, toast, showPanel, refreshPanel, closePanel, el, itemRow, sfx, fmtTime } from './ui.js?v=1.44.1';
+import { WATER_Y, GARDEN_SLOTS, VILLAGE_Y, rotPlot, rotPlotY } from './world.js?v=1.45.0';
+import { buildNPC } from './characters.js?v=1.45.0';
+import { InstanceField } from './instancing.js?v=1.45.0';
+import { berryTemplate, buildDecor, DECOR_SPOTS, buildRod, buildBobber } from './props.js?v=1.45.0';
+import { buildScroll } from './places.js?v=1.45.0';
+import { ZONE_IDS, FOREST } from './zones.js?v=1.45.0';
+import { FISH, ROD_PRICE, BERRIES, COOKED, PETS, DECOR, PLACES, MAP_PIECES, weekNumber, weeklyGoal, WEEKLY_REWARD, rollFish, CROPS, TREES, CLOTHES, HATS, WISH_PRICE } from './data.js?v=1.45.0';
+import { icon, iconEl, fishSvg } from './icons.js?v=1.45.0';
+import { makeTextSprite, makeTag, angleLerp } from './util.js?v=1.45.0';
+import { $, toast, showPanel, refreshPanel, closePanel, el, itemRow, sfx, fmtTime } from './ui.js?v=1.45.0';
 
 const BERRY_RESPAWN = 150000;
 const MG_NAMES = { tag: '🏃 Ķeramais', hide: '🙈 Paslēpes' };
@@ -96,10 +96,7 @@ export const Activities = {
   findActivityActions(consider, d2) {
     const me = this.me, t = this.now(), W = this.world;
     // makšķerēšana notiek — poga tikai tai
-    if (this.fishing) {
-      const f = this.fishing;
-      return { label: f.phase === 'bite' ? '🐟 VILKT!' : '🎣 Gaidi… (beigt)', fn: () => (f.phase === 'bite' ? this.catchFish() : this.stopFishing(true)) };
-    }
+    if (this.fishing) return this.fishButton();
     // ogas
     for (const b of W.berries) {
       if (Math.abs(b.x - me.pos.x) > 3 || Math.abs(b.z - me.pos.z) > 3) continue;
@@ -145,8 +142,13 @@ export const Activities = {
   },
 
   // ======================= makšķerēšana =======================
+  fishButton() {
+    const f = this.fishing;
+    return { label: f.phase === 'bite' ? '🐟 VILKT!' : '🎣 Gaidi… (beigt)', fn: () => (f.phase === 'bite' ? this.catchFish() : this.stopFishing(true)) };
+  },
+  // 1.45.0: arī citās zemēs (takas dīķis) — aktīvās zemes reljefs
   fishSpot() {
-    const W = this.world, p = this.me.pos;
+    const W = this.terr || this.world, p = this.me.pos;
     let best = null;
     for (let k = 0; k < 16; k++) {
       const a = k / 16 * Math.PI * 2;
@@ -161,8 +163,9 @@ export const Activities = {
     return best;
   },
 
-  startFishing(spot) {
-    const onPier = this.world.groundAt(this.me.pos.x, this.me.pos.z, this.me.pos.y) > this.world.getHeight(this.me.pos.x, this.me.pos.z) + 0.3;
+  startFishing(spot, trail = false) {
+    const W = trail ? this.terr : this.world;
+    const onPier = !trail && W.groundAt(this.me.pos.x, this.me.pos.z, this.me.pos.y) > W.getHeight(this.me.pos.x, this.me.pos.z) + 0.3;
     this.me.heading = spot.a;
     if (!this.bobber) {
       this.bobber = buildBobber();
@@ -171,8 +174,9 @@ export const Activities = {
       this.fishLine.frustumCulled = false;
     }
     this.bobber.position.set(spot.x, WATER_Y + 0.02, spot.z);
-    this.scene.add(this.bobber); this.scene.add(this.fishLine);
-    this.fishing = { phase: 'wait', t: 0, bite: 2.5 + Math.random() * 4.5, x: spot.x, z: spot.z, pier: onPier };
+    const par = trail ? this.stage : this.scene; // mežs — tikai meža grupā; citur — uz skatuves
+    par.add(this.bobber); par.add(this.fishLine);
+    this.fishing = { phase: 'wait', t: 0, bite: (trail ? 2 : 2.5) + Math.random() * (trail ? 3.5 : 4.5), x: spot.x, z: spot.z, pier: onPier, trail };
     this.rod.visible = true;
     sfx('cloth', { vol: 0.7, rate: 1.2 }); sfx('plop', { vol: 0.6, delay: 0.55 });
     if (!this.save.stats.fishTip) { this.save.stats.fishTip = 1; toast('🎣 Gaidi, kamēr pludiņš raustās, tad ātri spied „VILKT!”', '', 4500); }
@@ -183,7 +187,7 @@ export const Activities = {
     if (!this.fishing) return;
     this.fishing = null;
     this.rod.visible = false;
-    if (this.bobber) { this.scene.remove(this.bobber); this.scene.remove(this.fishLine); }
+    if (this.bobber) { this.bobber.removeFromParent(); this.fishLine.removeFromParent(); }
     if (manual) toast('🎣 Beidzi makšķerēt');
     this.timers.action = 0;
   },
@@ -217,6 +221,7 @@ export const Activities = {
   catchFish() {
     const f = this.fishing;
     if (!f || f.phase !== 'bite') return;
+    if (f.trail) { this.trailCatch(f); return; } // 1.45.0: kaķa dīķis — zivs jānes uz grozu
     const list = Object.entries(FISH);
     const tot = list.reduce((s, [, d]) => s + (f.pier ? d.pier : d.w), 0);
     let r = Math.random() * tot, kind = list[0][0];

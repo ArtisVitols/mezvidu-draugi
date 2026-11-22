@@ -24,12 +24,13 @@ VOICES = {
     'puce': (1.16, 1.0),
     'suns': (1.06, 0.95),
     'liene': (1.2, 1.0),
-    'kakis': (1.1, 1.0),
+    'kakis': (1.1, 1.0),       # autobusa šoferis Kārlis
+    'murris': (1.22, 0.96),    # 1.45.0: takas kaķis pie dīķa
 }
 
 # skaitļi vārdiem (pareizā locījumā) — balss tos tad izrunā droši
 WORDS = [('8 pagales', 'astoņas pagales'), ('12 riekstus', 'divpadsmit riekstus'), ('8 ābolus', 'astoņus ābolus'),
-         ('6 dēļus', 'sešus dēļus'), ('Salasiet 10,', 'Salasiet desmit,')]
+         ('6 dēļus', 'sešus dēļus'), ('10 zivis', 'desmit zivis'), ('Salasiet 10,', 'Salasiet desmit,')]
 
 
 def clean(t):
@@ -58,9 +59,9 @@ def lines():
     L = []
     T = trail_tasks()
     # datīvs „palīdziet kam” — vispirms jāpalīdz iepriekšējam
-    DAT = {'lacis': 'Lācim Brunim', 'vavere': 'Vāverītei Čiekuriņai', 'ezis': 'Ezītim Adatiņam', 'bebritis': 'Bebram Dambītim', 'lapsa': 'Lapsai Smilgai'}
+    DAT = {'lacis': 'Lācim Brunim', 'vavere': 'Vāverītei Čiekuriņai', 'ezis': 'Ezītim Adatiņam', 'bebritis': 'Bebram Dambītim', 'lapsa': 'Lapsai Smilgai', 'kakis': 'Kaķim Murrim'}
     for k, t in enumerate(T):
-        v = t['npc']
+        v = 'murris' if t['npc'] == 'kakis' else t['npc']
         L += [(f't{k}_ask', v, t['ask']), (f't{k}_help', v, t['help']), (f't{k}_thanks', v, t['thanks'])]
         if k < len(T) - 1:
             L.append((f't{k}_again', v, 'Paldies vēlreiz par palīdzību! Visi meža draugi jums pateicīgi.'))

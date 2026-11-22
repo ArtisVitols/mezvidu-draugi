@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import { ANIMALS, FUR_COLORS, SHIRT_COLORS } from './data.js?v=1.44.1';
-import { loadSave, writeSave, lastProfileName, listProfiles, hasSave, carryOver, listGames, rememberGame, lastGameId, newGameId, FIRST_GAME } from './save.js?v=1.44.1';
-import { buildAnimal } from './characters.js?v=1.44.1';
-import { Net, randomCode } from './net.js?v=1.44.1';
-import { Game } from './game.js?v=1.44.1';
-import { $, initAudio, toast } from './ui.js?v=1.44.1';
-import { VERSION, BUILD_DATE } from './version.js?v=1.44.1';
+import { ANIMALS, FUR_COLORS, SHIRT_COLORS } from './data.js?v=1.45.0';
+import { loadSave, writeSave, lastProfileName, listProfiles, hasSave, carryOver, listGames, rememberGame, lastGameId, newGameId, FIRST_GAME } from './save.js?v=1.45.0';
+import { buildAnimal } from './characters.js?v=1.45.0';
+import { Net, randomCode } from './net.js?v=1.45.0';
+import { Game } from './game.js?v=1.45.0';
+import { $, initAudio, toast } from './ui.js?v=1.45.0';
+import { VERSION, BUILD_DATE } from './version.js?v=1.45.0';
 
 const EMOJI = { lacis: '🐻', lapsa: '🦊', zakis: '🐰', kakis: '🐱', cuka: '🐷', suns: '🐶', varde: '🐸', pile: '🦆' };
 let save = null;
