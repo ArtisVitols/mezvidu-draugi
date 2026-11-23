@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mat, makeBlobShadow, noiseTexture, lerp, canvasTexture } from './util.js?v=1.47.0';
-import * as A from './assets.js?v=1.47.0';
+import { mat, makeBlobShadow, noiseTexture, lerp, canvasTexture } from './util.js?v=1.47.1';
+import * as A from './assets.js?v=1.47.1';
 
 // kažoka/auduma materiāli ar smalku faktūru
 let furTex = null, clothTex = null;

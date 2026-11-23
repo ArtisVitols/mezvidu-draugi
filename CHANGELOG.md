@@ -1,5 +1,14 @@
 # Izmaiņu žurnāls
 
+## 1.47.1 — 2026-11-23
+- 🔊 Balsis skaļākas (~+4 dB) un skaidrākas telefona skaļrunī: pacelti ~3 kHz, kompresors, katra frāze precīzi izlīdzināta (arī īsās, kā „divi”).
+- 🐞 Draugs „pazuda” vai stāvēja uz vietas (piem. braucot ar velosipēdu takā): ja kāda spēles daļa metās ar kļūdu, tajā kadrā
+  nenotika ne draugu zīmēšana, ne manas pozīcijas sūtīšana. Tagad katra daļa aizsargāta atsevišķi, pozīcija tiek sūtīta vienmēr,
+  kļūda pierakstās 🐞 kļūdu vietai. Ja drauga telefona pulkstenis pārlec atpakaļ, viņa kustība vairs neiesalst.
+- 🐞 Sētu vārtu zīmēs atkal redzams spēlētāja vārds (jaunajā vārtu modelī bija dēlis „Mana sēta”, kas aizsedza vārda zīmi).
+- 🌿 Takā zemā/viszemākā grafikā zeme vairs nav izplūdusi: smalka zāle ar stiebriem, āboliņu un ziediņiem, takai un pludmalei sava zemes/smilšu tekstūra, bez redzama atkārtojuma.
+- 🧪 Jauns tests `tools/tests/net-robust.mjs` (kļūdas spēles ciklā, pulksteņa lēciens, velosipēds takā — spēlētāji joprojām redz viens otru).
+
 ## 1.47.0 — 2026-11-22
 - ➡️ Takas bultas: kad draugam palīdzēts, aiz viņa virs takas parādās **zaļa puscaurspīdīga bulta**, kas rāda takas virzienu uz nākamo uzdevumu
   (pie bebra — aiz tilta, pie lapsas — pa pludmali uz roni). Bulta viegli šūpojas; sākot piedzīvojumu no jauna, bultas pazūd.

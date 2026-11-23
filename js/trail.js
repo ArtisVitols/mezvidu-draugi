@@ -6,17 +6,17 @@
 // TrailZone — zemes modelis (uzbūvē, ieejot, izmet, izejot). Trail — Game papildinājums (darbības, tīkls, panelis).
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { ZONE_HALF, SOUTH_END, GROUND_Y, CROSS_AT, smoothRoad, RoadIndex, buildRoadMesh, roadMaterial, disposeTree, buildBorderPosts, wood, ZONE_IDS } from './zones.js?v=1.47.0';
-import { WATER_Y } from './world.js?v=1.47.0';
-import { makeTextSprite, makeTag, makeSignBoard, canvasTexture, noiseTexture, smoothstep, lerp, clamp } from './util.js?v=1.47.0';
-import { buildAnimal } from './characters.js?v=1.47.0';
-import * as A from './assets.js?v=1.47.0';
-import { InstanceField } from './instancing.js?v=1.47.0';
-import { makeNoise2D, mulberry32 } from './noise.js?v=1.47.0';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, sfx } from './ui.js?v=1.47.0';
-import { HATS } from './data.js?v=1.47.0';
-import { TrailLife } from './wildlife.js?v=1.47.0';
-import { voice, stopVoice } from './audio.js?v=1.47.0';
+import { ZONE_HALF, SOUTH_END, GROUND_Y, CROSS_AT, smoothRoad, RoadIndex, buildRoadMesh, roadMaterial, disposeTree, buildBorderPosts, wood, ZONE_IDS } from './zones.js?v=1.47.1';
+import { WATER_Y } from './world.js?v=1.47.1';
+import { makeTextSprite, makeTag, makeSignBoard, canvasTexture, noiseTexture, smoothstep, lerp, clamp } from './util.js?v=1.47.1';
+import { buildAnimal } from './characters.js?v=1.47.1';
+import * as A from './assets.js?v=1.47.1';
+import { InstanceField } from './instancing.js?v=1.47.1';
+import { makeNoise2D, mulberry32 } from './noise.js?v=1.47.1';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, sfx } from './ui.js?v=1.47.1';
+import { HATS } from './data.js?v=1.47.1';
+import { TrailLife } from './wildlife.js?v=1.47.1';
+import { voice, stopVoice } from './audio.js?v=1.47.1';
 
 const SEED = 4711, TAU = Math.PI * 2, H = ZONE_HALF;
 // krasts (ūdens mala) un strauts — tīras funkcijas (tās izmanto arī karte)
@@ -1027,7 +1027,7 @@ export class TrailZone {
       spl[i * 4] = wF * kk; spl[i * 4 + 1] = wS * kk; spl[i * 4 + 2] = wD * kk; spl[i * 4 + 3] = wR * kk;
       col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
     }
-    this.baseMat = new THREE.MeshStandardMaterial({ vertexColors: true, map: detailTex(), roughness: 1, metalness: 0 });
+    this.baseMat = lowGroundMaterial(); // 1.47.1: zemai kvalitātei — smalka zāle/zeme divos mērogos (agrāk viena izstiepta svītru tekstūra)
     this.tiles = [];
     for (let tz = 0; tz < NZ / TILE; tz++) for (let tx = 0; tx < NX / TILE; tx++) {
       const lods = [1, 2, 4].map((st, li) => {
@@ -1590,7 +1590,7 @@ export class TrailZone {
     this.disposed = true;
     if (this.group.parent) this.group.parent.remove(this.group);
     const rm = rockMaterial();
-    const keep = [A.toyMaterial(), rm, rm.map, rockNoise, wood(), roadMaterial(), pathMaterial(), pathMaterial().map, detailTex(), waterNormal(), foamTex(), arrowGeometry()];
+    const keep = [A.toyMaterial(), rm, rm.map, rockNoise, wood(), roadMaterial(), pathMaterial(), pathMaterial().map, detailTex(), lowGroundMaterial(), lowGroundMaterial().map, dirtTex(), waterNormal(), foamTex(), arrowGeometry()];
     if (this.photoMat) keep.push(this.photoMat);
     if (rm.normalMap) keep.push(rm.normalMap);
     for (const k in tplCache) tplCache[k].traverse((o) => { if (o.geometry) keep.push(o.geometry); });
@@ -1611,6 +1611,102 @@ function detailTex() {
   });
   detailT.wrapS = detailT.wrapT = THREE.RepeatWrapping; detailT.anisotropy = 4;
   return detailT;
+}
+// 1.47.1: bezšuvju tekstūras zīmēšana — katru triepienu zīmē arī pārnestu pāri malām
+function wrapDraw(w, h, x, y, r, f) {
+  for (const dx of [-w, 0, w]) for (const dy of [-h, 0, h]) {
+    const X = x + dx, Y = y + dy;
+    if (X + r < 0 || X - r > w || Y + r < 0 || Y - r > h) continue;
+    f(X, Y);
+  }
+}
+// zāles stiebriņi (gaišums ap ~0,8; krāsu dod reljefa krāsa) — neitrāli, viegli zaļgani/dzeltenīgi
+let grassT = null;
+function grassTex() {
+  if (grassT) return grassT;
+  grassT = canvasTexture(256, 256, (g, w, h) => {
+    g.fillStyle = '#c4c6bc'; g.fillRect(0, 0, w, h);
+    // tumšāki un gaišāki laukumiņi (biezāka/retāka zāle)
+    for (let k = 0; k < 60; k++) {
+      const x = Math.random() * w, y = Math.random() * h, r = 8 + Math.random() * 22, dark = Math.random() < 0.55;
+      wrapDraw(w, h, x, y, r, (X, Y) => {
+        const gr = g.createRadialGradient(X, Y, 0, X, Y, r);
+        gr.addColorStop(0, dark ? 'rgba(70,80,50,0.22)' : 'rgba(255,255,225,0.18)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+        g.fillStyle = gr; g.fillRect(X - r, Y - r, r * 2, r * 2);
+      });
+    }
+    // stiebri
+    g.lineCap = 'round';
+    for (let k = 0; k < 7000; k++) {
+      const x = Math.random() * w, y = Math.random() * h, L = 3 + Math.random() * 7, a = (Math.random() - 0.5) * 1.3;
+      const l = 120 + Math.random() * 135, yel = Math.random() < 0.18;
+      g.strokeStyle = `rgba(${Math.round(l * (yel ? 1.05 : 0.9))},${Math.round(l)},${Math.round(l * (yel ? 0.72 : 0.8))},0.85)`;
+      g.lineWidth = 0.8 + Math.random() * 0.9;
+      wrapDraw(w, h, x, y, L, (X, Y) => { g.beginPath(); g.moveTo(X, Y); g.quadraticCurveTo(X + Math.sin(a) * L * 0.4, Y - L * 0.5, X + Math.sin(a) * L, Y - Math.cos(a) * L); g.stroke(); });
+    }
+    // āboliņa lapiņas un sīki ziediņi
+    for (let k = 0; k < 140; k++) {
+      const x = Math.random() * w, y = Math.random() * h, fl = Math.random() < 0.25;
+      wrapDraw(w, h, x, y, 4, (X, Y) => {
+        g.fillStyle = fl ? (Math.random() < 0.5 ? 'rgba(255,255,240,0.9)' : 'rgba(255,230,120,0.9)') : 'rgba(150,175,110,0.8)';
+        for (let q = 0; q < (fl ? 1 : 3); q++) { g.beginPath(); g.arc(X + (q - 1) * 1.6, Y + (q === 1 ? -1.4 : 0), fl ? 1.3 : 1.6, 0, 7); g.fill(); }
+      });
+    }
+  });
+  grassT.wrapS = grassT.wrapT = THREE.RepeatWrapping; grassT.anisotropy = 4;
+  return grassT;
+}
+// zeme / smiltis (takai, krastiem, pludmalei): oļi un plankumi
+let dirtT = null;
+function dirtTex() {
+  if (dirtT) return dirtT;
+  dirtT = canvasTexture(256, 256, (g, w, h) => {
+    g.fillStyle = '#c2bcb0'; g.fillRect(0, 0, w, h);
+    for (let k = 0; k < 40; k++) {
+      const x = Math.random() * w, y = Math.random() * h, r = 10 + Math.random() * 26, dark = Math.random() < 0.5;
+      wrapDraw(w, h, x, y, r, (X, Y) => {
+        const gr = g.createRadialGradient(X, Y, 0, X, Y, r);
+        gr.addColorStop(0, dark ? 'rgba(80,65,50,0.2)' : 'rgba(255,245,225,0.18)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+        g.fillStyle = gr; g.fillRect(X - r, Y - r, r * 2, r * 2);
+      });
+    }
+    for (let k = 0; k < 2600; k++) {
+      const x = Math.random() * w, y = Math.random() * h, r = 0.6 + Math.random() * (Math.random() < 0.1 ? 3.2 : 1.4), l = 110 + Math.random() * 145;
+      wrapDraw(w, h, x, y, r + 1, (X, Y) => {
+        g.fillStyle = `rgba(${l},${Math.round(l * 0.96)},${Math.round(l * 0.9)},0.85)`;
+        g.beginPath(); g.ellipse(X, Y, r, r * (0.6 + Math.random() * 0.4), Math.random() * 3, 0, 7); g.fill();
+        if (r > 2) { g.fillStyle = 'rgba(255,255,255,0.25)'; g.beginPath(); g.arc(X - r * 0.3, Y - r * 0.3, r * 0.35, 0, 7); g.fill(); }
+      });
+    }
+  });
+  dirtT.wrapS = dirtT.wrapT = THREE.RepeatWrapping; dirtT.anisotropy = 4;
+  return dirtT;
+}
+// zemās kvalitātes reljefa materiāls: zāle divos mērogos (bez redzama atkārtojuma) + zeme pēc splat (takā, krastā, smiltīs, klintīs)
+// + liela mēroga gaišuma svārstības. uv = x/26 m → zāle ik ~3,7 m un ~11 m, zeme ik ~2,9 m
+let lowGM = null;
+function lowGroundMaterial() {
+  if (lowGM) return lowGM;
+  const m = new THREE.MeshStandardMaterial({ vertexColors: true, map: grassTex(), roughness: 1, metalness: 0 });
+  const dirt = { value: dirtTex() };
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.uDirt = dirt;
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 splat;\nvarying vec4 vSplat;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSplat = splat;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D uDirt;\nvarying vec4 vSplat;')
+      .replace('#include <map_fragment>', `
+        vec2 tu = vMapUv;
+        vec3 g1 = texture2D(map, tu * 7.0).rgb;
+        vec3 g2 = texture2D(map, tu * 2.37 + vec2(0.31, 0.67)).rgb;
+        vec3 gr = g1 * (0.45 + 0.9 * g2.g) * 1.2;
+        vec3 dt = texture2D(uDirt, tu * 9.0).rgb * 1.15;
+        float wd = clamp(vSplat.z + vSplat.y * 0.8 + vSplat.w * 0.7, 0.0, 1.0);
+        vec3 tc = mix(gr, dt, smoothstep(0.15, 0.75, wd));
+        tc *= 0.86 + 0.28 * texture2D(map, tu * 0.29 + vec2(0.13, 0.41)).g;
+        diffuseColor.rgb *= tc;`);
+  };
+  m.customProgramCacheKey = () => 'trailLowGround';
+  return (lowGM = m);
 }
 let pathM = null;
 function pathMaterial() {

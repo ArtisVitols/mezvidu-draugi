@@ -1,34 +1,34 @@
 import * as THREE from 'three';
-import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, yardPart, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.47.0';
-import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.47.0';
-import { Controls } from './controls.js?v=1.47.0';
+import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, yardPart, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.47.1';
+import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.47.1';
+import { Controls } from './controls.js?v=1.47.1';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS, TREES, FRUITS, CLOTHES, SLOTS, DECOR } from './data.js?v=1.47.0';
-import { writeSave } from './save.js?v=1.47.0';
-import { Sound } from './sound.js?v=1.47.0';
-import { getVolume, setVolume, voice, voiceOn, setVoiceOn } from './audio.js?v=1.47.0';
-import { BugSpot } from './bugspot.js?v=1.47.0';
-import { VERSION, BUILD_DATE } from './version.js?v=1.47.0';
-import { makeTextSprite, makeTag, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.47.0';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.47.0';
-import { icon, iconEl, fishSvg } from './icons.js?v=1.47.0';
-import { Activities, makeTeam } from './activities.js?v=1.47.0';
-import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel, statsWanted } from './quality.js?v=1.47.0';
-import { hdrEnvironment } from './gfx.js?v=1.47.0';
-import { buildRod, buildDecor } from './props.js?v=1.47.0';
-import { buildStall, buildBunting } from './market.js?v=1.47.0';
-import { InstanceField } from './instancing.js?v=1.47.0';
-import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.47.0';
-import { Vehicles } from './vehicles.js?v=1.47.0';
-import { Farm, fmtLeft } from './farm.js?v=1.47.0';
-import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, zoneBounds, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.47.0';
-import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.47.0';
-import { plotOf } from './world.js?v=1.47.0';
-import { kartClamp } from './racetrack.js?v=1.47.0';
-import { Bus, BUS_STOPS } from './bus.js?v=1.47.0';
-import { Garden, UNLOCK } from './garden.js?v=1.47.0';
-import { MZ } from './assets.js?v=1.47.0';
-import { TrailZone, Trail, trailMap, trailIcons, trailItem, TASKS as TRAIL_TASKS } from './trail.js?v=1.47.0';
+import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS, TREES, FRUITS, CLOTHES, SLOTS, DECOR } from './data.js?v=1.47.1';
+import { writeSave } from './save.js?v=1.47.1';
+import { Sound } from './sound.js?v=1.47.1';
+import { getVolume, setVolume, voice, voiceOn, setVoiceOn } from './audio.js?v=1.47.1';
+import { BugSpot } from './bugspot.js?v=1.47.1';
+import { VERSION, BUILD_DATE } from './version.js?v=1.47.1';
+import { makeTextSprite, makeTag, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.47.1';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.47.1';
+import { icon, iconEl, fishSvg } from './icons.js?v=1.47.1';
+import { Activities, makeTeam } from './activities.js?v=1.47.1';
+import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel, statsWanted } from './quality.js?v=1.47.1';
+import { hdrEnvironment } from './gfx.js?v=1.47.1';
+import { buildRod, buildDecor } from './props.js?v=1.47.1';
+import { buildStall, buildBunting } from './market.js?v=1.47.1';
+import { InstanceField } from './instancing.js?v=1.47.1';
+import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.47.1';
+import { Vehicles } from './vehicles.js?v=1.47.1';
+import { Farm, fmtLeft } from './farm.js?v=1.47.1';
+import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, zoneBounds, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.47.1';
+import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.47.1';
+import { plotOf } from './world.js?v=1.47.1';
+import { kartClamp } from './racetrack.js?v=1.47.1';
+import { Bus, BUS_STOPS } from './bus.js?v=1.47.1';
+import { Garden, UNLOCK } from './garden.js?v=1.47.1';
+import { MZ } from './assets.js?v=1.47.1';
+import { TrailZone, Trail, trailMap, trailIcons, trailItem, TASKS as TRAIL_TASKS } from './trail.js?v=1.47.1';
 
 const ANIM = ['idle', 'walk', 'run', 'jump', 'swim', 'sit', 'pet', 'wave', 'fish', 'ski', 'lift', 'throw'];
 const MUSH_RESPAWN = 120000;
@@ -953,8 +953,9 @@ export class Game {
       if (this.ended) return;
       requestAnimationFrame(loop);
       const dt = Math.min(0.1, this.clock.getDelta());
-      this.update(dt);
-      this.renderFrame();
+      try { this.update(dt); } catch (e) { this.loopError('update', e); }
+      try { this.sendPos(dt); } catch (e) { this.loopError('send', e); }
+      try { this.renderFrame(); } catch (e) { this.loopError('render', e); }
     };
     loop();
     this.saveHandler = () => this.persist();
@@ -1180,7 +1181,10 @@ export class Game {
             // tīkla svārstības (cik vēlāk par ātrāko ziņu pienāk šī): aizturi pielāgo tām — ātri pieaug, lēni samazinās
             const late = off - r.off;
             r.jit = r.jit == null ? late : lerp(r.jit, late, late > r.jit ? 0.25 : 0.01);
-            const last = r.buf[r.buf.length - 1];
+            let last = r.buf[r.buf.length - 1];
+            // 1.47.1: drauga pulkstenis pārlēca atpakaļ (telefona laika labošana) — citādi visas jaunās pozīcijas tiktu
+            // atmestas kā „vecas”, un draugs stāvētu uz vietas, līdz viņa laiks panāk veco
+            if (last && st < last.t - 1500) { r.buf = []; r.gap = null; r.jit = null; r.off = off; last = null; }
             if (!last || st > last.t) {
               if (last) r.gap = r.gap == null ? st - last.t : lerp(r.gap, Math.min(400, st - last.t), 0.15);
               r.buf.push({ t: st, x: e[1], y: e[2], z: e[3], ry: e[4] });
@@ -1327,47 +1331,52 @@ export class Game {
 
     // lēnākos telefonos sadalām kustību vairākos soļos, lai spēle nepalēninātos
     const steps = Math.min(3, Math.ceil(dt / 0.034));
-    for (let i = 0; i < steps; i++) {
-      if (this.me.bus) { /* sēž autobusā (updateBus) */ } else if (this.me.inKart) this.updateKart(dt / steps, mv);
-      else if (this.me.veh) this.updateVehicle(dt / steps, mv);
-      else if (this.me.ride) { if (i === 0) this.updateRide(dt); }
-      else if (this.me.lift) { if (i === 0) this.updateLift(dt); }
-      else if (this.me.ski) this.updateSki(dt / steps, mv, jump && i === 0);
-      else this.updateWalk(dt / steps, mv, jump && i === 0);
-    }
+    // 1.47.1: katra daļa atsevišķi aizsargāta — kļūda vienā (piem. skaņā vai mājdzīvniekos) vairs neaptur
+    // draugu zīmēšanu un manas pozīcijas sūtīšanu (agrāk: draugs „pazūd”, un citi neredz mani kustamies)
+    const G = (name, f) => { try { f(); } catch (e) { this.loopError(name, e); } };
+    G('move', () => {
+      for (let i = 0; i < steps; i++) {
+        if (this.me.bus) { /* sēž autobusā (updateBus) */ } else if (this.me.inKart) this.updateKart(dt / steps, mv);
+        else if (this.me.veh) this.updateVehicle(dt / steps, mv);
+        else if (this.me.ride) { if (i === 0) this.updateRide(dt); }
+        else if (this.me.lift) { if (i === 0) this.updateLift(dt); }
+        else if (this.me.ski) this.updateSki(dt / steps, mv, jump && i === 0);
+        else this.updateWalk(dt / steps, mv, jump && i === 0);
+      }
+    });
 
-    this.updateBus(dt);
-    this.updateCamera(dt);
-    this.updateSound(dt);
+    G('bus', () => this.updateBus(dt));
+    G('camera', () => this.updateCamera(dt));
+    G('sound', () => this.updateSound(dt));
     MZ.time.value += dt; // 1.37.0: vējš jaunajiem augiem/kokiem (assets.js šeideris)
-    this.updateSun(dt);
-    this.updateRemotes(dt);
+    G('sun', () => this.updateSun(dt));
+    G('remotes', () => this.updateRemotes(dt));
     const T = this.terr;
     this.timers.vis = (this.timers.vis || 0) - dt;
-    if (this.timers.vis <= 0) { this.timers.vis = 0.3; T.updateVisibility(this.camera.position.x, this.camera.position.z); }
-    if (T.isWorld) {
+    if (this.timers.vis <= 0) { this.timers.vis = 0.3; G('vis', () => T.updateVisibility(this.camera.position.x, this.camera.position.z)); }
+    if (T.isWorld) G('clouds', () => {
       T.updateClouds(dt, this.camera.position);
       if (T.grassCenter) T.grassCenter.set(this.me.pos.x, this.me.pos.z);
-    }
-    if (this.zone === RACE && this.raceW.startFx) this.raceW.startFx(t / 1000);
+    });
+    if (this.zone === RACE && this.raceW.startFx) G('startFx', () => this.raceW.startFx(t / 1000));
     if (this.zone === FOREST) {
-      this.updateWorldObjects(dt, t);
-      this.updateActivities(dt, t);
+      G('world', () => this.updateWorldObjects(dt, t));
+      G('activities', () => this.updateActivities(dt, t));
     } else {
-      this.updatePets(dt);
-      this.updateMg(dt, t);
-      this.updateFishing(dt, t); // 1.45.0: makšķerēšana arī takas dīķī
-      if (!T.isWorld && T.update) T.update(dt, this);
-      if (this.zone === 's') this.updateBoats(dt); // 1.46.0: stāvošā laiva šūpojas
-      if (this.zone === 'n') this.updateWinter(dt);
-      if (this.zone === FARM) this.updateFarm(dt);
+      G('pets', () => this.updatePets(dt));
+      G('mg', () => this.updateMg(dt, t));
+      G('fishing', () => this.updateFishing(dt, t)); // 1.45.0: makšķerēšana arī takas dīķī
+      if (!T.isWorld && T.update) G('zone', () => T.update(dt, this));
+      if (this.zone === 's') G('boats', () => this.updateBoats(dt)); // 1.46.0: stāvošā laiva šūpojas
+      if (this.zone === 'n') G('winter', () => this.updateWinter(dt));
+      if (this.zone === FARM) G('farm', () => this.updateFarm(dt));
     }
-    this.updateRace(dt, t);
-    this.updateEffects(dt);
-    this.updateExits(dt);
+    G('race', () => this.updateRace(dt, t));
+    G('effects', () => this.updateEffects(dt));
+    G('exits', () => this.updateExits(dt));
 
     this.timers.action -= dt;
-    if (this.timers.action <= 0) { this.timers.action = 0.15; this.refreshAction(); }
+    if (this.timers.action <= 0) { this.timers.action = 0.15; G('action', () => this.refreshAction()); }
     if (action) this.doAction();
 
     this.timers.garden -= dt;
@@ -1376,21 +1385,35 @@ export class Game {
       if (this.farmDirty && this.myId >= 0) { this.farmDirty = false; this.sendProfile(); }
     }
 
-    this.timers.send -= dt;
-    if (this.timers.send <= 0 && this.myId >= 0) {
-      // braucot sūtām 20× sekundē (ātra kustība), ejot — 10×
-      this.timers.send = this.me.inKart || this.me.veh ? 0.05 : 0.1;
-      const p = this.me.pos;
-      const ry = this.me.inKart ? this.me.kart.heading : this.me.veh ? this.me.veh.heading : this.me.heading;
-      const r2 = (v) => Math.round(v * 100) / 100;
-      this.net.toHost({ t: 'pos', p: [r2(p.x), r2(p.y), r2(p.z), r2(ry), ANIM.indexOf(this.me.state), this.me.inKart ? 1 : this.vehCode(), r2(this.me.progress || 0), ZONE_IDS.indexOf(this.zone), ...this.rideInfo(), this.vehIdInfo(), Math.round(this.now())] });
-    }
 
     this.timers.map -= dt;
     if (this.timers.map <= 0) { this.timers.map = 0.25; this.drawMinimap(); }
     this.timers.save -= dt;
     this.save.playTime += dt;
     if (this.timers.save <= 0) { this.timers.save = 5; this.persist(); }
+  }
+
+  // manas pozīcijas sūtīšana (1.47.1: atsevišķi no update — sūta arī tad, ja kāda spēles daļa met kļūdu)
+  sendPos(dt) {
+    this.timers.send -= dt;
+    if (this.timers.send > 0 || this.myId < 0) return;
+    // braucot sūtām 20× sekundē (ātra kustība), ejot — 10×
+    this.timers.send = this.me.inKart || this.me.veh ? 0.05 : 0.1;
+    const p = this.me.pos, me = this.me;
+    const ry = (me.inKart && me.kart ? me.kart.heading : me.veh ? me.veh.heading : me.heading) || 0;
+    const r2 = (v) => Math.round((Number.isFinite(v) ? v : 0) * 100) / 100;
+    let veh = 0, ride = [-1, 0], vid = '';
+    try { veh = me.inKart ? 1 : this.vehCode(); ride = this.rideInfo(); vid = this.vehIdInfo(); } catch (e) { this.loopError('sendPos', e); }
+    this.net.toHost({ t: 'pos', p: [r2(p.x), r2(p.y), r2(p.z), r2(ry), Math.max(0, ANIM.indexOf(me.state)), veh, r2(me.progress || 0), ZONE_IDS.indexOf(this.zone), ...ride, vid, Math.round(this.now())] });
+  }
+
+  // kļūda kādā spēles daļā: konsolē (🐞 kļūdu vietai) vienreiz par katru atšķirīgu kļūdu, spēle turpinās
+  loopError(name, e) {
+    const key = name + ':' + (e && e.message);
+    this.loopErrs = this.loopErrs || new Set();
+    if (this.loopErrs.has(key) || this.loopErrs.size > 50) return;
+    this.loopErrs.add(key);
+    console.error('Spēles cikla kļūda [' + name + ']:', e);
   }
 
   updateWalk(dt, mv, jump) {

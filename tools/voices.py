@@ -10,6 +10,7 @@ import json, os, re, subprocess, sys, tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, 'assets', 'voice')
+TARGET = -11.0  # LUFS (1.47.1; agrāk -16)
 
 # tēls → (balss augstums, runas garums — >1 lēnāk)
 VOICES = {
@@ -97,12 +98,25 @@ def record(piper_dir, lid, voice, text):
         wav = os.path.join(tmp, 'a.wav')
         subprocess.run([exe, '-m', os.path.join(piper_dir, 'lv.onnx'), '--length_scale', str(ls), '--sentence_silence', '0.25', '-f', wav],
                        input=clean(text).encode('utf-8'), check=True, stderr=subprocess.DEVNULL)
-        # augstums bez ātruma maiņas; dziļie basi nost (telefona skaļrunis), skaļums izlīdzināts; klusums galos nost
+        # augstums bez ātruma maiņas; dziļie basi nost (telefona skaļrunis); klusums galos nost
+        # 1.47.1: skaļāk — skaidrības pacēlums ~3 kHz, kompresors, tad izmērīts skaļums → precīzi TARGET LUFS ar limiteri
+        # (agrāk loudnorm -16 LUFS — telefonā par klusu; vienā gājienā loudnorm īsām frāzēm netrāpa)
         af = (f'asetrate={int(22050 * pitch)},aresample=22050,atempo={1 / pitch:.4f},highpass=f=130,'
               'silenceremove=start_periods=1:start_threshold=-45dB,areverse,silenceremove=start_periods=1:start_threshold=-45dB,areverse,'
-              'apad=pad_dur=0.08,loudnorm=I=-16:TP=-1.5:LRA=11')
-        subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', wav, '-af', af, '-ac', '1', '-ar', '22050', '-b:a', '48k',
-                        os.path.join(OUT, lid + '.mp3')], check=True)
+              'equalizer=f=3000:t=q:w=1.2:g=4,acompressor=threshold=-24dB:ratio=4:attack=4:release=120,apad=pad_dur=0.08')
+        pre = os.path.join(tmp, 'b.wav')
+        subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', wav, '-af', af, '-ac', '1', '-ar', '22050', pre], check=True)
+        gain = 0
+        for _ in range(4):  # limiteris nedaudz samazina skaļumu — pielāgo vēlreiz; mēra frāzi 7× pēc kārtas (īsām frāzēm kā „divi” citādi nav mērījuma)
+            r = subprocess.run(['ffmpeg', '-nostats', '-stream_loop', '6', '-i', pre, '-af', f'volume={gain}dB,alimiter=limit=0.7:level=false,ebur128', '-f', 'null', '-'],
+                               capture_output=True, text=True)
+            m = re.findall(r'I:\s+(-?[\d.]+) LUFS', r.stderr)
+            if not m: break
+            err = TARGET - float(m[-1])
+            if abs(err) < 0.3: break
+            gain += err
+        subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', pre, '-af', f'volume={gain}dB,alimiter=limit=0.7:level=false',
+                        '-ac', '1', '-ar', '22050', '-b:a', '48k', os.path.join(OUT, lid + '.mp3')], check=True)
 
 
 def main():

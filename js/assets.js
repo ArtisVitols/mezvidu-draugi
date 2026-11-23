@@ -1,7 +1,7 @@
 // 🧸 Jaunie 3D objekti (2.0 komplekts, 1.37.0): viens kopīgs materiāls (toyMaterial), katrs objekts — viens tīkls.
 // Izveidots ar dizaina AI no katalogs.html; spēles moduļi (characters, props, vehicles, bus, farmyard, market) pārsūta savus build* šeit.
 // Mežvidu Draugi — 3D asset kit v2 (three.js r160). Generated 2026-11-20.
-// Usage: import * as A from './mezvidu-assets.js?v=1.47.0'; scene.add(A.buildAnimal({animal:'lapsa'}).root); each frame: A.MZ.time.value += dt;
+// Usage: import * as A from './mezvidu-assets.js?v=1.47.1'; scene.add(A.buildAnimal({animal:'lapsa'}).root); each frame: A.MZ.time.value += dt;
 import * as THREE from 'three';
 
 // =====================================================================
@@ -2047,18 +2047,15 @@ export function buildGateArch() {
     rod(k, [0, GATE_BEAM - 0.1, s * 0.9], [0, GATE_BOARD + 0.18, s * 0.9], 0.015, '#3a3a3a', { rough: 0.5, metal: 0.6, seg: 4 });
   }
   k.add(G.rbox(0.22, 0.22, GATE_W + 0.7, 0.04), D, { p: [0, GATE_BEAM, 0], rough: 0.9 });
-  // board with the farm name lives as a label; frame here
-  k.add(G.rbox(0.1, 0.62, 2.3, 0.04), '#c99a62', { p: [0, GATE_BOARD, 0], rough: 0.85 });
+  // 1.47.1: dēli ar saimnieka vārdu pakar spēle (farm.js setGardenSign, makeSignBoard) — šeit tikai ķēdes.
+  // Agrāk te bija dēlis ar „Mana sēta”, kas aizsedza vārda zīmi (abi 2,6 m augstumā)
   // climbing roses
   for (const s of [-1, 1]) for (let i = 0; i < 6; i++) {
     const y = 0.4 + i * 0.5, a = i * 1.7;
     k.add(G.blob(0.15, 1, 0.25, i + s), '#3f7d28', { p: [Math.sin(a) * 0.14, y, s * GATE_W / 2 + Math.cos(a) * 0.14], rough: 0.85, sway: 0.3 });
     if (i % 2) k.add(flowerGeo(0.05, 5, 0.012), '#ff5a7a', { p: [Math.sin(a) * 0.25, y + 0.05, s * GATE_W / 2 + Math.cos(a) * 0.25], r: [0, a, 0], rough: 0.6 });
   }
-  const g = k.build({ name: 'gate' });
-  const lab = labelMesh('🏡 Mana sēta', 2.1, 0.5, { bg: '#c99a62', fg: '#4a2a12', plank: true, gap: 0.055 });
-  lab.position.set(0, GATE_BOARD, 0); lab.rotation.y = Math.PI / 2; g.add(lab);
-  return g;
+  return k.build({ name: 'gate' });
 }
 
 /** sign board: wood or road style; arrow optional. Board = toy mesh, faces = 1 label mesh */
