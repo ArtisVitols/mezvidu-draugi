@@ -17,7 +17,8 @@ Pašreizējā versija: **1.6.0** (redzama sākuma ekrānā un ☰ izvēlnē). Iz
 🔊 Skaņas: soļi, putni, vējš, ūdens, uguns, dzinēji, darbu un balvu skaņas (CC0, sk. `assets/snd/LICENSE.txt`).
 
 🗣️ Balsis: dzīvnieki runā latviski — takas draugi, tirgus pārdevēji, autobusa šoferis kaķis Kārlis un sacīkšu atpakaļskaitīšana. Skaļumu (arī atsevišķi balsīm un efektiem) un balsis var mainīt ⚙️ Iestatījumos (balsis — Microsoft neironu balsis Everita un Nils, sk. `assets/voice/LICENSE.txt`).
-🔌 Ja savienojums uz brīdi pārtrūkst (piem. saimnieks samazina spēli), draugi paši pieslēdzas atpakaļ.
+🔌 Ja savienojums uz brīdi pārtrūkst (piem. saimnieks samazina spēli), draugi paši pieslēdzas atpakaļ. Draugu un transporta kustība ir vienmērīga arī lēnākos telefonos.
+🔁 Sākot piedzīvojumu no jauna, bebrs atkal būvē tiltu un roņa laiva atgriežas jūrā.
 🐾 Mājdzīvnieks brauc tev līdzi visos transportos — mašīnā, velosipēdā, ragavās, autobusā, kartingā un pacēlājā.
 
 **Vadība:** kreisā ekrāna puse — kursorsvira, labā puse — kamera (2 pirksti — tuvināt), ⤒ — lēkt, dzeltenā poga — darbība.

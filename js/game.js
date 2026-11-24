@@ -1,34 +1,34 @@
 import * as THREE from 'three';
-import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, yardPart, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.48.0';
-import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.48.0';
-import { Controls } from './controls.js?v=1.48.0';
+import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, yardPart, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.49.0';
+import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.49.0';
+import { Controls } from './controls.js?v=1.49.0';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS, TREES, FRUITS, CLOTHES, SLOTS, DECOR } from './data.js?v=1.48.0';
-import { writeSave } from './save.js?v=1.48.0';
-import { Sound } from './sound.js?v=1.48.0';
-import { getVolume, setVolume, getFxVolume, setFxVolume, getVoiceVolume, setVoiceVolume, voice, voiceOn, setVoiceOn } from './audio.js?v=1.48.0';
-import { BugSpot } from './bugspot.js?v=1.48.0';
-import { VERSION, BUILD_DATE } from './version.js?v=1.48.0';
-import { makeTextSprite, makeTag, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.48.0';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.48.0';
-import { icon, iconEl, fishSvg } from './icons.js?v=1.48.0';
-import { Activities, makeTeam } from './activities.js?v=1.48.0';
-import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel, statsWanted } from './quality.js?v=1.48.0';
-import { hdrEnvironment } from './gfx.js?v=1.48.0';
-import { buildRod, buildDecor } from './props.js?v=1.48.0';
-import { buildStall, buildBunting } from './market.js?v=1.48.0';
-import { InstanceField } from './instancing.js?v=1.48.0';
-import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.48.0';
-import { Vehicles } from './vehicles.js?v=1.48.0';
-import { Farm, fmtLeft } from './farm.js?v=1.48.0';
-import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, zoneBounds, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.48.0';
-import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.48.0';
-import { plotOf } from './world.js?v=1.48.0';
-import { kartClamp } from './racetrack.js?v=1.48.0';
-import { Bus, BUS_STOPS } from './bus.js?v=1.48.0';
-import { Garden, UNLOCK } from './garden.js?v=1.48.0';
-import { MZ } from './assets.js?v=1.48.0';
-import { TrailZone, Trail, trailMap, trailIcons, trailItem, TASKS as TRAIL_TASKS } from './trail.js?v=1.48.0';
+import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS, TREES, FRUITS, CLOTHES, SLOTS, DECOR } from './data.js?v=1.49.0';
+import { writeSave } from './save.js?v=1.49.0';
+import { Sound } from './sound.js?v=1.49.0';
+import { getVolume, setVolume, getFxVolume, setFxVolume, getVoiceVolume, setVoiceVolume, voice, voiceOn, setVoiceOn } from './audio.js?v=1.49.0';
+import { BugSpot } from './bugspot.js?v=1.49.0';
+import { VERSION, BUILD_DATE } from './version.js?v=1.49.0';
+import { makeTextSprite, makeTag, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.49.0';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.49.0';
+import { icon, iconEl, fishSvg } from './icons.js?v=1.49.0';
+import { Activities, makeTeam } from './activities.js?v=1.49.0';
+import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel, statsWanted } from './quality.js?v=1.49.0';
+import { hdrEnvironment } from './gfx.js?v=1.49.0';
+import { buildRod, buildDecor } from './props.js?v=1.49.0';
+import { buildStall, buildBunting } from './market.js?v=1.49.0';
+import { InstanceField } from './instancing.js?v=1.49.0';
+import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.49.0';
+import { Vehicles } from './vehicles.js?v=1.49.0';
+import { Farm, fmtLeft } from './farm.js?v=1.49.0';
+import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, zoneBounds, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.49.0';
+import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.49.0';
+import { plotOf } from './world.js?v=1.49.0';
+import { kartClamp } from './racetrack.js?v=1.49.0';
+import { Bus, BUS_STOPS } from './bus.js?v=1.49.0';
+import { Garden, UNLOCK } from './garden.js?v=1.49.0';
+import { MZ } from './assets.js?v=1.49.0';
+import { TrailZone, Trail, trailMap, trailIcons, trailItem, TASKS as TRAIL_TASKS } from './trail.js?v=1.49.0';
 
 const ANIM = ['idle', 'walk', 'run', 'jump', 'swim', 'sit', 'pet', 'wave', 'fish', 'ski', 'lift', 'throw'];
 const MUSH_RESPAWN = 120000;
@@ -1190,7 +1190,7 @@ export class Game {
           if (zoneChanged) toast(`🧭 ${r.prof.name} devās uz: ${ZONES[z].icon} ${ZONES[z].name}`);
           r.zone = z;
           const st = e[12];
-          if (!r.buf || zoneChanged || !r.seen) { r.buf = []; r.gap = null; r.jit = null; }
+          if (!r.buf || zoneChanged || !r.seen) { r.buf = []; r.gap = null; r.jit = null; r.rt = null; }
           if (typeof st === 'number') {
             // sūtītāja pulkstenis → mans (mazākā novērotā aizture; lēnām pielāgojas)
             const off = nowL - st;
@@ -1201,7 +1201,7 @@ export class Game {
             let last = r.buf[r.buf.length - 1];
             // 1.47.1: drauga pulkstenis pārlēca atpakaļ (telefona laika labošana) — citādi visas jaunās pozīcijas tiktu
             // atmestas kā „vecas”, un draugs stāvētu uz vietas, līdz viņa laiks panāk veco
-            if (last && st < last.t - 1500) { r.buf = []; r.gap = null; r.jit = null; r.off = off; last = null; }
+            if (last && st < last.t - 1500) { r.buf = []; r.gap = null; r.jit = null; r.off = off; r.rt = null; last = null; }
             if (!last || st > last.t) {
               if (last) r.gap = r.gap == null ? st - last.t : lerp(r.gap, Math.min(400, st - last.t), 0.15);
               r.buf.push({ t: st, x: e[1], y: e[2], z: e[3], ry: e[4] });
@@ -1415,7 +1415,9 @@ export class Game {
     this.timers.send -= dt;
     if (this.timers.send > 0 || this.myId < 0) return;
     // braucot sūtām 20× sekundē (ātra kustība), ejot — 10×
-    this.timers.send = this.me.inKart || this.me.veh ? 0.05 : 0.1;
+    // 1.49.0: intervālu pieskaita (ne pārraksta), lai lēnā telefonā sūtīšanas biežums nesaruktu līdz katram 2./3. kadram
+    const iv = this.me.inKart || this.me.veh ? 0.05 : 0.1;
+    this.timers.send = Math.max(this.timers.send + iv, iv * 0.5);
     const p = this.me.pos, me = this.me;
     const ry = (me.inKart && me.kart ? me.kart.heading : me.veh ? me.veh.heading : me.heading) || 0;
     const r2 = (v) => Math.round((Number.isFinite(v) ? v : 0) * 100) / 100;
@@ -1675,7 +1677,15 @@ export class Game {
         // Interpolācija starp saņemtajām pozīcijām: rādām draugu nedaudz pagātnē (≈1,5 sūtīšanas intervāli),
         // tāpēc vienmēr ir divi punkti, starp kuriem vienmērīgi pārvietoties — bez raustīšanās un lēcieniem.
         const delay = clamp((r.gap || 100) * 1.1 + (r.jit || 0) * 1.3 + 20, 80, 380);
-        const q = this.sampleRemote(r, this.now() - r.off - delay);
+        // 1.49.0: atskaņošanas laiks iet vienmērīgi (ar dt), mērķim pietuvojas ar ≤ ±12 % ātruma izmaiņu —
+        // citādi katra ziņa (r.off / r.jit lēcieni, īpaši lēnā telefonā) bīdīja laiku uz priekšu/atpakaļ → raustīšanās
+        // solis = īstais laiks kopš iepriekšējā kadra (ne dt, kas ierobežots līdz 0,1 s — ļoti lēnā telefonā draugs atpaliktu)
+        const nowT = this.now(), want = nowT - r.off - delay, step = r.rtAt == null ? 0 : clamp(nowT - r.rtAt, 0, 1000);
+        r.rtAt = nowT;
+        if (r.rt == null || Math.abs(want - r.rt) > 700) r.rt = want;
+        else { const err = want - r.rt, lim = step * (0.12 + clamp((Math.abs(err) - 150) / 500, 0, 0.5)); // tālu atpalicis — panāk ātrāk
+          r.rt += step + clamp(err * Math.min(1, step * 0.003), -lim, lim); }
+        const q = this.sampleRemote(r, r.rt);
         const ks = 1 - Math.exp(-dt * 20); // viegla izlīdzināšana (ja pozīcija tika nedaudz prognozēta)
         if (r.pos.distanceToSquared(q) > 100) r.pos.set(q.x, q.y, q.z); else r.pos.lerp(q, ks);
         r.ry = angleLerp(r.ry, q.ry, ks);

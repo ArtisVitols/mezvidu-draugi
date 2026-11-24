@@ -1,7 +1,7 @@
 // HUD palīgfunkcijas, paneļi un vienkāršas skaņas
 const $ = (id) => document.getElementById(id);
 export { $ };
-import { initSound, play, audioCtx } from './audio.js?v=1.48.0';
+import { initSound, play, audioCtx } from './audio.js?v=1.49.0';
 
 // 1.35.0: mazi paziņojumi, kas parādās un pamazām izgaist (garākiem tekstiem — mazliet ilgāk)
 export function toast(text, kind = '', ms = 2600) {

@@ -4,10 +4,10 @@
 // Lokālās koordinātes: l — attālums no trases vidus uz n pusi, a — gar trasi (t virzienā).
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mulberry32 } from './noise.js?v=1.48.0';
-import { mat, canvasTexture, makeTextSprite, smoothstep } from './util.js?v=1.48.0';
-import { InstanceField } from './instancing.js?v=1.48.0';
-import { parkingSvg } from './icons.js?v=1.48.0';
+import { mulberry32 } from './noise.js?v=1.49.0';
+import { mat, canvasTexture, makeTextSprite, smoothstep } from './util.js?v=1.49.0';
+import { InstanceField } from './instancing.js?v=1.49.0';
+import { parkingSvg } from './icons.js?v=1.49.0';
 
 export const BARRIER_OFF = 8.4;      // barjeru līnija no trases vidus (trase 12 m plata)
 export const KART_LIM = 7.6;         // tālāk par šo karta vidus netiek (no trases vidus)

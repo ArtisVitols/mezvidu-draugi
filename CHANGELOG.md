@@ -1,5 +1,14 @@
 # Izmaiņu žurnāls
 
+## 1.49.0 — 2026-11-24
+- 🏎️ **Draugi un transports vairs neraustās** (īpaši lēnākā telefonā / zemā grafikā): drauga kustības atskaņošanas laiks tagad
+  iet vienmērīgi un pielāgojas tīkla aizturei pakāpeniski (≤ ±12 % ātruma). Agrāk katra ienākošā ziņa to pabīdīja, un draugi,
+  mašīnas, velosipēdi un laiva brīžiem lēca atpakaļ vai paātrinājās. Lēnā telefonā arī pozīcija tiek sūtīta paredzētajā biežumā.
+- 🌉 Sākot piedzīvojumu no jauna, tilts pazūd — 🦫 bebrs to atkal būvē (agrāk tilts palika, bet bebrs piedāvāja to būvēt).
+  Vecos saglabājumos tilts un laiva tiek salāgoti ar soli. Ja kāds restartēšanas brīdī ir aiz strauta, viņu pārceļ uz tilta galu.
+- 🚣 Roņa laiva līdz roņa uzdevumam šūpojas jūrā, nevis jau stāv piestātnē no iepriekšējā gājiena; pēc restartēšanas tā atgriežas jūrā.
+- 🧪 Jauns tests `tools/tests/net-smooth.mjs` (nevienmērīgas ziņas, lēni kadri — draugs nekad neiet atpakaļ, ātrums vienmērīgs).
+
 ## 1.48.0 — 2026-11-24
 - 🗣️ **Jaunas, dabiskas balsis**: visas frāzes ierakstītas ar Microsoft neironu balsīm (Everita un Nils) — skaidras un saprotamas;
   katram tēlam savs balss augstums un temps (bez agrākās „robota” skaņas).

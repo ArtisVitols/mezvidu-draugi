@@ -181,6 +181,8 @@ await sleep(1500);
 const rs = await st();
 check(rs.h.step === 0 && rs.c.step === 0 && !rs.h.acc, 'sākt no jauna — solis 0 abiem');
 check(await host.evaluate(() => __game.terr.fishes.count === 0 && __game.terr.logs.count === 0), 'grozi/šķūnis tukši pēc restartēšanas');
+check(await host.evaluate(() => !__game.trail.bridge) && await cl.evaluate(() => !__game.trail.bridge && !__game.terr.bridgeDone && __game.terr.planks.count === 0), 'tilts noņemts pēc restartēšanas (bebrs būvē no jauna)');
+check(await host.evaluate(() => { const v = __game.hs.vehs.boat1; return !__game.hs.trail.boat && Math.abs(v.x - 112) < 1 && Math.abs(v.h + 2.3) < 0.01; }), 'laiva jūrā pēc restartēšanas');
 check(await host.evaluate(() => __game.terr.arrows.every((m) => !m.visible)) && await cl.evaluate(() => __game.terr.arrows.every((m) => !m.visible)), 'bultas paslēptas pēc restartēšanas');
 log('KĻŪDAS:', errs.length ? errs.join('\n') : 'nav');
 log(fails ? `NEIZDEVĀS: ${fails}` : 'VISS IZDEVĀS');

@@ -51,8 +51,8 @@ const sees = async (viewer, pos, lim = 3, ms = 90000) => {
 const d = (s, p) => (s && s.x != null ? Math.hypot(s.x - p.x, s.z - p.z).toFixed(1) : '—');
 // abi redz viens otru kustamies
 const both = async (tag) => {
-  const p = await cl.evaluate(() => TT.walk(90, Math.random() * 6)); const s = await sees(host, p);
-  const h = await host.evaluate(() => TT.walk(90, Math.random() * 6)); const s2 = await sees(cl, h);
+  const p = await cl.evaluate(() => TT.walk(90, Math.PI + (Math.random() - 0.5) * 1.2)); const s = await sees(host, p);
+  const h = await host.evaluate(() => TT.walk(90, Math.PI + (Math.random() - 0.5) * 1.2)); const s2 = await sees(cl, h);
   const ok = s && s.x != null && Math.hypot(s.x - p.x, s.z - p.z) < 3 && s.vis && s2 && s2.x != null && Math.hypot(s2.x - h.x, s2.z - h.z) < 3 && s2.vis;
   check(ok, `${tag}: abi redz viens otru kustamies (saimnieks→klients ${d(s, p)} m, klients→saimnieks ${d(s2, h)} m)`);
 };

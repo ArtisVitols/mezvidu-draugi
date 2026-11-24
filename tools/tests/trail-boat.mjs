@@ -201,8 +201,15 @@ await sleep(500);
 await host.click('text=🔁 Sākt piedzīvojumu no jauna');
 await sleep(1500);
 s = await st();
-check(s.h.step === 0 && s.c.step === 0 && s.h.boat && s.c.boat, 'pēc restartēšanas solis 0, laiva joprojām brīva');
-await host.evaluate(() => { const g = __game, tr = g.hs.trail; tr.step = 6; tr.acc = false; g.hostTrailSend(null); });
+check(s.h.step === 0 && s.c.step === 0 && !s.h.boat && !s.c.boat, 'pēc restartēšanas solis 0, laiva vairs nav brīva (1.49.0)');
+check(Math.abs(s.h.bx - L.home.x) < 1 && Math.abs(s.c.bz - L.home.z) < 1, `pēc restartēšanas laiva uzreiz atpakaļ jūrā, ne piestātnē (${s.c.bx}, ${s.c.bz})`);
+const brR = await Promise.all([host, cl].map((p) => p.evaluate(() => ({ b: __game.trail.bridge, z: __game.terr.bridgeDone, south: __game.terr.southOfStream(__game.me.pos.x, __game.me.pos.z) }))));
+check(brR.every((b) => !b.b && !b.z && !b.south), `pēc restartēšanas tilta nav un neviens nav iesprūdis aiz strauta (${JSON.stringify(brR)})`);
+const ini = await host.evaluate(() => { const g = __game, out = {}; const keep = g.save.trail;
+  for (const [n, s] of Object.entries({ s0b: { v: 3, step: 0, bridge: true, boat: true }, s5b: { v: 3, step: 5, bridge: true }, s7: { v: 3, step: 7, bridge: true, boat: true } })) { g.save.trail = s; g.hostInitTrail(); out[n] = [g.hs.trail.bridge, g.hs.trail.boat]; }
+  g.save.trail = keep; g.hostInitTrail(); return out; });
+check(JSON.stringify(ini) === JSON.stringify({ s0b: [false, false], s5b: [true, false], s7: [true, true] }), `saglabājumā tilts/laiva atbilst solim (${JSON.stringify(ini)})`);
+await host.evaluate(() => { const g = __game, tr = g.hs.trail; tr.step = 6; tr.acc = false; tr.bridge = true; g.hostTrailSend(null); });
 await sleep(800);
 for (const p of [host, cl]) await p.evaluate(({ seal }) => TT.go(seal.x + Math.sin(seal.face) * 1.6, seal.z + Math.cos(seal.face) * 1.6, seal.face + Math.PI), L);
 await sleep(500);

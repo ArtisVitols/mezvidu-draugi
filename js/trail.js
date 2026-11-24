@@ -6,17 +6,17 @@
 // TrailZone — zemes modelis (uzbūvē, ieejot, izmet, izejot). Trail — Game papildinājums (darbības, tīkls, panelis).
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { ZONE_HALF, SOUTH_END, GROUND_Y, CROSS_AT, smoothRoad, RoadIndex, buildRoadMesh, roadMaterial, disposeTree, buildBorderPosts, wood, ZONE_IDS } from './zones.js?v=1.48.0';
-import { WATER_Y } from './world.js?v=1.48.0';
-import { makeTextSprite, makeTag, makeSignBoard, canvasTexture, noiseTexture, smoothstep, lerp, clamp } from './util.js?v=1.48.0';
-import { buildAnimal } from './characters.js?v=1.48.0';
-import * as A from './assets.js?v=1.48.0';
-import { InstanceField } from './instancing.js?v=1.48.0';
-import { makeNoise2D, mulberry32 } from './noise.js?v=1.48.0';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, sfx } from './ui.js?v=1.48.0';
-import { HATS } from './data.js?v=1.48.0';
-import { TrailLife } from './wildlife.js?v=1.48.0';
-import { voice, stopVoice } from './audio.js?v=1.48.0';
+import { ZONE_HALF, SOUTH_END, GROUND_Y, CROSS_AT, smoothRoad, RoadIndex, buildRoadMesh, roadMaterial, disposeTree, buildBorderPosts, wood, ZONE_IDS } from './zones.js?v=1.49.0';
+import { WATER_Y } from './world.js?v=1.49.0';
+import { makeTextSprite, makeTag, makeSignBoard, canvasTexture, noiseTexture, smoothstep, lerp, clamp } from './util.js?v=1.49.0';
+import { buildAnimal } from './characters.js?v=1.49.0';
+import * as A from './assets.js?v=1.49.0';
+import { InstanceField } from './instancing.js?v=1.49.0';
+import { makeNoise2D, mulberry32 } from './noise.js?v=1.49.0';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, sfx } from './ui.js?v=1.49.0';
+import { HATS } from './data.js?v=1.49.0';
+import { TrailLife } from './wildlife.js?v=1.49.0';
+import { voice, stopVoice } from './audio.js?v=1.49.0';
 
 const SEED = 4711, TAU = Math.PI * 2, H = ZONE_HALF;
 // krasts (ūdens mala) un strauts — tīras funkcijas (tās izmanto arī karte)
@@ -1874,12 +1874,18 @@ export const Trail = {
     // 1.45.0: kaķis ielikts kā 3. pietura — vecajos saglabājumos (bez v) bebrs/lapsa/beigas ir par vienu tālāk
     if ((s.v | 0) < 2 && (tr.step | 0) >= KK) tr.step = (tr.step | 0) + 1;
     tr.step = clamp(tr.step | 0, 0, TASKS.length);
+    // 1.49.0: tilts un laiva atbilst solim (vecos saglabājumos pēc „sākt no jauna” tilts palika, bet bebrs to piedāvāja būvēt)
+    tr.bridge = tr.step > KB;
+    tr.boat = tr.step > KS;
     // 1.44.1: saglabājums no laika pirms šķēršļiem (< 1.43.0) — jau noietajā takas daļā šķēršļi skaitās novākti
     if (s.ob == null && tr.step > 0) {
       const lay = trailLayout(), end = lay.stopI[Math.min(tr.step, TASKS.length - 1)];
       for (const o of lay.obst) if (o.i < end || tr.step >= TASKS.length) tr.ob[o.o] = OB_TYPES[o.type].hits;
     }
     this.hs.trail = tr;
+    // 1.49.0: pirms roņa uzdevuma laiva šūpojas jūrā (nevis stāv piestātnē no iepriekšējā gājiena)
+    const bv = this.hs.vehs && this.hs.vehs[BOAT_ID];
+    if (bv && !tr.boat && !(tr.step === KS && tr.acc)) this.hostBoatPark(bv);
   },
   trailZone() { return this.zone === 's' && this.terr instanceof TrailZone ? this.terr : null; },
 
@@ -1894,6 +1900,9 @@ export const Trail = {
   trailFixPos() {
     const Z = this.trailZone();
     if (!Z || this.trail.bridge || !Z.southOfStream(this.me.pos.x, this.me.pos.z)) return;
+    if (this.me.ride && this.leaveRide) this.leaveRide(); // līdzbraucējs — pats uz tilta galu
+    // 1.49.0: laivā uz krastu nevar pārcelt — izkāpjam (saimnieks to aizsūta atpakaļ jūrā); citi transporti brauc līdzi
+    if (this.me.veh && this.me.veh.kind === 'boat') this.exitVehicle();
     this.me.pos.set(BRIDGE.x - 3, 0, BZ - BRIDGE.hl - 4);
     this.me.pos.y = Z.groundAt(this.me.pos.x, this.me.pos.z);
     Z.lastSide = -1;
@@ -2157,6 +2166,8 @@ export const Trail = {
       case 'tRestart':
         if (tr.step < TASKS.length) return true;
         tr.run++; tr.step = 0; tr.c = 0; tr.acc = false; tr.taken = {}; tr.ob = [];
+        tr.bridge = false; tr.boat = false; // 1.49.0: bebrs būvē tiltu no jauna, ronis atkal lūdz laivu
+        this.hostBoatHome();
         ev = { k: 'restart', step: 0, by: from };
         break;
       // 1.43.0: sitiens pa šķērsli (koks / akmeņi / ērkšķi)
@@ -2230,10 +2241,10 @@ export const Trail = {
   hostBoatHome() {
     const v = this.hs.vehs && this.hs.vehs[BOAT_ID];
     if (!v || v.d !== -1) return;
-    v.zone = 's'; v.x = BOAT_HOME.x; v.z = BOAT_HOME.z; v.h = BOAT_HOME.h;
-    this.vehDirty = true;
+    this.hostBoatPark(v);
     this.net.broadcast({ t: 'veh', v: { ...v } });
   },
+  hostBoatPark(v) { v.zone = 's'; v.x = BOAT_HOME.x; v.z = BOAT_HOME.z; v.h = BOAT_HOME.h; this.vehDirty = true; },
   // saimnieks: laiva iebraukusi piestātnē — uzdevums izpildīts (izsauc no hostVehPos / vehDrop)
   hostBoatCheck(v) {
     const tr = this.hs && this.hs.trail;
