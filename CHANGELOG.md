@@ -1,5 +1,15 @@
 # Izmaiņu žurnāls
 
+## 1.48.0 — 2026-11-24
+- 🗣️ **Jaunas, dabiskas balsis**: visas frāzes ierakstītas ar Microsoft neironu balsīm (Everita un Nils) — skaidras un saprotamas;
+  katram tēlam savs balss augstums un temps (bez agrākās „robota” skaņas).
+- 🎚️ Iestatījumos skaļuma slīdņi: kopējais, efekti (skaņas, vide, dzinēji) un balsis (līdz 200 %).
+- 🔌 **Automātiska atkārtota savienošanās**: ja saimnieks uz brīdi samazina spēli vai savienojums pārtrūkst/apklust, draugi paši
+  pieslēdzas atpakaļ (paziņojums „savienojamies no jauna”) — vairs nav jāsāk no jauna. Abas puses sūta „sirdspukstus”, saimnieks
+  izmet mirušus savienojumus, tas pats spēlētājs atgriežas savā sētā.
+- 🐞 Braucot ar velosipēdiem kopā uz citu zemi, draugs rādījās kā tukšs velosipēds — tagad braucējs redzams.
+- 🧪 Jauns tests `tools/tests/net-reconnect.mjs` (saimnieks iesalst 12 s, aizvērts un kluss savienojums, velosipēds pēc zemes maiņas).
+
 ## 1.47.1 — 2026-11-23
 - 🔊 Balsis skaļākas (~+4 dB) un skaidrākas telefona skaļrunī: pacelti ~3 kHz, kompresors, katra frāze precīzi izlīdzināta (arī īsās, kā „divi”).
 - 🐞 Draugs „pazuda” vai stāvēja uz vietas (piem. braucot ar velosipēdu takā): ja kāda spēles daļa metās ar kļūdu, tajā kadrā

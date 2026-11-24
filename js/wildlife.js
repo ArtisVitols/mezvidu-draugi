@@ -2,10 +2,10 @@
 // Dzīvo ap spēlētāju (katram savi, nav tīklā): parādās nejaušās piemērotās vietās 10–90 m attālumā, pazūd, kad aizej tālu.
 // Vardes lec un kurkst, ielec ūdenī; pīles peld pa strautu; zaķi un stirnas ganās un aizbēg; stārķi brien pa purvu; tauriņi lido pļavās.
 import * as THREE from 'three';
-import * as A from './assets.js?v=1.47.1';
-import { WATER_Y } from './world.js?v=1.47.1';
-import { canvasTexture } from './util.js?v=1.47.1';
-import { sfx } from './ui.js?v=1.47.1';
+import * as A from './assets.js?v=1.48.0';
+import { WATER_Y } from './world.js?v=1.48.0';
+import { canvasTexture } from './util.js?v=1.48.0';
+import { sfx } from './ui.js?v=1.48.0';
 
 const TAU = Math.PI * 2;
 // n — cik vienlaikus, near/far — kur parādās (m no spēlētāja), out — kur pazūd

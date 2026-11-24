@@ -427,3 +427,8 @@ body.driving #joy-base { display: none !important; }
 .bm-row .pbtn { box-shadow: 0 2px 6px rgba(0,0,0,.3); font-size: 13px; padding: 7px 10px; }
 .bm-legend { position: absolute; left: 50%; transform: translateX(-50%); bottom: 6px; max-width: 92%; font-size: 11px; color: #fff;
   background: rgba(0,0,0,.45); padding: 3px 10px; border-radius: 999px; text-align: center; pointer-events: none; }
+/* 1.47.2: skaļuma slīdņi iestatījumos */
+.vrow { cursor: default; }
+.vrow:active { background: #fff; }
+.vslider { width: 100%; margin: 8px 0 2px; height: 28px; accent-color: #2f9e44; touch-action: pan-x; }
+.vrow .sv { min-width: 48px; text-align: right; }

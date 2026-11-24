@@ -1,3 +1,7 @@
-Balsis — ierakstītas ar Piper TTS (https://github.com/rhasspy/piper, MIT) ar latviešu balsi lv_LV-aivars-medium
-(https://huggingface.co/rhasspy/piper-voices — dati: https://huggingface.co/RaivisDejus/Piper-lv_LV-Aivars-medium, licence CC0 1.0).
-Pārģenerēt: python3 tools/voices.py <piper mape>
+Balsis (kopš 1.48.0) — ierakstītas ar Microsoft Azure neironu balsīm lv-LV-EveritaNeural un lv-LV-NilsNeural,
+izmantojot Microsoft Edge „Lasīt skaļi” servisu (python pakotne edge-tts, https://github.com/rany2/edge-tts).
+Šīs balsis nav brīvi licencētas: tās ir Microsoft pakalpojuma rezultāts, izmantots nekomerciālā ģimenes spēlē.
+Pārģenerēt: pip install edge-tts; python3 tools/voices.py --edge
+
+Iepriekšējās balsis (līdz 1.47.x) — Piper TTS (https://github.com/rhasspy/piper, MIT) ar lv_LV-aivars-medium
+(https://huggingface.co/RaivisDejus/Piper-lv_LV-Aivars-medium, CC0 1.0): python3 tools/voices.py <piper mape>

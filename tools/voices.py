@@ -3,6 +3,11 @@
 # (balss lv_LV-aivars-medium, CC0). Katram tēlam sava balss augstums (pitch) un runas ātrums.
 # Takas tēlu teksti tiek nolasīti tieši no js/trail.js (TASKS), lai balss sakristu ar ekrāna tekstu.
 #
+# 1.47.2: noklusētā balss — Microsoft neironu balsis (Edge „Lasīt skaļi”, pakotne edge-tts): lv-LV-EveritaNeural (sieviete)
+# un lv-LV-NilsNeural (vīrietis) — dabiskākas un saprotamākas nekā Piper. Tēla atšķirības — servera pusē (prosody pitch/rate),
+# bez mūsu toņa pārbīdes (tā radīja „robota” skaņu). Vajag: pip install edge-tts (un internetu); sūta tikai spēles frāzes.
+#   python3 tools/voices.py --edge [id ...]
+# Vecais Piper ceļš joprojām strādā:
 # Lietošana:  python3 tools/voices.py <piper mape> [id ...]
 #   <piper mape> — mape ar `piper/piper` (https://github.com/rhasspy/piper/releases) un lv.onnx + lv.onnx.json
 #   (https://huggingface.co/rhasspy/piper-voices/tree/main/lv/lv_LV/aivars/medium). Bez id — ieraksta visu.
@@ -28,6 +33,24 @@ VOICES = {
     'kakis': (1.1, 1.0),       # autobusa šoferis Kārlis
     'murris': (1.22, 0.96),    # 1.45.0: takas kaķis pie dīķa
     'ronis': (0.88, 1.05),     # 1.46.0: ronis jūrmalā
+}
+
+# Edge balsis: tēls → (balss, toņa nobīde, ātrums) — bērniem nedaudz lēnāk
+EDGE = {
+    'teicejs': ('lv-LV-EveritaNeural', '+0Hz', '-6%'),
+    'lacis': ('lv-LV-NilsNeural', '-14Hz', '-12%'),
+    'vavere': ('lv-LV-EveritaNeural', '+28Hz', '+2%'),
+    'ezis': ('lv-LV-NilsNeural', '+14Hz', '-4%'),
+    'bebritis': ('lv-LV-NilsNeural', '+4Hz', '-6%'),
+    'lapsa': ('lv-LV-EveritaNeural', '+8Hz', '-4%'),
+    'udrs': ('lv-LV-NilsNeural', '+0Hz', '-4%'),
+    'apsis': ('lv-LV-NilsNeural', '-9Hz', '-8%'),
+    'puce': ('lv-LV-EveritaNeural', '-6Hz', '-6%'),
+    'suns': ('lv-LV-NilsNeural', '+16Hz', '+0%'),
+    'liene': ('lv-LV-EveritaNeural', '+14Hz', '-3%'),
+    'kakis': ('lv-LV-NilsNeural', '+3Hz', '-5%'),     # autobusa šoferis Kārlis
+    'murris': ('lv-LV-NilsNeural', '+20Hz', '-4%'),   # takas kaķis
+    'ronis': ('lv-LV-NilsNeural', '-6Hz', '-8%'),
 }
 
 # skaitļi vārdiem (pareizā locījumā) — balss tos tad izrunā droši
@@ -91,23 +114,46 @@ def lines():
     return L
 
 
-def record(piper_dir, lid, voice, text):
+def raw_piper(piper_dir, voice, text, wav, tmp):
     pitch, ls = VOICES[voice]
     exe = os.path.join(piper_dir, 'piper', 'piper')
+    w0 = os.path.join(tmp, 'p.wav')
+    subprocess.run([exe, '-m', os.path.join(piper_dir, 'lv.onnx'), '--length_scale', str(ls), '--sentence_silence', '0.25', '-f', w0],
+                   input=clean(text).encode('utf-8'), check=True, stderr=subprocess.DEVNULL)
+    # augstums bez ātruma maiņas (tikai Piper — tam ir viena balss)
+    subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', w0, '-af', f'asetrate={int(22050 * pitch)},aresample=22050,atempo={1 / pitch:.4f}', wav], check=True)
+
+
+def raw_edge(voice, text, wav, tmp):
+    import asyncio
+    import edge_tts
+    name, pitch, rate = EDGE[voice]
+    mp = os.path.join(tmp, 'e.mp3')
+    for attempt in range(4):
+        try:
+            asyncio.run(edge_tts.Communicate(clean(text), name, rate=rate, pitch=pitch).save(mp))
+            break
+        except Exception as e:  # tīkla kļūme — mēģina vēlreiz
+            if attempt == 3: raise
+            print('  atkārto:', e)
+    subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', mp, wav], check=True)
+
+
+def record(engine, lid, voice, text):
     with tempfile.TemporaryDirectory() as tmp:
         wav = os.path.join(tmp, 'a.wav')
-        subprocess.run([exe, '-m', os.path.join(piper_dir, 'lv.onnx'), '--length_scale', str(ls), '--sentence_silence', '0.25', '-f', wav],
-                       input=clean(text).encode('utf-8'), check=True, stderr=subprocess.DEVNULL)
-        # augstums bez ātruma maiņas; dziļie basi nost (telefona skaļrunis); klusums galos nost
-        # 1.47.1: skaļāk — skaidrības pacēlums ~3 kHz, kompresors, tad izmērīts skaļums → precīzi TARGET LUFS ar limiteri
-        # (agrāk loudnorm -16 LUFS — telefonā par klusu; vienā gājienā loudnorm īsām frāzēm netrāpa)
-        af = (f'asetrate={int(22050 * pitch)},aresample=22050,atempo={1 / pitch:.4f},highpass=f=130,'
+        if engine == '--edge': raw_edge(voice, text, wav, tmp)
+        else: raw_piper(engine, voice, text, wav, tmp)
+        # dziļie basi nost (telefona skaļrunis); klusums galos nost; skaidrības pacēlums, kompresors,
+        # tad izmērīts skaļums → precīzi TARGET LUFS ar limiteri (mēra frāzi 7× pēc kārtas — īsām frāzēm kā „divi”)
+        eq = 'equalizer=f=3000:t=q:w=1.2:g=2.5' if engine == '--edge' else 'equalizer=f=3000:t=q:w=1.2:g=4'
+        af = ('aresample=24000,highpass=f=110,'
               'silenceremove=start_periods=1:start_threshold=-45dB,areverse,silenceremove=start_periods=1:start_threshold=-45dB,areverse,'
-              'equalizer=f=3000:t=q:w=1.2:g=4,acompressor=threshold=-24dB:ratio=4:attack=4:release=120,apad=pad_dur=0.08')
+              f'{eq},acompressor=threshold=-24dB:ratio=3:attack=4:release=120,apad=pad_dur=0.08')
         pre = os.path.join(tmp, 'b.wav')
-        subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', wav, '-af', af, '-ac', '1', '-ar', '22050', pre], check=True)
+        subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', wav, '-af', af, '-ac', '1', pre], check=True)
         gain = 0
-        for _ in range(4):  # limiteris nedaudz samazina skaļumu — pielāgo vēlreiz; mēra frāzi 7× pēc kārtas (īsām frāzēm kā „divi” citādi nav mērījuma)
+        for _ in range(4):
             r = subprocess.run(['ffmpeg', '-nostats', '-stream_loop', '6', '-i', pre, '-af', f'volume={gain}dB,alimiter=limit=0.7:level=false,ebur128', '-f', 'null', '-'],
                                capture_output=True, text=True)
             m = re.findall(r'I:\s+(-?[\d.]+) LUFS', r.stderr)
@@ -116,7 +162,7 @@ def record(piper_dir, lid, voice, text):
             if abs(err) < 0.3: break
             gain += err
         subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', pre, '-af', f'volume={gain}dB,alimiter=limit=0.7:level=false',
-                        '-ac', '1', '-ar', '22050', '-b:a', '48k', os.path.join(OUT, lid + '.mp3')], check=True)
+                        '-ac', '1', '-ar', '24000', '-b:a', '48k', os.path.join(OUT, lid + '.mp3')], check=True)
 
 
 def main():

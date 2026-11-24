@@ -2,7 +2,7 @@
 // Web Audio: īsās skaņas (ar nejaušu variantu un nelielu toņa svārstību), skaņas vietā (attālums + stereo pa kreisi/labi),
 // cilpas (vide, uguns, dzinēji) ar mīkstu skaļuma maiņu. Ja paraugs vēl nav ielādēts, ui.js atskaņo vienkāršu toni.
 const BASE = 'assets/snd/';
-let ctx = null, master = null, sfxBus = null, ambBus = null;
+let ctx = null, master = null, sfxBus = null, ambBus = null, voiceBus = null;
 let list = null, loadP = null;
 const buf = {};        // vārds → [AudioBuffer, ...]
 const loops = new Map(); // id → {src, gain, name, want}
@@ -12,6 +12,11 @@ const lastPlay = {};
 const VOL_KEY = 'mezvidi_vol';
 let vol = 1;
 try { const v = parseFloat(localStorage.getItem(VOL_KEY)); if (!isNaN(v)) vol = Math.max(0, Math.min(1, v)); } catch (e) { /* */ }
+// 1.47.2: atsevišķi skaļumi — efekti (skaņas, vide, dzinēji) 0..1 un balsis 0..2 (virs 1 — pastiprinātas, ar limiteri)
+const FX_KEY = 'mezvidi_vol_fx', VOICE_VOL_KEY = 'mezvidi_vol_voice';
+let fxVol = 1, voiceVol = 1.3;
+try { const v = parseFloat(localStorage.getItem(FX_KEY)); if (!isNaN(v)) fxVol = Math.max(0, Math.min(1, v)); } catch (e) { /* */ }
+try { const v = parseFloat(localStorage.getItem(VOICE_VOL_KEY)); if (!isNaN(v)) voiceVol = Math.max(0, Math.min(2, v)); } catch (e) { /* */ }
 
 export function audioCtx() { return ctx; }
 
@@ -20,8 +25,13 @@ export function initSound() {
     if (!ctx) {
       ctx = new (window.AudioContext || window.webkitAudioContext)();
       master = ctx.createGain(); master.gain.value = vol; master.connect(ctx.destination);
-      sfxBus = ctx.createGain(); sfxBus.gain.value = 0.9; sfxBus.connect(master);
-      ambBus = ctx.createGain(); ambBus.gain.value = 0.55; ambBus.connect(master);
+      sfxBus = ctx.createGain(); sfxBus.gain.value = 0.9 * fxVol; sfxBus.connect(master);
+      ambBus = ctx.createGain(); ambBus.gain.value = 0.55 * fxVol; ambBus.connect(master);
+      // balsīm sava ķēde: skaļums → limiteris (pastiprinot nekropļo) → kopējais
+      voiceBus = ctx.createGain(); voiceBus.gain.value = voiceVol;
+      const lim = ctx.createDynamicsCompressor();
+      lim.threshold.value = -4; lim.knee.value = 4; lim.ratio.value = 14; lim.attack.value = 0.002; lim.release.value = 0.15;
+      voiceBus.connect(lim); lim.connect(master);
       document.addEventListener('visibilitychange', () => {
         if (!ctx) return;
         if (document.hidden) ctx.suspend().catch(() => {}); else ctx.resume().catch(() => {});
@@ -171,6 +181,19 @@ export function setVolume(v) {
   if (master) master.gain.setTargetAtTime(vol, ctx.currentTime, 0.05);
 }
 
+export function getFxVolume() { return fxVol; }
+export function setFxVolume(v) {
+  fxVol = Math.max(0, Math.min(1, v));
+  try { localStorage.setItem(FX_KEY, String(fxVol)); } catch (e) { /* */ }
+  if (ctx) { sfxBus.gain.setTargetAtTime(0.9 * fxVol, ctx.currentTime, 0.05); ambBus.gain.setTargetAtTime(0.55 * fxVol, ctx.currentTime, 0.05); }
+}
+export function getVoiceVolume() { return voiceVol; }
+export function setVoiceVolume(v) {
+  voiceVol = Math.max(0, Math.min(2, v));
+  try { localStorage.setItem(VOICE_VOL_KEY, String(voiceVol)); } catch (e) { /* */ }
+  if (ctx) voiceBus.gain.setTargetAtTime(voiceVol, ctx.currentTime, 0.05);
+}
+
 export function setListener(x, z, yaw) { L.x = x; L.z = z; L.yaw = yaw; }
 
 // attāluma skaļums un stereo (yaw — kameras virziens kā cam.yaw: kamera skatās uz −sin/−cos)
@@ -286,7 +309,7 @@ export async function voice(id, opts = {}) {
   const gn = ctx.createGain(); gn.gain.value = g;
   let node = gn;
   if (pan && ctx.createStereoPanner) { const p = ctx.createStereoPanner(); p.pan.value = pan; gn.connect(p); node = p; }
-  src.connect(gn); node.connect(master);
+  src.connect(gn); node.connect(voiceBus);
   src.onended = () => { if (vCur === src) vCur = null; };
   src.start(ctx.currentTime + (opts.delay || 0));
   vCur = src;

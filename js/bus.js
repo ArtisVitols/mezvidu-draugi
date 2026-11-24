@@ -4,15 +4,15 @@
 // bez tīkla ziņām. Ātrums atkarīgs no līkuma (aplī lēnāk). Iekāpt un izkāpt var tikai pieturās, brauciens maksā BUS_PRICE. Vada kaķis Kārlis.
 // Maršruts — globālās koordinātēs (zemes vietējās + zoneOffset); autobuss redzams tikai tajā zemē, kurā tas ir.
 import * as THREE from 'three';
-import { mat, canvasTexture } from './util.js?v=1.47.1';
-import { buildAnimal, flattenStatic } from './characters.js?v=1.47.1';
-import { $, toast, sfx } from './ui.js?v=1.47.1';
-import { voice } from './audio.js?v=1.47.1';
-import { roadNS, roadEW, FOREST_ROAD, FOREST_RING, raceGeo } from './world.js?v=1.47.1';
-import { WINTER_ROAD, WINTER_RING } from './winter.js?v=1.47.1';
-import { zoneOffset, ZONE_HALF, FARM, FOREST, RACE, smoothRoad } from './zones.js?v=1.47.1';
-import { busStopSvg } from './icons.js?v=1.47.1';
-import * as A from './assets.js?v=1.47.1';
+import { mat, canvasTexture } from './util.js?v=1.48.0';
+import { buildAnimal, flattenStatic } from './characters.js?v=1.48.0';
+import { $, toast, sfx } from './ui.js?v=1.48.0';
+import { voice } from './audio.js?v=1.48.0';
+import { roadNS, roadEW, FOREST_ROAD, FOREST_RING, raceGeo } from './world.js?v=1.48.0';
+import { WINTER_ROAD, WINTER_RING } from './winter.js?v=1.48.0';
+import { zoneOffset, ZONE_HALF, FARM, FOREST, RACE, smoothRoad } from './zones.js?v=1.48.0';
+import { busStopSvg } from './icons.js?v=1.48.0';
+import * as A from './assets.js?v=1.48.0';
 
 export const BUS_PRICE = 2;
 const BOARD_R = 4; // m no autobusa malas, kur parādās „Iekāpt” (1.32.0)

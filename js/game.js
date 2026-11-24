@@ -1,34 +1,34 @@
 import * as THREE from 'three';
-import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, yardPart, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.47.1';
-import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.47.1';
-import { Controls } from './controls.js?v=1.47.1';
+import { World, WATER_Y, TRACK_Y, TRACK_N, TRACK_WIDTH, GARDEN_SLOTS, plotSign, yardPart, VENDORS, SPAWN, VILLAGE_Y, HALF, SIZE, PLAY_RADIUS } from './world.js?v=1.48.0';
+import { buildAnimal, buildNPC, buildKart, buildCart, buildMushroom, buildStar, buildCrop, flattenStatic } from './characters.js?v=1.48.0';
+import { Controls } from './controls.js?v=1.48.0';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS, TREES, FRUITS, CLOTHES, SLOTS, DECOR } from './data.js?v=1.47.1';
-import { writeSave } from './save.js?v=1.47.1';
-import { Sound } from './sound.js?v=1.47.1';
-import { getVolume, setVolume, voice, voiceOn, setVoiceOn } from './audio.js?v=1.47.1';
-import { BugSpot } from './bugspot.js?v=1.47.1';
-import { VERSION, BUILD_DATE } from './version.js?v=1.47.1';
-import { makeTextSprite, makeTag, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.47.1';
-import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.47.1';
-import { icon, iconEl, fishSvg } from './icons.js?v=1.47.1';
-import { Activities, makeTeam } from './activities.js?v=1.47.1';
-import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel, statsWanted } from './quality.js?v=1.47.1';
-import { hdrEnvironment } from './gfx.js?v=1.47.1';
-import { buildRod, buildDecor } from './props.js?v=1.47.1';
-import { buildStall, buildBunting } from './market.js?v=1.47.1';
-import { InstanceField } from './instancing.js?v=1.47.1';
-import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.47.1';
-import { Vehicles } from './vehicles.js?v=1.47.1';
-import { Farm, fmtLeft } from './farm.js?v=1.47.1';
-import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, zoneBounds, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.47.1';
-import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.47.1';
-import { plotOf } from './world.js?v=1.47.1';
-import { kartClamp } from './racetrack.js?v=1.47.1';
-import { Bus, BUS_STOPS } from './bus.js?v=1.47.1';
-import { Garden, UNLOCK } from './garden.js?v=1.47.1';
-import { MZ } from './assets.js?v=1.47.1';
-import { TrailZone, Trail, trailMap, trailIcons, trailItem, TASKS as TRAIL_TASKS } from './trail.js?v=1.47.1';
+import { WORLD_SEED, CROPS, MUSHROOMS, HATS, KART_COLORS, ICE_CREAM_PRICE, QUESTS, NPC_TYPES, EMOTES, RACE_LAPS, ANIMALS, TREES, FRUITS, CLOTHES, SLOTS, DECOR } from './data.js?v=1.48.0';
+import { writeSave } from './save.js?v=1.48.0';
+import { Sound } from './sound.js?v=1.48.0';
+import { getVolume, setVolume, getFxVolume, setFxVolume, getVoiceVolume, setVoiceVolume, voice, voiceOn, setVoiceOn } from './audio.js?v=1.48.0';
+import { BugSpot } from './bugspot.js?v=1.48.0';
+import { VERSION, BUILD_DATE } from './version.js?v=1.48.0';
+import { makeTextSprite, makeTag, angleLerp, clamp, lerp, smoothstep, canvasTexture } from './util.js?v=1.48.0';
+import { $, toast, showPanel, refreshPanel, closePanel, panelOpen, el, itemRow, sfx, fmtTime } from './ui.js?v=1.48.0';
+import { icon, iconEl, fishSvg } from './icons.js?v=1.48.0';
+import { Activities, makeTeam } from './activities.js?v=1.48.0';
+import { Quality, QUALITY, Q_MODES, loadQualityMode, startLevel, statsWanted } from './quality.js?v=1.48.0';
+import { hdrEnvironment } from './gfx.js?v=1.48.0';
+import { buildRod, buildDecor } from './props.js?v=1.48.0';
+import { buildStall, buildBunting } from './market.js?v=1.48.0';
+import { InstanceField } from './instancing.js?v=1.48.0';
+import { WinterZone, Winter, winterMap, WINTER_ICONS } from './winter.js?v=1.48.0';
+import { Vehicles } from './vehicles.js?v=1.48.0';
+import { Farm, fmtLeft } from './farm.js?v=1.48.0';
+import { PlainZone, ZONES, ZONE_IDS, DIRS, ZONE_HALF, CROSS_AT, zoneOffset, zoneBounds, alongLat, neighbour, openSides, freeGpu, plainRoads, smoothRoad, FARM, FOREST, RACE } from './zones.js?v=1.48.0';
+import { FISH, BERRIES, COOKED, PETS, PLACES, MAP_PIECES, WEEKLY_REWARD } from './data.js?v=1.48.0';
+import { plotOf } from './world.js?v=1.48.0';
+import { kartClamp } from './racetrack.js?v=1.48.0';
+import { Bus, BUS_STOPS } from './bus.js?v=1.48.0';
+import { Garden, UNLOCK } from './garden.js?v=1.48.0';
+import { MZ } from './assets.js?v=1.48.0';
+import { TrailZone, Trail, trailMap, trailIcons, trailItem, TASKS as TRAIL_TASKS } from './trail.js?v=1.48.0';
 
 const ANIM = ['idle', 'walk', 'run', 'jump', 'swim', 'sit', 'pet', 'wave', 'fish', 'ski', 'lift', 'throw'];
 const MUSH_RESPAWN = 120000;
@@ -774,6 +774,7 @@ export class Game {
     const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
     const t0 = performance.now();
     (async () => {
+      if (this.net && this.net.busyPing) this.net.busyPing(45); // 1.48.0: ielāde var aizņemt lapu — draugi tik ilgi negaida sirdspukstus
       await new Promise((r) => setTimeout(r, 380)); // ekrāns paspēj aptumšoties
       let ready;
       try { ready = this.switchZone(dest, pos, heading); } catch (e) { console.error(e); }
@@ -937,6 +938,9 @@ export class Game {
     net.onHostMessage = (from, m) => this.hostHandle(from, m);
     net.onPeerLeave = (id) => this.hostPeerLeave(id);
     net.onDisconnect = (why) => this.onDisconnected(why);
+    net.onStatus = (txt) => { if (!this.ended) toast(txt, txt.startsWith('✅') ? 'good' : '', 3500); };
+    net.onReconnect = () => this.onReconnected();
+    net.isBusy = () => !!this.zoneBusy; // zemes ielādes laikā klusumu neskaitām
   }
 
   start() {
@@ -973,6 +977,16 @@ export class Game {
     writeSave(this.save);
   }
 
+  // 1.47.2: klients pieslēdzās saimniekam no jauna (pēc fona / pārtrūkuma) — saimniekam esam jauns spēlētājs ar jaunu id:
+  // izkāpjam no transporta, atstājam nesamo takas lietu, aizmirstam vecos draugus un sakām „hello” vēlreiz
+  onReconnected() {
+    try { if (this.me.veh) this.exitVehicle(true); if (this.me.ride) this.leaveRide(); } catch (e) { console.warn(e); }
+    try { if (this.me.carry && this.me.carry.trail != null && this.trailDropCarry) this.trailDropCarry(false); } catch (e) { console.warn(e); }
+    for (const id of [...this.remotes.keys()]) this.removeRemote(id);
+    this.profiles.clear();
+    this.net.toHost({ t: 'hello', prof: this.myProf(), weekly: this.save.weekly, slot: this.mySlot });
+  }
+
   onDisconnected(why) {
     if (this.ended || this.disconnected) return;
     this.disconnected = true;
@@ -994,8 +1008,11 @@ export class Game {
         net.sendTo(from, { t: 'gi', g: { ...this.gameInfo, keep: { ...(this.gameInfo.keep || {}) } } });
         break;
       case 'hello': {
+        // 1.47.2: tas pats spēlētājs pieslēdzies no jauna, kamēr vecais savienojums vēl nav aizvērts — veco atvienojam
+        for (const [oid, op] of [...hs.profiles]) if (oid !== from && oid !== 0 && m.prof && op.name === m.prof.name) net.dropPeer(oid);
         const used = new Set([...hs.profiles.values()].map((p) => p.slot));
         let slot = 0; while (used.has(slot)) slot++;
+        if (m.slot != null && m.slot >= 0 && m.slot < 4 && !used.has(m.slot)) slot = m.slot; // atpakaļ savā sētā
         const prof = { ...m.prof, slot };
         hs.profiles.set(from, prof);
         this.hostMergeWeekly(m.weekly);
@@ -2710,12 +2727,18 @@ export class Game {
       });
       opt('🎨', 'Grafika', 'Auto pats izvēlas pēc tā, cik ātri telefons zīmē', () => this.qualityLabel(),
         () => this.setQualityMode(Q_MODES[(Q_MODES.indexOf(this.qMode) + 1) % Q_MODES.length]));
-      const VOLS = [1, 0.6, 0.3, 0];
-      const volName = (v) => (v >= 0.99 ? '🔊 Skaļi' : v >= 0.5 ? '🔉 Vidēji' : v > 0 ? '🔈 Klusi' : '🔇 Izslēgta');
-      opt('🔊', 'Skaņa', 'Skaņas efekti, soļi, vide un dzinēji', () => volName(getVolume()), () => {
-        const i = VOLS.findIndex((v) => Math.abs(v - getVolume()) < 0.05);
-        setVolume(VOLS[(i + 1) % VOLS.length]); sfx('coin');
-      });
+      // 1.47.2: skaļuma slīdņi — kopējais, efekti, balsis (balsis līdz 200 %)
+      const slider = (ic, name, sub, get, set, max, test) => {
+        const val = el('span', { className: 'sv' }, Math.round(get() * 100) + '%');
+        const inp = el('input', { type: 'range', min: '0', max: String(max * 100), step: '5', value: String(Math.round(get() * 100)), className: 'vslider' });
+        let tt = 0;
+        inp.oninput = () => { set(inp.value / 100); val.textContent = inp.value + '%'; };
+        inp.onchange = () => { const n = performance.now(); if (n - tt > 600) { tt = n; test(); } };
+        b.append(el('div', { className: 'srow vrow' }, el('span', { className: 'si' }, ic), el('span', { className: 'st' }, el('b', {}, name), el('small', {}, sub), inp), val));
+      };
+      slider('🔊', 'Kopējais skaļums', 'Visas skaņas kopā', getVolume, setVolume, 1, () => sfx('coin'));
+      slider('🎵', 'Efekti', 'Skaņas, soļi, vide un dzinēji', getFxVolume, setFxVolume, 1, () => sfx('coin'));
+      slider('🗣️', 'Balsu skaļums', 'Dzīvnieku un stāstnieka runa (virs 100 % — pastiprināta)', getVoiceVolume, setVoiceVolume, 2, () => voice('t_clear'));
       opt('🗣️', 'Balsis', 'Dzīvnieki un stāstnieks runā latviski', () => (voiceOn() ? 'Ieslēgtas' : 'Izslēgtas'), () => {
         setVoiceOn(!voiceOn()); if (voiceOn()) voice('t_clear');
       });
