@@ -66,7 +66,7 @@ const broke = await cl.evaluate(() => {
 await sleep(2500);
 p = await cl.evaluate(() => TT.walk(150, Math.PI / 2)); s = await sees(host, p);
 check(broke && s && Math.hypot(s.x - p.x, s.z - p.z) < 3, `klientam kļūdas ciklā — saimnieks vienalga redz viņu ejam (${d(s, p)} m)`);
-const hp = await host.evaluate(() => TT.walk(150, 0)); s = await sees(cl, hp);
+const hp = await host.evaluate(() => TT.walk(150, Math.PI)); s = await sees(cl, hp); // uz dienvidiem (prom no robežas)
 check(s && Math.hypot(s.x - hp.x, s.z - hp.z) < 3 && s.vis, `klients ar kļūdām vienalga redz saimnieku kustamies (${d(s, hp)} m)`);
 const ce = await cl.evaluate(() => [...(__game.loopErrs || [])]);
 check(ce.length >= 3 && ce.length <= 10, `kļūdas pierakstītas vienreiz katra (${ce.join(', ')})`);
