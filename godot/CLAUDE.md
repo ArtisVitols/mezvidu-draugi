@@ -48,3 +48,12 @@ Tests: `godot/tests/<name>.gd`, run with `-- --autotest=<name>`; excluded from e
 - [x] Audio (autoload `Aud`, scripts/core/audio.gd) + sound layer (g_sound.gd); quality Auto + manual extras (g_quality.gd); start menu (scripts/ui/menu.gd) — menu not yet run-tested
 - Chain: … GWinter → GTrail → GBugSpot → GSound → GQuality → Play
 - [ ] Next: menu screenshot test, 2-process LAN test, grass + water polish, HUD team-bar overlaps room pill, perf log, Android export (keystore, icon), GitHub release on this branch
+
+## Android build
+Keystore `~/.android_keys/mezvidi-release.keystore` (alias `mezvidi`), password in `~/.android_keys/mezvidi-release.pass` (outside the repo).
+```
+cd godot; P=$(cat ~/.android_keys/mezvidi-release.pass)
+GODOT_ANDROID_KEYSTORE_RELEASE_PATH=~/.android_keys/mezvidi-release.keystore GODOT_ANDROID_KEYSTORE_RELEASE_USER=mezvidi \
+GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD=$P ~/tools/godot/godot --headless --path . --export-release Android ../build/MezviduDraugi-<ver>.apk
+```
+Before building: re-export web data (`tools/export/export.mjs lands` — land_*.bin/json are git-ignored).

@@ -32,10 +32,9 @@ var sfx_cb: Callable = func(_n, _o = {}): pass   # audio sasaista vēlāk
 
 func _ready() -> void:
 	layer = 10
-	font = FontFile.new()
-	font.load_dynamic_font("res://assets/fonts/Inter.ttf")
-	var emoji := FontFile.new()
-	emoji.load_dynamic_font("res://assets/fonts/NotoColorEmoji.ttf")
+	# importētie fonti (eksportētajā lietotnē .ttf faila nav, tikai .fontdata)
+	font = (load("res://assets/fonts/Inter.ttf") as FontFile).duplicate()
+	var emoji: FontFile = load("res://assets/fonts/NotoColorEmoji.ttf")
 	font.fallbacks = [emoji]
 	theme_main = _make_theme()
 	var root := Control.new()
