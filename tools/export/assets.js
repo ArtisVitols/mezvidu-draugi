@@ -152,6 +152,7 @@ export function assetList(X) {
     B.BUS_STOPS.forEach((s, i) => { const g = B.buildStop(s); g.name = 'stop:' + i; pack.add(g); });
     return { root: pack };
   });
+  add('chair', async () => { const Wm = X.winter; const m = new THREE.Mesh(Wm.chairGeometry(), Wm.chairMaterial()); const g = new THREE.Group(); g.add(m); return { root: g }; });
   // ---- sētas nocērtamie koki, akmeņi, krūmi (kā Farm.buildFarm tpl) ----
   add('plottpl', () => {
     const W = new X.world.World(X.data.WORLD_SEED + 1000, X.zones.FARM);

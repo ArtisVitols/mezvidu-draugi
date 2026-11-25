@@ -47,7 +47,15 @@ if (what === 'lands') {
       const { World } = X.world, { WORLD_SEED } = X.data, Z = X.zones;
       const g = __game;
       const root = new X.THREE.Group();
-      if (land === 'winter') { const W = new X.winter.WinterZone('n', true); await W.build(root); window.LAST = W; }
+      if (land === 'winter') {
+        const W = new X.winter.WinterZone('n', true); await W.build(root); window.LAST = W;
+        // kustīgās daļas Godot veido pats
+        for (const d of W.deer || []) d.model.root.name = 'skipDyn';
+        for (const s of W.skiers || []) s.av.root.name = 'skipDyn';
+        if (W.chairs) W.chairs.name = 'skipDyn';
+        if (W.snowfall) W.snowfall.name = 'skipDyn';
+        (W.targets || []).forEach((t, i) => { t.obj.name = 'target:' + i; });
+      }
       else if (land === 'trail') { const W = new X.trail.TrailZone('s', g); await W.build(root); window.LAST = W; }
       else {
         const zone = land === 'forest' ? Z.FOREST : land === 'race' ? Z.RACE : Z.FARM;
@@ -157,6 +165,23 @@ if (what === 'busdata') {
   });
   writeFileSync(resolve(HERE, '../../godot/data/bus.json'), r);
   console.log('autobuss', (r.length / 1024).toFixed(0), 'KB');
+}
+if (what === 'winterdata') {
+  const r = await page.evaluate(async () => {
+    const W = new X.winter.WinterZone('n', true); await W.build(new X.THREE.Group());
+    const colliders = []; for (const [, l] of W.grid) for (const c of l) colliders.push(c);
+    const L = W.lift, cable = []; for (let s = 0; s <= L.len + 0.001; s += 0.5) cable.push(+L.cable(s).toFixed(4));
+    const roads = X.winter.winterRoads().map((l) => l.map((p) => [p.x, p.z]));
+    const out = {
+      heights: Array.from(W.heights), colliders, obstacles: W.obstacles, targets: W.targets.map((t) => ({ x: t.x, y: t.y, z: t.z })),
+      lift: { len: L.len, cB: L.cB, cT: L.cT, total: L.total, hB: L.hB, hT: L.hT, cable },
+      deer: W.deer.map((d) => d.home), skiers: W.skiers.map((s) => ({ px: s.px, pz: s.pz, pt: s.pt, tDown: s.tDown, tLift: s.tLift, cycle: s.cycle, off: s.off })),
+      roads,
+    };
+    return JSON.stringify(out);
+  });
+  writeFileSync(resolve(HERE, '../../godot/web/data/winter.json'), r);
+  console.log('ziema', (r.length / 1024).toFixed(0), 'KB');
 }
 if (what === 'data') {
   const lands = only.length ? only : ['forest', 'farm', 'race'];

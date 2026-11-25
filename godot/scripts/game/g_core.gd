@@ -194,7 +194,7 @@ func _load_land(id: String, step, f0: float) -> void:
 	applyLandQuality()
 
 ## kas no izgāztās zemes ainas Godot pusē tiek veidots savādāk (piem., dinamiskas lietas)
-func _land_skip(_id: String) -> Callable: return Callable()
+func _land_skip(_id: String) -> Callable: return func(d: Dictionary) -> bool: return str(d.get("n", "")) == "skipDyn"
 
 func unloadForest() -> void:
 	if not centerOn: return
