@@ -35,7 +35,9 @@ func _ready() -> void:
 	# importētie fonti (eksportētajā lietotnē .ttf faila nav, tikai .fontdata)
 	font = (load("res://assets/fonts/Inter.ttf") as FontFile).duplicate()
 	var emoji: FontFile = load("res://assets/fonts/NotoColorEmoji.ttf")
-	font.fallbacks = [emoji]
+	var sym: FontFile = load("res://assets/fonts/SymbolsDejaVu.ttf")   # ☰ ⇧ ➜ ✕ u. c. simboli (DejaVu Sans apakškopa)
+	font.fallbacks = [emoji, sym]
+	font.allow_system_fallback = false   # kā telefonā — tikai līdzi ņemtie fonti
 	theme_main = _make_theme()
 	var root := Control.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -216,7 +218,7 @@ func _build_hud(root: Control) -> void:
 	b["steer-row"] = steer; br.add_child(steer)
 	var walk := HBoxContainer.new(); walk.add_theme_constant_override("separation", int(12 * S)); walk.alignment = BoxContainer.ALIGNMENT_END; walk.size_flags_horizontal = Control.SIZE_SHRINK_END
 	b["btn-emote"] = round_btn("💬"); walk.add_child(b["btn-emote"])
-	b["btn-jump"] = round_btn("⤒", 76); walk.add_child(b["btn-jump"])
+	b["btn-jump"] = round_btn("⇧", 76); walk.add_child(b["btn-jump"])
 	b["walk-row"] = walk; br.add_child(walk)
 	hud.add_child(br)
 	# apakšā vidū
@@ -294,7 +296,8 @@ func toast(text: String, kind: String = "", ms: float = 2600.0) -> void:
 	p.add_child(l)
 	p.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	toasts.add_child(p)
-	while toasts.get_child_count() > 3: toasts.get_child(0).free()
+	while toasts.get_child_count() > 3:
+		var t0 := toasts.get_child(0); toasts.remove_child(t0); t0.queue_free()
 	p.modulate.a = 0.0
 	var tw := p.create_tween()
 	tw.tween_property(p, "modulate:a", 1.0, 0.2)
@@ -355,9 +358,14 @@ func _fit_panel(wide: bool) -> void:
 	panel_box.reset_size()
 	panel_box.position = (vs - panel_box.size) / 2.0
 
+## paneļa saturu noņem uzreiz, bet atbrīvo kadra beigās (poga, kas pārbūvē paneli, vēl izpilda savu signālu)
+func _clear_body() -> void:
+	for c in panel_body.get_children():
+		panel_body.remove_child(c); c.queue_free()
+
 func showPanel(title: String, build: Callable, on_close: Callable = Callable(), wide := false) -> void:
 	panel_title.text = title
-	for c in panel_body.get_children(): c.free()
+	_clear_body()
 	panel_build = build
 	build.call(panel_body)
 	sfx_cb.call("ui_open" if not panel_root.visible else "book", {"vol": 0.45})
@@ -367,7 +375,7 @@ func showPanel(title: String, build: Callable, on_close: Callable = Callable(), 
 
 func refreshPanel(build: Callable = Callable()) -> void:
 	var sc := panel_scroll.scroll_vertical
-	for c in panel_body.get_children(): c.free()
+	_clear_body()
 	(build if build.is_valid() else panel_build).call(panel_body)
 	await get_tree().process_frame
 	panel_scroll.scroll_vertical = sc

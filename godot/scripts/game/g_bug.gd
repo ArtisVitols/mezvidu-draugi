@@ -9,11 +9,13 @@ const BMAX := 10
 ## kļūdu ķērājs (Godot Logger) — pēdējās 12 kļūdas
 class ErrLog extends Logger:
 	var list: Array = []
+	var total := 0
 	var mx := Mutex.new()
 	func _log_error(function: String, file: String, line: int, code: String, rationale: String, _editor_notify: bool, error_type: int, _bt: Array[ScriptBacktrace]) -> void:
 		if error_type == ERROR_TYPE_WARNING: return
 		var s := "%s %s @ %s:%d %s" % [Time.get_time_string_from_system(), (rationale if rationale != "" else code).left(300), file.get_file(), line, function]
 		mx.lock()
+		total += 1
 		list.append(s)
 		if list.size() > 12: list.pop_front()
 		mx.unlock()

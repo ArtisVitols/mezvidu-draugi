@@ -29,6 +29,9 @@ void vertex() {
 	float gs = o.w * smoothstep(0.12, 0.45, gc.a) * (1.0 - smoothstep(0.45, 1.0, gd));
 	float keep = 1.0 - 0.55 * smoothstep(0.3, 0.85, gd);
 	gs *= step(fract(o.z * 5.731), keep) * (1.0 + 0.4 * (1.0 - keep));
+	// pie pašas kameras stiebrus noslēpj (citādi zema kamera redz milzu zāli priekšā)
+	vec3 camp = INV_VIEW_MATRIX[3].xyz;
+	gs *= smoothstep(1.0, 2.6, distance(vec3(gp.x, gh, gp.y), camp));
 	vec3 p = VERTEX;
 	float cs = cos(o.z), sn = sin(o.z);
 	p.xz = mat2(vec2(cs, sn), vec2(-sn, cs)) * p.xz;

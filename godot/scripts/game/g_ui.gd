@@ -390,7 +390,9 @@ func _slot_btn(sl: Dictionary, build: Callable) -> Button:
 	bt.add_theme_stylebox_override("hover", UI._sb(Color("#fff3c4"), 12 * UI.S, 4 * UI.S, false))
 	bt.add_theme_stylebox_override("pressed", UI._sb(Color("#ffe58a"), 12 * UI.S, 4 * UI.S, false))
 	if id != null: bt.icon = Icons.tex(("hat:" if sl.id == "hat" else "cl:") + str(id), 56)
-	else: bt.text = "＋"
+	else:
+		bt.text = "+"
+		bt.add_theme_font_size_override("font_size", int(26 * UI.S))
 	bt.expand_icon = true
 	bt.add_theme_color_override("font_color", Color(0.4, 0.4, 0.4))
 	bt.tooltip_text = sl.name
@@ -806,7 +808,7 @@ func openSettings() -> void:
 
 func openManual() -> void:
 	var S = [
-		["🕹️", "Vadība", ["Kreisā puse — velc pirkstu, lai staigātu.", "Labā puse — velc, lai grozītu kameru (2 pirksti — tuvināt).", "⤒ — lēkt. Dzeltenā poga parādās, kad vari kaut ko darīt.", "🚙 Braucot: kreisajā pusē ⛽ gāze un 🛑 bremze (atpakaļgaita), labajā ◀ ▶ stūre."]],
+		["🕹️", "Vadība", ["Kreisā puse — velc pirkstu, lai staigātu.", "Labā puse — velc, lai grozītu kameru (2 pirksti — tuvināt).", "⇧ — lēkt. Dzeltenā poga parādās, kad vari kaut ko darīt.", "🚙 Braucot: kreisajā pusē ⛽ gāze un 🛑 bremze (atpakaļgaita), labajā ◀ ▶ stūre."]],
 		["🏡", "Sēta un dārzs", ["Centrā ir sēta — katram draugam savs lauks.", "Nocērt kokus 🪓, novāc akmeņus ⛏️, uzar, sēj, aplaisti 💧 un novāc ražu 🧺.", "Augi aug arī tad, kad spēle aizvērta! Blakus vienādie augi saaug vienā laukā.", "🌱 Par darbiem dārzā krājas ⭐ — jauns līmenis atver jaunas sēklas un lielāku dārzu.", "🌳 Augļu koki dod augļus atkal un atkal. 🤲 Rotājumus var pārnest citur."]],
 		["🌲", "Mežs un tirgus", ["Austrumos — Mežvidu ciems ar tirgu: pārdod ražu, pērc sēklas, cepures, drēbes, mājdzīvniekus un rotājumus.", "🍄 Lasi sēnes (bet ne sarkanās mušmires!), 🫐 mellenes, avenes, purvā — dzērvenes.", "🎣 Nopērc makšķeri un makšķerē ezeros — kad pludiņš raustās, spied „VILKT!”.", "⛺ Pie ugunskura izcep sēnes. 🪙 Akā iemet 5🪙 — dažreiz izkrīt kaut kas jauks!"]],
 		["⭐", "Noslēpumi", ["Kalnu virsotnēs paslēptas 15 zelta zvaigznes — no 🗼 skatu torņa tās redz kartē.", "🗺️ Atrodi 3 kartes gabalus (ugunskurs, tornis, purvs) un atver dārguma lādi 🏰 Pilsdrupās!"]],
