@@ -219,6 +219,7 @@ func updateFarm(dt) -> void:
 							break
 		farmW.cleared = cl
 		for o in farmW.d.plotObjs: plotField.set_hidden(int(o.id), cl.has(int(o.id)))
+	var holes = false
 	for s in 4:
 		var R: Dictionary = farmRen[s]
 		var v = farmViews[s]
@@ -227,9 +228,11 @@ func updateFarm(dt) -> void:
 			R.key = key
 			buildSoil(s, v)
 			buildPlants(s, v, t)
+			holes = true
 			continue
 		R.t -= dt
 		if R.growing and R.t <= 0: buildPlants(s, v, t)
+	if holes: farmGrassHoles()
 	updateTileHL()
 	updateYardHouses()
 
@@ -300,6 +303,13 @@ func fruitReady(v: Dictionary, t := -1.0) -> bool:
 	return treeProgress(v, t) >= 1.0 and t / 1000.0 >= fruitAt(v)
 
 # ---------- zīmēšana ----------
+## uzartajos lauciņos zāli noņem (web setGrassHoles)
+func farmGrassHoles() -> void:
+	if farmW == null or farmW.grass == null: return
+	var all = []
+	for v in farmViews: if v != null: for e in v.t: all.append(e)
+	farmW.grass.set_holes(all, Yard.TILE)
+
 func buildSoil(slot: int, v) -> void:
 	var R: Dictionary = farmRen[slot]
 	if R.soil != null and is_instance_valid(R.soil): R.soil.queue_free()

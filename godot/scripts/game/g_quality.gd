@@ -117,6 +117,16 @@ func applyLandQuality() -> void:
 		if gi.layers & 2: gi.visibility_range_end = maxf(30.0, 110.0 * det)
 		elif gi is MultiMeshInstance3D: gi.visibility_range_end = far + 60.0
 	if terr and terr.has_method("applyQuality"): terr.applyQuality(self)
+	# zāle (meža, sētas un trases zemē)
+	if terr is WorldLand:
+		if terr.grass == null:
+			terr.grass = Grass.new(terr)
+			if terr == farmW: farmGrassHoles()
+		var gr: Grass = terr.grass
+		if gr.ok():
+			if gr.node == null or not is_instance_valid(gr.node) or gr.node.get_parent() != land_node: gr.attach(land_node)
+			gr.set_quality(float(Q.grass), float(Q.get("grassR", 1.0)))
+			gr.update(me.pos.x, me.pos.z)
 	timers.vis = 0.0
 
 func qualitySnow() -> float: return float(Q.get("snow", 1.0))
@@ -149,6 +159,7 @@ func setCustom(k: String, v) -> void:
 ## automātika: fps 3 s logos (web autoQuality); ar manuāliem iestatījumiem darbojas tikai līmenis
 func autoQuality() -> void:
 	if statsOn: statsTick()
+	if terr is WorldLand and terr.grass != null: terr.grass.update(me.pos.x, me.pos.z)
 	if qMode != "auto": return
 	var now := Time.get_ticks_msec()
 	if qa == null: qa = {"last": now, "t": 0.0, "n": 0, "hold": 4.0, "good": 0, "trial": null, "trialN": 0, "retry": {}, "wait": {}}

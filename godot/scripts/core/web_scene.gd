@@ -253,6 +253,10 @@ func _make(d: Dictionary) -> Node3D:
 	if str(d.n) != "": n.set_meta("n", str(d.n))
 	n.rotation_order = EULER_ORDER_XYZ
 	n.transform = xf(d.tr)
+	if n is Sprite3D and (n as Sprite3D).texture:
+		# three.js spraits ir vienības kvadrāts × mērogs; Sprite3D platums jau ir pēc faktūras malu attiecības
+		var tx: Texture2D = (n as Sprite3D).texture
+		n.scale.x *= float(tx.get_height()) / float(tx.get_width())
 	n.visible = d.get("v", true)
 	if d.has("ud"): n.set_meta("ud", d.ud)
 	if d.has("lay") and n is VisualInstance3D:

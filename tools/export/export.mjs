@@ -237,10 +237,16 @@ if (what === 'data') {
       W.build(root, __game.renderer);
       // sadursmju režģis → saraksts
       const colliders = []; for (const [, l] of W.grid) for (const c of l) colliders.push(c);
-      const extra = { colliders, roadPts: W.roadLines };
+      // zāles lauka augstumu tekstūra (pusfloat → float32)
+      const hd = W.heightTex.image.data, gH = new Float32Array(hd.length);
+      for (let i = 0; i < hd.length; i++) gH[i] = X.THREE.DataUtils.fromHalfFloat(hd[i]);
+      const extra = { colliders, roadPts: W.roadLines, grassH: gH };
       const d = X.dump.dumpData(Object.assign(W, { _extra: extra }), { skipKeys: ['group', 'grid', 'renderer', 'noise', 'noise2', 'rnd', 'roadIdx', 'roadIdxWide', 'trackIdx', 'terrLod', 'lodChunks', '_pal'] });
       return X.dump.packDump(d);
     }, land);
   }
+  // zāles stiebru faktūra
+  const png = await page.evaluate(async () => { const u = await import('/js/util.js'); return u.grassTexture().image.toDataURL('image/png'); });
+  writeFileSync(resolve(HERE, '../../godot/assets/tex/grass_blades.png'), Buffer.from(png.split(',')[1], 'base64'));
 }
 await browser.close();

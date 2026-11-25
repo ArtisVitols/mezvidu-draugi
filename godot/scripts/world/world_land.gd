@@ -20,6 +20,7 @@ var heights: PackedFloat32Array
 var platforms: Array = []
 var grid := {}               # Vector2i(8 m šūna) → [[x, z, r, id?]]
 var cleared := {}            # nocirsti/novākti objekti (id → true)
+var grass = null             # Grass (izveido pirmajā ielādē)
 var road_idx: RoadIndex
 var track_idx: RoadIndex
 var track_pts: Array = []    # [{x, y, z, i}]
