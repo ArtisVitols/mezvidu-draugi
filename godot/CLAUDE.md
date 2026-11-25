@@ -47,7 +47,9 @@ Tests: `godot/tests/<name>.gd`, run with `-- --autotest=<name>`; excluded from e
 - [x] Systems: farm, garden, activities, vehicles, bus, winter, trail, wildlife, bugspot, race, minigames, shops, map, bag
 - [x] Audio (autoload `Aud`, scripts/core/audio.gd) + sound layer (g_sound.gd); quality Auto + manual extras (g_quality.gd); start menu (scripts/ui/menu.gd) — menu not yet run-tested
 - Chain: … GWinter → GTrail → GBugSpot → GSound → GQuality → Play
-- [ ] Next: menu screenshot test, 2-process LAN test, grass + water polish, HUD team-bar overlaps room pill, perf log, Android export (keystore, icon), GitHub release on this branch
+- [x] Menu test, 2-process LAN test (`--autotest=lan --role=host|join [--ip=]`), grass field (scripts/world/grass.gd), team-bar placement, Android export
+- [x] Released **android-2.0.0** (2026-11-25): GitHub release on this branch, asset `MezviduDraugi-2.0.0.apk`
+- Ideas next: real-phone performance check (user feedback), planar water reflection, horizon skirt, smaller APK (compress land bins)
 
 ## Android build
 Keystore `~/.android_keys/mezvidi-release.keystore` (alias `mezvidi`), password in `~/.android_keys/mezvidi-release.pass` (outside the repo).
