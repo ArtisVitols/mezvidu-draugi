@@ -41,8 +41,10 @@ Tests: `godot/tests/<name>.gd`, run with `-- --autotest=<name>`; excluded from e
 
 ## Progress
 - [x] Project skeleton, exporter, loader, materials, forest renders (2026-11-25)
-- [ ] Export all lands (c farm yard, e, w, n winter, s trail) + data
-- [ ] Export assets (animals ×3 colour bases, hats, wear, NPCs, vehicles, props, crops, trees, decor…)
-- [ ] Core: Game autoload (data.js, save.js), land loading, player movement/camera/controls, HUD
-- [ ] Systems: farm, garden, activities, vehicles, bus, winter, trail, wildlife, bugspot, race, minigames, shops, map, bag
-- [ ] Net (ENet LAN), audio + voices, quality (auto + manual), perf log, Android export, release
+- [x] Export all lands (c farm yard, e, w, n winter, s trail) + data
+- [x] Export assets (animals ×3 colour bases, hats, wear, NPCs, vehicles, props, crops, trees, decor, trail items, wildlife)
+- [x] Core: Game autoload (data.js, save.js), land loading, player movement/camera/controls, HUD
+- [x] Systems: farm, garden, activities, vehicles, bus, winter, trail, wildlife, bugspot, race, minigames, shops, map, bag
+- [x] Audio (autoload `Aud`, scripts/core/audio.gd) + sound layer (g_sound.gd); quality Auto + manual extras (g_quality.gd); start menu (scripts/ui/menu.gd) — menu not yet run-tested
+- Chain: … GWinter → GTrail → GBugSpot → GSound → GQuality → Play
+- [ ] Next: menu screenshot test, 2-process LAN test, grass + water polish, HUD team-bar overlaps room pill, perf log, Android export (keystore, icon), GitHub release on this branch

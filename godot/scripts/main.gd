@@ -13,3 +13,5 @@ func _ready() -> void:
 			return
 		push_error("Nav testa vai tas nekompilējas: " + p)
 		get_tree().quit(2)
+		return
+	add_child(Menu.new())
