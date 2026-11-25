@@ -26,6 +26,8 @@ var loading: Control
 var loading_text: Label
 var loading_bar: ProgressBar
 var zone_load: Control
+var top_l: Control
+var top_r: Control
 var sfx_cb: Callable = func(_n, _o = {}): pass   # audio sasaista vēlāk
 
 func _ready() -> void:
@@ -44,6 +46,22 @@ func _ready() -> void:
 	_build_hud(root)
 	_build_panel(root)
 	_build_loading(root)
+
+## komandas josla: starp augšējām grupām, ja tur ietilpst; citādi zem labās grupas (kā web šaurā ekrānā)
+func _process(_dt: float) -> void:
+	if hud == null or not hud.visible or top_l == null: return
+	var tb: Control = b["team-bar"]
+	if not tb.visible: return
+	var gap_l := top_l.get_global_rect().end.x + 8 * S
+	var gap_r := top_r.get_global_rect().position.x - 8 * S
+	var w := tb.get_combined_minimum_size().x
+	tb.size.x = w
+	if gap_r - gap_l >= w:
+		tb.position = Vector2((gap_l + gap_r - w) / 2.0 - hud.get_global_rect().position.x, 10 * S)
+		toasts.position.y = 56 * S
+	else:
+		tb.position = Vector2(top_r.get_global_rect().end.x - w - hud.get_global_rect().position.x, top_r.get_global_rect().end.y + 8 * S)
+		toasts.position.y = tb.position.y + tb.size.y + 8 * S
 
 # ---------- tēma ----------
 func _sb(bg: Color, r: float, pad: float = 8.0, shadow := true) -> StyleBoxFlat:
@@ -155,6 +173,7 @@ func _build_hud(root: Control) -> void:
 	for p in [["btn-bag", "🎒"], ["btn-quests", "📜"], ["btn-games", "🎲"], ["btn-menu", "☰"]]:
 		b[p[0]] = round_btn(p[1]); tr.add_child(b[p[0]])
 	hud.add_child(tr)
+	top_l = trow; top_r = tr
 	# vidū augšā
 	b["team-bar"] = _center_top(pill("", false), 10.0)
 	b["team-bar"].get_node("L").add_theme_font_size_override("font_size", int(14 * S))

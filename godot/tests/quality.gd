@@ -35,5 +35,6 @@ func _ready() -> void:
 		get_viewport().get_texture().get_image().save_png(shot)
 	Game.set_item("mezvidi_gfx_custom", {}); Game.set_item("mezvidi_gfx", "auto"); Game.set_item("mezvidi_stats", "0")
 	Engine.max_fps = 0
+	Game.flush()
 	print("[quality] ", "VISS IZDEVĀS" if fails == 0 else "NEIZDEVĀS %d" % fails)
 	get_tree().quit()
