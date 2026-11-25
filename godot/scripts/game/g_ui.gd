@@ -847,14 +847,14 @@ func qualityLabel() -> String: return "Auto"
 func setQualityMode(_m) -> void: pass
 func nextQualityMode() -> String: return "auto"
 func qualitySettings(_b, _build) -> void: pass
-func getVolume() -> float: return 1.0
-func setVolume(_v) -> void: pass
-func getFxVolume() -> float: return 1.0
-func setFxVolume(_v) -> void: pass
-func getVoiceVolume() -> float: return 1.3
-func setVoiceVolume(_v) -> void: pass
-func voiceOn() -> bool: return true
-func setVoiceOn(_v) -> void: pass
+func getVolume() -> float: return Aud.getVolume()
+func setVolume(v) -> void: Aud.setVolume(float(v))
+func getFxVolume() -> float: return Aud.getFxVolume()
+func setFxVolume(v) -> void: Aud.setFxVolume(float(v))
+func getVoiceVolume() -> float: return Aud.getVoiceVolume()
+func setVoiceVolume(v) -> void: Aud.setVoiceVolume(float(v))
+func voiceOn() -> bool: return Aud.voiceOn()
+func setVoiceOn(v) -> void: Aud.setVoiceOn(bool(v))
 func toggleStats() -> void: pass
 func vehMarkers() -> Array: return []
 func trailIcons(_tr) -> Array: return []

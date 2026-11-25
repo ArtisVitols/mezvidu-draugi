@@ -58,6 +58,7 @@ func collide(pos: Vector3, _r: float) -> Vector3:
 	hit = false
 	return clamp_square(pos)
 func road_dist(_x: float, _z: float) -> float: return 99.0
+func is_water(_x: float, _z: float) -> bool: return false
 func ceiling_at(_x: float, _z: float) -> float: return INF
 func cam_block(_x: float, _y: float, _z: float) -> bool: return false
 func update(_dt: float, _g) -> void: pass

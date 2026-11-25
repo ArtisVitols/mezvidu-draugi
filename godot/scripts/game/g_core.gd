@@ -1085,9 +1085,9 @@ func updateRace(_dt, _t) -> void: pass
 func updateEffects(_dt) -> void: pass
 func refreshAction() -> void: pass
 func doAction() -> void: pass
-func sfx(_name, _opts = {}) -> void: pass
-func voice(_id, _opts = {}) -> void: pass
-func stopVoice() -> void: pass
+func sfx(name, opts = {}) -> void: Aud.sfx(str(name), opts if opts is Dictionary else {})
+func voice(id, opts = {}) -> void: Aud.voice(str(id), opts if opts is Dictionary else {})
+func stopVoice() -> void: Aud.stopVoice()
 func myBus() -> Dictionary: return {"speed": 0.0}
 func vehCode() -> int: return 0
 func rideInfo() -> Array: return [-1, 0]

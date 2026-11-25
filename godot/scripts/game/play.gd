@@ -1,3 +1,3 @@
 class_name Play
-extends GBugSpot
+extends GSound
 ## Pilnā spēle (pēdējais mantošanas ķēdes slānis)

@@ -1,0 +1,10 @@
+Skaņas — visas CC0 (Creative Commons Zero, publiskais īpašums), no OpenGameArt.org.
+Apstrādātas (apgrieztas, dziļie basi nogriezti telefonu skaļruņiem, skaļums izlīdzināts, mono MP3; vides skaņām — bezšuvju cilpas).
+Dzinēji, riepu šņākoņa, velosipēda, sniega un vēja šņākoņa ir sintezēti kodā (js/audio.js).
+
+- Kenney (www.kenney.nl): "Interface Sounds", "50 RPG sound effects", "85 short music jingles", "54 casino sound effects"
+- "40 CC0 water / splash / slime SFX", "6 short water splashes", "100 CC0 SFX", "100 CC0 metal and wood SFX"
+- "42 snow and gravel footsteps" (Corsica_S), "Fantozzi's footsteps (grass/sand & stone)", "Different steps on wood, stone, leaves, gravel and mud"
+- "Park ambiences" (putni, vējš, upe), "Tree chop / fall / thud", "Bicycle sounds", "Fire crackling"
+- "Dog sounds", "Bird, cricket, frog and mosquito sounds", "Crickets ambient noise (loopable)", "3 pop sounds", "Swishes sound pack"
+Avoti: https://opengameart.org/content/<nosaukums> (licence: https://creativecommons.org/publicdomain/zero/1.0/)
