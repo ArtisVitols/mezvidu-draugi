@@ -171,6 +171,18 @@ func close() -> void:
 	peer = null
 	conns.clear()
 
+## kur sūtīt meklēšanu: vispārējā apraide, katra tīkla /24 apraide (daži maršrutētāji 255.255.255.255 nelaiž) un šī ierīce
+var _targets: Array = []
+func _disc_targets() -> Array:
+	if _targets.is_empty():
+		_targets = ["255.255.255.255", "127.0.0.1"]
+		for a in IP.get_local_addresses():
+			var parts := str(a).split(".")
+			if parts.size() == 4 and not a.begins_with("127.") and not a.begins_with("169.254."):
+				var bc := "%s.%s.%s.255" % [parts[0], parts[1], parts[2]]
+				if not _targets.has(bc): _targets.append(bc)
+	return _targets
+
 ## katru kadru (arī ielādes laikā)
 func poll(dt: float) -> void:
 	if closed: return
@@ -189,8 +201,9 @@ func poll(dt: float) -> void:
 			disc_t -= dt
 			if disc_t <= 0.0:
 				disc_t = 0.6
-				disc.set_dest_address("255.255.255.255", DISC_PORT)
-				disc.put_packet(("MZD?" + code).to_utf8_buffer())
+				for dst in _disc_targets():
+					disc.set_dest_address(dst, DISC_PORT)
+					disc.put_packet(("MZD?" + code).to_utf8_buffer())
 			while disc.get_available_packet_count() > 0:
 				var txt := disc.get_packet().get_string_from_utf8()
 				var ip := disc.get_packet_ip()

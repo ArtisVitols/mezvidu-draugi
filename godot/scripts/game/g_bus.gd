@@ -138,7 +138,7 @@ func updateBus(dt) -> void:
 	for z in busStopGroups:
 		var grp: Node3D = busStopGroups[z]
 		var here: bool = z == zone and not zoneBusy and terr != null
-		if here and grp.get_meta("terr", null) != terr:
+		if here and (not grp.has_meta("terr") or grp.get_meta("terr") != terr):
 			grp.set_meta("terr", terr)
 			for c in grp.get_children(): c.position.y = terr.get_height(c.position.x, c.position.z)
 		grp.visible = here
