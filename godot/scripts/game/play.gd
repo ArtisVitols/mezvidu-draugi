@@ -1,3 +1,3 @@
 class_name Play
-extends GWinter
+extends GTrail
 ## Pilnā spēle (pēdējais mantošanas ķēdes slānis)

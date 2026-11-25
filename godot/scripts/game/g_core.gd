@@ -1087,6 +1087,7 @@ func refreshAction() -> void: pass
 func doAction() -> void: pass
 func sfx(_name, _opts = {}) -> void: pass
 func voice(_id, _opts = {}) -> void: pass
+func stopVoice() -> void: pass
 func myBus() -> Dictionary: return {"speed": 0.0}
 func vehCode() -> int: return 0
 func rideInfo() -> Array: return [-1, 0]

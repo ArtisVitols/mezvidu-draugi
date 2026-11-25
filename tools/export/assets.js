@@ -153,6 +153,11 @@ export function assetList(X) {
     return { root: pack };
   });
   add('chair', async () => { const Wm = X.winter; const m = new THREE.Mesh(Wm.chairGeometry(), Wm.chairMaterial()); const g = new THREE.Group(); g.add(m); return { root: g }; });
+  add('trailitems', async () => {
+    const pack = new THREE.Group();
+    for (const k of ['malka', 'rieksti', 'zivs', 'abols', 'delis', 'gliemezis']) { const o = X.trail.trailItem(k).clone(); o.name = 'item:' + k; pack.add(o); }
+    return { root: pack };
+  });
   // ---- sētas nocērtamie koki, akmeņi, krūmi (kā Farm.buildFarm tpl) ----
   add('plottpl', () => {
     const W = new X.world.World(X.data.WORLD_SEED + 1000, X.zones.FARM);

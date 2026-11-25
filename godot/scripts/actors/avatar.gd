@@ -81,7 +81,7 @@ func _build(prof: Dictionary) -> void:
 		if mi.name != "shadow" and mi.get_parent() is Skeleton3D:
 			mesh_inst = mi
 			break
-	_recolor(ws, Game.lin(str(prof.get("fur", spec.get("fur", "#8b5a2b")))), Game.lin(str(prof.get("shirt", "#d23b3b"))), top != null)
+	_recolor(ws, Game.lin(str(prof.get("fur") if prof.get("fur") != null else spec.get("fur", "#8b5a2b"))), Game.lin(str(prof.get("shirt") if prof.get("shirt") != null else "#d23b3b")), top != null)
 	pose = {"hip": [0.0, 0.0], "knee": [0.05, 0.05], "sh": [0.0, 0.0], "shZ": [0.0, 0.0], "el": [-0.15, -0.15], "spX": 0.02, "spY": 0.0, "bY": hip_base, "bX": 0.0, "hX": 0.0, "hY": 0.0}
 	tgt = pose.duplicate(true)
 	set_hat(prof.get("hat"))

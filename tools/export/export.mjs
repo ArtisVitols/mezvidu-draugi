@@ -56,7 +56,15 @@ if (what === 'lands') {
         if (W.snowfall) W.snowfall.name = 'skipDyn';
         (W.targets || []).forEach((t, i) => { t.obj.name = 'target:' + i; });
       }
-      else if (land === 'trail') { const W = new X.trail.TrailZone('s', g); await W.build(root); window.LAST = W; }
+      else if (land === 'trail') {
+        const W = new X.trail.TrailZone('s', g); await W.build(root); window.LAST = W;
+        for (const n of W.npcs || []) n.av.root.name = 'skipDyn';
+        if (W.life && W.life.group) W.life.group.name = 'skipDyn';
+        for (const k of ['logs', 'apples', 'fishes', 'planks', 'rails']) if (W[k]) { W[k].name = k; if (W[k].isInstancedMesh) W[k].count = W[k].instanceMatrix.count; }
+        W.rails.visible = true;
+        (W.arrows || []).forEach((m) => { m.name = 'arrow:' + m.userData.a.k; });
+        (W.obs || []).forEach((ob, i) => { ob.root.name = 'obRoot:' + i; ob.rest.name = 'obRest:' + i; });
+      }
       else {
         const zone = land === 'forest' ? Z.FOREST : land === 'race' ? Z.RACE : Z.FARM;
         const seed = land === 'forest' ? WORLD_SEED : land === 'race' ? WORLD_SEED + 2000 : WORLD_SEED + 1000;
@@ -75,6 +83,17 @@ if (what === 'lands') {
       return X.dump.packDump(d);
     }, land);
   }
+}
+if (what === 'wildlife') {
+  await patchedModule(page, 'wildlife', 'frogGeo, duckGeo, wingGeo, wingTex');
+  await save('asset/wildlife', async () => {
+    const W = PM.wildlife, T = X.THREE, A = X.A;
+    const g = new T.Group();
+    const add = (n, geo, mat) => { const m = new T.Mesh(geo, mat); m.name = n; g.add(m); };
+    add('varde', W.frogGeo(), A.toyMaterial()); add('pile', W.duckGeo(), A.toyMaterial());
+    add('wing', W.wingGeo(), new T.MeshStandardMaterial({ map: W.wingTex(), side: T.DoubleSide, roughness: 0.8, alphaTest: 0.5 }));
+    return X.dump.packDump(X.dump.dumpObject(g));
+  });
 }
 if (what === 'assets') {
   await page.evaluate(async () => { window.AL = (await import('/tools/export/assets.js?' + Date.now())).assetList(X); });
@@ -182,6 +201,28 @@ if (what === 'winterdata') {
   });
   writeFileSync(resolve(HERE, '../../godot/web/data/winter.json'), r);
   console.log('ziema', (r.length / 1024).toFixed(0), 'KB');
+}
+if (what === 'traildata') {
+  await patchedModule(page, 'trail', 'X0, Z0, CELL, NX, NZ, BRIDGE, BZ, BOG, TRAIL_HW, TUN_W, TUN_H, BW_HW, BW_Y, OB_HALF, SEA_LIMIT, ITEM_SCALE, sectZ, CARRY_MS, FAIL_MS');
+  const r = await page.evaluate(async () => {
+    const M = PM.trail, T = X.trail;
+    const Z = new M.TrailZone('s', __game); await Z.build(new X.THREE.Group());
+    const colliders = []; for (const [, l] of Z.grid) for (const c of l) colliders.push(c);
+    const lay = M.trailLayout();
+    const clean = (o) => JSON.parse(JSON.stringify(o, (k, v) => (k === 'idx' || k === 'hidx' || k === 'nearSet' ? undefined : v)));
+    // trokšņa funkcijas → režģi (4 m)
+    const G = { x0: -320, z0: -320, step: 4, nx: 161, nz: 319 }, sz = [], fo = [], mo = [];
+    for (let j = 0; j < G.nz; j++) for (let i = 0; i < G.nx; i++) { const x = G.x0 + i * G.step, z = G.z0 + j * G.step; sz.push(+(M.sectZ(x, z) - z).toFixed(3)); fo.push(+M.forestAt(x, z).toFixed(3)); mo.push(+M.mountAt(x, z).toFixed(3)); }
+    return JSON.stringify({
+      heights: Array.from(Z.heights), X0: M.X0, Z0: M.Z0, CELL: M.CELL, NX: M.NX, NZ: M.NZ, colliders,
+      lay: clean({ line: lay.line, stops: lay.stops, obst: lay.obst, tunnel: lay.tunnel, bwBox: lay.bwBox, stopI: lay.stopI, sectStart: lay.sectStart }),
+      arrows: M.arrowSpots(), bridgeA: Z.bridgeA, bridgeB: Z.bridgeB,
+      C: { BRIDGE: M.BRIDGE, BZ: M.BZ, BOG: M.BOG, TRAIL_HW: M.TRAIL_HW, TUN_W: M.TUN_W, TUN_H: M.TUN_H, BW_HW: M.BW_HW, BW_Y: M.BW_Y, OB_HALF: M.OB_HALF, SEA_LIMIT: M.SEA_LIMIT, ITEM_SCALE: M.ITEM_SCALE, CARRY_MS: M.CARRY_MS, FAIL_MS: M.FAIL_MS },
+      grid: G, sectDz: sz, forest: fo, mount: mo,
+    });
+  });
+  writeFileSync(resolve(HERE, '../../godot/web/data/trail.json'), r);
+  console.log('taka', (r.length / 1024).toFixed(0), 'KB');
 }
 if (what === 'data') {
   const lands = only.length ? only : ['forest', 'farm', 'race'];
