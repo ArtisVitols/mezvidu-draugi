@@ -842,7 +842,7 @@ func teamText() -> String: return ""
 func openGardenInfo() -> void: pass
 func openGames() -> void: pass
 func openBugSpot() -> void: pass
-func leaveBus() -> void: pass
+func leaveBus(_force = false) -> void: pass
 func qualityLabel() -> String: return "Auto"
 func setQualityMode(_m) -> void: pass
 func nextQualityMode() -> String: return "auto"

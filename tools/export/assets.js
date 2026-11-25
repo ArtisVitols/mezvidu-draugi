@@ -146,6 +146,12 @@ export function assetList(X) {
     meta.keys = Object.keys(o).filter((k) => o[k] && o[k].isObject3D).map((k) => [k, o[k].name]);
     return { root: o.root, meta };
   });
+  add('busstops', async () => {
+    const B = await import('/js/bus.js?v=' + X.v);
+    const pack = new THREE.Group();
+    B.BUS_STOPS.forEach((s, i) => { const g = B.buildStop(s); g.name = 'stop:' + i; pack.add(g); });
+    return { root: pack };
+  });
   // ---- sētas nocērtamie koki, akmeņi, krūmi (kā Farm.buildFarm tpl) ----
   add('plottpl', () => {
     const W = new X.world.World(X.data.WORLD_SEED + 1000, X.zones.FARM);

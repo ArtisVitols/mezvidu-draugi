@@ -137,6 +137,27 @@ if (what === 'maps') {
   for (const [k, b64] of Object.entries(r)) writeFileSync(resolve(HERE, `../../godot/data/maps/${k}.png`), Buffer.from(b64, 'base64'));
   console.log('kartes', Object.keys(r));
 }
+// moduļa iekšējie dati: ielādē moduļa kopiju ar papildu export (relatīvie importi → tie paši absolūtie URL)
+async function patchedModule(page, mod, extra) {
+  return page.evaluate(async ({ mod, extra }) => {
+    const src = await (await fetch(`/js/${mod}.js?v=${X.v}`)).text();
+    const fixed = src.replace(/from '\.\/([a-z_]+)\.js\?v=[^']*'/g, (m, n) => `from '${location.origin}/js/${n}.js?v=${X.v}'`) + `\nexport { ${extra} };`;
+    const url = URL.createObjectURL(new Blob([fixed], { type: 'text/javascript' }));
+    window.PM = window.PM || {};
+    window.PM[mod] = await import(url);
+    return Object.keys(window.PM[mod]).length;
+  }, { mod, extra });
+}
+if (what === 'busdata') {
+  await patchedModule(page, 'bus', 'route, EVENTS, BUS_STOPS as STOPS2');
+  const r = await page.evaluate(() => {
+    const B = PM.bus, R = B.route, E = B.EVENTS;
+    const ev = E.ev.map((e) => e.kind === 'dwell' ? { kind: 'dwell', t0: e.t0, t1: e.t1, stop: e.stop } : { kind: 'move', t0: e.t0, t1: e.t1, from: e.from, to: e.to, ia: e.m.ia, N: e.m.N, T: e.m.T, t: Array.from(e.m.t) });
+    return JSON.stringify({ X: Array.from(R.X), Z: Array.from(R.Z), H: Array.from(R.H), n: R.n, step: R.step, len: R.len, P: E.P, ev, stops: B.STOPS2 });
+  });
+  writeFileSync(resolve(HERE, '../../godot/data/bus.json'), r);
+  console.log('autobuss', (r.length / 1024).toFixed(0), 'KB');
+}
 if (what === 'data') {
   const lands = only.length ? only : ['forest', 'farm', 'race'];
   for (const land of lands) {
