@@ -102,7 +102,7 @@ export function assetList(X) {
     const put = (n, o) => { if (!o) return; const r = o.root || o; r.name = n; pack.add(r); };
     for (const k of Object.keys(X.data.MUSHROOMS)) put('mush:' + k, A.buildMushroom(k));
     put('star', A.buildStar()); put('heart', A.buildHeart()); put('scroll', A.buildScroll());
-    put('rod', A.buildRod()); put('bobber', A.buildBobber());
+    { const rod = A.buildRod(); const r = rod.root || rod; if (r.userData.tip) r.userData.tip.name = 'tip'; put('rod', rod); } put('bobber', A.buildBobber());
     for (const k of Object.keys(X.data.DECOR)) put('decor:' + k, A.buildDecor(k));
     for (const k of Object.keys(X.data.BERRIES)) put('berry:' + k, A.buildBerryBush(k));
     return { root: pack };
@@ -119,6 +119,32 @@ export function assetList(X) {
       const g = A.buildFruitTree(t, st, fr); const r = g.root || g; r.name = `tree:${t}:${st}:${fr ? 1 : 0}`; pack.add(r);
     }
     return { root: pack };
+  });
+  // ---- kopīgie transporti (katram savs modelis/krāsa) + autobuss ----
+  const vehMeta = (o) => {
+    (o.seats || []).forEach((x, i) => { x.name = 'seat:' + i; });
+    (o.petSpots || []).forEach((x, i) => { x.name = 'pet:' + i; });
+    if (o.seat && !o.seats) o.seat.name = 'seat:0';
+    if (o.shadow) o.shadow.name = 'shadow';
+    return { kind: o.kind, wheelR: o.wheelR || 1, pedal: o.pedal || null, seats: (o.seats || [o.seat]).length };
+  };
+  add('vehicles', async () => {
+    const V = await import('/js/vehicles.js?v=' + X.v);
+    const pack = new THREE.Group(), meta = {};
+    for (const d of V.VEHICLES) {
+      const o = d.kind === 'car' ? V.buildCar(d.color) : d.kind === 'bike' ? V.buildBike(d.color) : d.kind === 'boat' ? V.buildBoat(d.color) : V.buildSled(d.color);
+      meta[d.id] = vehMeta(o);
+      o.root.name = 'veh:' + d.id; pack.add(o.root);
+    }
+    return { root: pack, meta };
+  });
+  add('bus', async () => {
+    const B = await import('/js/bus.js?v=' + X.v);
+    const o = B.buildBus();
+    const meta = vehMeta(o);
+    for (const k of Object.keys(o)) if (o[k] && o[k].isObject3D && !o[k].name) o[k].name = k;
+    meta.keys = Object.keys(o).filter((k) => o[k] && o[k].isObject3D).map((k) => [k, o[k].name]);
+    return { root: o.root, meta };
   });
   // ---- sētas nocērtamie koki, akmeņi, krūmi (kā Farm.buildFarm tpl) ----
   add('plottpl', () => {

@@ -175,6 +175,15 @@ func mesh(gi: int, mref) -> ArrayMesh:
 	meshes[key] = am
 	return am
 
+## ceļš no BoneSync (saknes bērns) līdz mezglam n (bez koka — pēc vecākiem)
+static func _rel(root: Node, n: Node) -> NodePath:
+	var parts := []
+	var c := n
+	while c != null and c != root:
+		parts.push_front(str(c.name))
+		c = c.get_parent()
+	return NodePath("../" + "/".join(parts))
+
 static func xf(tr: Array) -> Transform3D:
 	var q := Quaternion(float(tr[3]), float(tr[4]), float(tr[5]), float(tr[6]))
 	var b := Basis(q).scaled(Vector3(float(tr[7]), float(tr[8]), float(tr[9])))
@@ -295,8 +304,11 @@ func _skin(i: int, d: Dictionary) -> void:
 	mi.skeleton = NodePath("..")
 	var drv := BoneSync.new()
 	drv.name = "BoneSync"
-	drv.skel = skel
+	root.add_child(drv)
+	drv.skel_path = NodePath("../" + str(skel.name))
+	var gp: Array[NodePath] = []
 	for k in bones.size():
 		var ni: int = int(bones[k])
-		drv.groups.append(nodes[ni] if ni >= 0 and k > 0 else null)
-	root.add_child(drv)
+		var gn: Node = nodes[ni] if ni >= 0 and k > 0 else null
+		gp.append(_rel(root, gn) if gn else NodePath(""))
+	drv.group_paths = gp

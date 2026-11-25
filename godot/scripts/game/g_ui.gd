@@ -837,7 +837,7 @@ func shopPets() -> void: pass
 func shopDecor() -> void: pass
 func plotOf(_x, _z) -> int: return -1
 func startCarry(_k) -> void: pass
-func showPrize(_title, _key, _name, _sub) -> void: pass
+func showPrize(_title, _key, _name, _sub = "", _svg = null) -> void: pass
 func teamText() -> String: return ""
 func openGardenInfo() -> void: pass
 func openGames() -> void: pass

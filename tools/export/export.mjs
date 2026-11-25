@@ -54,6 +54,9 @@ if (what === 'lands') {
         const seed = land === 'forest' ? WORLD_SEED : land === 'race' ? WORLD_SEED + 2000 : WORLD_SEED + 1000;
         const W = new World(seed, zone);
         W.build(root, g.renderer);
+        // meža dārguma lāde un ugunskura liesmas (Godot tās animē)
+        if (W.chest) { if (W.chest.lid) W.chest.lid.name = 'chestLid'; if (W.chest.coins) W.chest.coins.name = 'chestCoins'; }
+        (W.flames || []).forEach((f, i) => { f.name = 'flame:' + i; }); if (W.fireGlow) W.fireGlow.name = 'fireGlow';
         // sētas mājiņas: jumts un sienas (Godot tos paslēpj / padara caurspīdīgus, kad esi iekšā)
         for (const b of W.yardBuildings || []) {
           b.roof.name = 'yardRoof:' + b.slot;

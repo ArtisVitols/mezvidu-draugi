@@ -1,3 +1,3 @@
 class_name Play
-extends GGarden
+extends GVehicles
 ## Pilnā spēle (pēdējais mantošanas ķēdes slānis)

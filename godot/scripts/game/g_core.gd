@@ -1120,7 +1120,7 @@ func hostTrailTick(_now) -> void: pass
 func hostVehSave() -> void: pass
 func onTeam(_t) -> void: pass
 func onRace(_r) -> void: pass
-func onMg(_m) -> void: pass
+func onMg(_m, _f = null) -> void: pass
 func applyVehs(_l) -> void: pass
 func applyVeh(_v) -> void: pass
 func onTrail(_tr, _ev) -> void: pass
