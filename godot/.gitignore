@@ -1,0 +1,4 @@
+.godot/
+*.import
+web/*.bin
+web/*.json

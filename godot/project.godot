@@ -1,0 +1,65 @@
+; Mežvidu Draugi — Godot Android versija (zars godot-android)
+
+config_version=5
+
+[application]
+
+config/name="Mežvidu Draugi"
+config/description="Ģimenes piedzīvojumu spēle līdz 4 spēlētājiem."
+config/version="2.0.0"
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+boot_splash/bg_color=Color(0.47, 0.71, 0.86, 1)
+boot_splash/show_image=false
+config/icon="res://icon.png"
+config/quit_on_go_back=false
+
+[autoload]
+
+Game="*res://scripts/core/game.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/size/window_width_override=1600
+window/size/window_height_override=900
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=4
+window/vsync/vsync_mode=1
+
+[input_devices]
+
+pointing/emulate_touch_from_mouse=false
+
+[physics]
+
+common/physics_ticks_per_second=30
+
+[rendering]
+
+driver/depth_prepass/enable=false
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true
+anti_aliasing/quality/msaa_3d=0
+lights_and_shadows/directional_shadow/size=2048
+lights_and_shadows/directional_shadow/soft_shadow_filter_quality=1
+environment/defaults/default_clear_color=Color(0.55, 0.75, 0.9, 1)
+textures/default_filters/anisotropic_filtering_level=2
+
+[shader_globals]
+
+mz_time={
+"type": "float",
+"value": 0.0
+}
+mz_wind={
+"type": "float",
+"value": 1.0
+}
+mz_rim={
+"type": "float",
+"value": 0.35
+}
