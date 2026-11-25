@@ -841,7 +841,7 @@ func showPrize(_title, _key, _name, _sub = "", _svg = null) -> void: pass
 func teamText() -> String: return ""
 func openGardenInfo() -> void: pass
 func openGames() -> void: pass
-func openBugSpot() -> void: pass
+func openBugSpot(_refresh := false) -> void: pass
 func leaveBus(_force = false) -> void: pass
 func qualityLabel() -> String: return "Auto"
 func setQualityMode(_m) -> void: pass

@@ -80,6 +80,17 @@ func _ready() -> void:
 	var hx: float = Z.X0 + 100 * Z.CELL
 	var hz: float = Z.Z0 + 200 * Z.CELL
 	ok(absf(Z.get_height(hx, hz) - Z.heights[200 * (Z.NX + 1) + 100]) < 1e-3, "augstuma režģis")
+	# 🐞 kļūdas vieta: saglabā un turpina
+	push_error("testa kļūda")
+	var n0: int = g.bugLoad().size()
+	var px: float = g.me.pos.x
+	g.bugSave("tests")
+	var bl: Array = g.bugLoad()
+	ok(bl.size() == mini(n0 + 1, 10) and bl[0].players.size() == 1 and str(g.bugText(bl[0])).contains("testa kļūda"), "kļūdas vieta saglabāta ar kļūdu")
+	g.me.pos = Vector3(5, 0, -250)
+	await g.hostBugGo(bl[0])
+	for i in 60: await get_tree().process_frame
+	ok(absf(g.me.pos.x - px) < 0.1 and g.zone == "s", "▶ turpināt — atpakaļ vietā")
 	var shot := Game.arg("shot")
 	if shot != "":
 		var s1: Dictionary = Z.lay.stops[1]

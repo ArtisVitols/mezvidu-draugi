@@ -1,3 +1,3 @@
 class_name Play
-extends GTrail
+extends GBugSpot
 ## Pilnā spēle (pēdējais mantošanas ķēdes slānis)
