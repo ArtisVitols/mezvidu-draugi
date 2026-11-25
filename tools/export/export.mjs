@@ -54,6 +54,11 @@ if (what === 'lands') {
         const seed = land === 'forest' ? WORLD_SEED : land === 'race' ? WORLD_SEED + 2000 : WORLD_SEED + 1000;
         const W = new World(seed, zone);
         W.build(root, g.renderer);
+        // sētas mājiņas: jumts un sienas (Godot tos paslēpj / padara caurspīdīgus, kad esi iekšā)
+        for (const b of W.yardBuildings || []) {
+          b.roof.name = 'yardRoof:' + b.slot;
+          root.traverse((o) => { if (o.isMesh && o.material === b.wallMat) o.name = 'yardWalls:' + b.slot; });
+        }
       }
       const d = X.dump.dumpObject(root, { meta: { land } });
       return X.dump.packDump(d);
@@ -113,6 +118,21 @@ if (what === 'icons') {
   });
   writeFileSync(resolve(HERE, '../../godot/data/icons.json'), r);
   console.log('ikonas', (r.length / 1024).toFixed(0), 'KB');
+}
+if (what === 'maps') {
+  mkdirSync(resolve(HERE, '../../godot/data/maps'), { recursive: true });
+  const r = await page.evaluate(async () => {
+    const g = __game, v = X.v;
+    const W = await import('/js/winter.js?v=' + v), T = await import('/js/trail.js?v=' + v);
+    const out = {};
+    const png = (c) => c.toDataURL('image/png').split(',')[1];
+    out.e = png(g.mapBase(g.world)); out.c = png(g.mapBase(g.farmW)); out.w = png(g.mapBase(g.raceW));
+    out.e_hi = png(g.mapBase(g.world, 560)); out.c_hi = png(g.mapBase(g.farmW, 560)); out.w_hi = png(g.mapBase(g.raceW, 560));
+    out.n = png(W.winterMap()); out.s = png(T.trailMap());
+    return out;
+  });
+  for (const [k, b64] of Object.entries(r)) writeFileSync(resolve(HERE, `../../godot/data/maps/${k}.png`), Buffer.from(b64, 'base64'));
+  console.log('kartes', Object.keys(r));
 }
 if (what === 'data') {
   const lands = only.length ? only : ['forest', 'farm', 'race'];

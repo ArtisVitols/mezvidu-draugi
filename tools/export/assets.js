@@ -120,5 +120,23 @@ export function assetList(X) {
     }
     return { root: pack };
   });
+  // ---- sētas nocērtamie koki, akmeņi, krūmi (kā Farm.buildFarm tpl) ----
+  add('plottpl', () => {
+    const W = new X.world.World(X.data.WORLD_SEED + 1000, X.zones.FARM);
+    W.build(new THREE.Group());
+    const pack = new THREE.Group();
+    const tpl = (kind) => {
+      const g = new THREE.Group();
+      const addm = (geo, m, cast = true) => { const o = new THREE.Mesh(geo, m); o.castShadow = cast; o.receiveShadow = true; g.add(o); };
+      const t = W.treeTypes.find((x) => x[0] === kind);
+      if (t) { addm(t[1], t[2]); addm(t[3], t[4]); g.children.forEach((o) => { o.position.y = -0.15; }); }
+      else if (kind === 'bush') addm(W.bushParts[0], W.bushParts[1], false);
+      else { addm(W.rockParts[0], W.rockParts[1]); g.children[0].scale.set(1, 1, 0.9); }
+      return g;
+    };
+    const kinds = new Set(W.plotObjs.map((o) => o.kind));
+    for (const k of kinds) { const g = tpl(k); g.name = 'plot:' + k; pack.add(g); }
+    return { root: pack };
+  });
   return L;
 }

@@ -1,3 +1,3 @@
 class_name Play
-extends GWorld
+extends GGarden
 ## Pilnā spēle (pēdējais mantošanas ķēdes slānis)

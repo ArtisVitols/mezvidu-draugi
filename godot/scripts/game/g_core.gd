@@ -1032,6 +1032,7 @@ func findZoneAction():
 
 # ======================= Tukšas funkcijas (aizstāj vēlākie slāņi) =======================
 var fishing = null
+var mg = {}
 var pet = null
 var trail = null
 func initGarden() -> void: pass
