@@ -241,6 +241,8 @@ func _make(d: Dictionary) -> Node3D:
 	else:
 		n = Node3D.new()
 	n.name = (str(d.n) if str(d.n) != "" else t).validate_node_name()
+	if str(d.n) != "": n.set_meta("n", str(d.n))
+	n.rotation_order = EULER_ORDER_XYZ
 	n.transform = xf(d.tr)
 	n.visible = d.get("v", true)
 	if d.has("ud"): n.set_meta("ud", d.ud)

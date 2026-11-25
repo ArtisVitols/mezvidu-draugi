@@ -113,9 +113,12 @@ export function dumpObject(root, opts = {}) {
     sk.boneInverses.forEach((m, k) => inv.set(m.elements, k * 16));
     d.skin = { bones: sk.bones.map((b) => (nodeIdx.has(b) ? nodeIdx.get(b) : -1)), inv: addBuf(inv), bind: Array.from(o.bindMatrix.elements) };
   });
+  // papildu masīvi (piem., krāsu varianti): json.extra[vārds] = bufera indekss
+  let extra = null;
+  if (opts.extra) { extra = {}; for (const [k, ta] of Object.entries(opts.extra)) extra[k] = addBuf(ta); }
   const bin = new Uint8Array(off); let p = 0;
   for (const c of chunks) { bin.set(c, p); p += c.byteLength; }
-  return { json: { v: 1, nodes, geos, mats, texs, bufs, meta: opts.meta || null }, bin };
+  return { json: { v: 1, nodes, geos, mats, texs, bufs, meta: opts.meta || null, extra }, bin };
 }
 
 // userData: tikai vienkāršas vērtības (skaitļi, teksti, mazi masīvi/objekti)
@@ -135,4 +138,52 @@ export function packDump(d) {
   let s = ''; const u = d.bin, CH = 0x8000;
   for (let i = 0; i < u.length; i += CH) s += String.fromCharCode.apply(null, u.subarray(i, i + CH));
   return { json: JSON.stringify(d.json), b64: btoa(s) };
+}
+
+// ---------- paši dati (ne three.js objekti): skaitļi, teksti, vienkārši objekti/masīvi, tipizēti masīvi → bin ----------
+// Klašu instances (izņemot Vector2/3, Color, Map, Set) izlaiž; cikliskas atsauces → null.
+export function dumpData(obj, opts = {}) {
+  const chunks = []; let off = 0; const bufs = [];
+  const addBuf = (ta) => {
+    const u8 = new Uint8Array(ta.buffer, ta.byteOffset, ta.byteLength);
+    const pad = (4 - (off % 4)) % 4; if (pad) { chunks.push(new Uint8Array(pad)); off += pad; }
+    chunks.push(u8.slice()); bufs.push([off, u8.byteLength, ta.constructor.name]); off += u8.byteLength; return bufs.length - 1;
+  };
+  const maxDepth = opts.depth || 6, skipKeys = new Set(opts.skipKeys || []);
+  const seen = new WeakSet();
+  const conv = (v, d) => {
+    if (v == null) return null;
+    const t = typeof v;
+    if (t === 'number') return Number.isFinite(v) ? v : (v > 0 ? 1e30 : v < 0 ? -1e30 : null);
+    if (t === 'string' || t === 'boolean') return v;
+    if (t === 'function' || t === 'symbol' || t === 'bigint') return undefined;
+    if (ArrayBuffer.isView(v)) return { $b: addBuf(v) };
+    if (v.isVector3) return [v.x, v.y, v.z];
+    if (v.isVector2) return [v.x, v.y];
+    if (v.isColor) return { $c: [v.r, v.g, v.b] };
+    if (v.isObject3D || v.isMaterial || v.isTexture || v.isBufferGeometry || v.isCurve) return undefined;
+    if (d > maxDepth) return undefined;
+    if (seen.has(v)) return null;
+    seen.add(v);
+    let out;
+    if (v instanceof Map) { out = {}; for (const [k, x] of v) { const c = conv(x, d + 1); if (c !== undefined) out[String(k)] = c; } }
+    else if (v instanceof Set) { out = []; for (const x of v) { const c = conv(x, d + 1); if (c !== undefined) out.push(c); } }
+    else if (Array.isArray(v)) {
+      // skaitļu masīvs → bin (ja liels)
+      if (v.length > 256 && v.every((x) => typeof x === 'number')) out = { $b: addBuf(Float32Array.from(v)) };
+      else out = v.map((x) => { const c = conv(x, d + 1); return c === undefined ? null : c; });
+    } else {
+      const proto = Object.getPrototypeOf(v);
+      if (proto !== Object.prototype && proto !== null && !opts.classes) { seen.delete(v); return undefined; }
+      out = {};
+      for (const k of Object.keys(v)) { if (skipKeys.has(k)) continue; const c = conv(v[k], d + 1); if (c !== undefined) out[k] = c; }
+    }
+    seen.delete(v);
+    return out;
+  };
+  const root = {};
+  for (const k of opts.keys || Object.keys(obj)) { if (skipKeys.has(k)) continue; const c = conv(obj[k], 0); if (c !== undefined) root[k] = c; }
+  const bin = new Uint8Array(off); let p = 0;
+  for (const c of chunks) { bin.set(c, p); p += c.byteLength; }
+  return { json: { v: 1, data: root, bufs }, bin };
 }

@@ -5,10 +5,11 @@ func _ready() -> void:
 	var t := Game.arg("autotest")
 	if t != "":
 		var p := "res://tests/%s.gd" % t
-		if ResourceLoader.exists(p):
-			var n: Node = load(p).new()
+		var scr = load(p) if ResourceLoader.exists(p) else null
+		if scr is GDScript and (scr as GDScript).can_instantiate():
+			var n: Node = scr.new()
 			n.name = "Autotest"
 			add_child(n)
 			return
-		push_error("Nav testa: " + p)
+		push_error("Nav testa vai tas nekompilējas: " + p)
 		get_tree().quit(2)

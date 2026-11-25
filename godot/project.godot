@@ -17,6 +17,7 @@ config/quit_on_go_back=false
 [autoload]
 
 Game="*res://scripts/core/game.gd"
+UI="*res://scripts/ui/ui.gd"
 
 [display]
 
