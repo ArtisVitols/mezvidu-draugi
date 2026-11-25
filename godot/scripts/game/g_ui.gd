@@ -855,7 +855,7 @@ func getVoiceVolume() -> float: return Aud.getVoiceVolume()
 func setVoiceVolume(v) -> void: Aud.setVoiceVolume(float(v))
 func voiceOn() -> bool: return Aud.voiceOn()
 func setVoiceOn(v) -> void: Aud.setVoiceOn(bool(v))
-func toggleStats() -> void: pass
+func toggleStats(_on = null) -> void: pass
 func vehMarkers() -> Array: return []
 func trailIcons(_tr) -> Array: return []
 func onAvatarRebuilt() -> void: pass

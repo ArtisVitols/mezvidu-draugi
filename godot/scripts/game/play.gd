@@ -1,3 +1,3 @@
 class_name Play
-extends GSound
+extends GQuality
 ## Pilnā spēle (pēdējais mantošanas ķēdes slānis)
