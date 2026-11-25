@@ -31,6 +31,10 @@ func _ready() -> void:
 	for i in 30: await get_tree().process_frame
 	var W = g.terr
 	print("[winter] slēpotāji ", W.skiers.size(), " brieži ", W.deer.size(), " mērķi ", W.targets.size())
+	# sniegs bez GPU daļiņām (tās Android telefonos avarēja)
+	var parts := get_tree().root.find_children("*", "GPUParticles3D", true, false)
+	print("[winter] sniegs: ", W.snow is Snowfall, ", GPU daļiņu mezgli: ", parts.size())
+	if not (W.snow is Snowfall) or parts.size() > 0: fails += 1
 	var shot := Game.arg("shot")
 	if shot != "":
 		await RenderingServer.frame_post_draw

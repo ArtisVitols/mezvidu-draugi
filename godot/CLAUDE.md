@@ -60,6 +60,9 @@ Exported-pack check: `--export-pack Android x.pck`, then `godot --main-pack x.pc
   press), backdrop closes only on a full click outside the box ≥ 350 ms after opening, minimap + prize card react to full mouse clicks only.
   Test `buttons` (fails on the old code). Grass 70 % lower (0.15 m) and denser (`grass.gd` 60 000 tufts in 50 m, 2 quads); low levels thin less.
   Ground textures now mipmapped + VRAM-compressed; non-photo terrain uses each layer's 1×1 mip colour (was nearly black).
+- [x] 2.0.3: the app crashed in the winter land on the phone — the snowfall was the only `GPUParticles3D` (crashes on some Android GPUs
+  in Compatibility). Now `scripts/world/snowfall.gd` (MultiMesh, the vertex shader moves the flakes around the camera). Never use GPUParticles.
+  Test `zonemem` (Xvfb: walks over the border into winter and between lands, memory). **Fixed download link** from 2.0.3 on (see below).
 - Ideas next: real-phone performance check (user feedback), planar water reflection, horizon skirt, smaller APK (compress land bins)
 
 ## Android build
@@ -69,4 +72,7 @@ cd godot; P=$(cat ~/.android_keys/mezvidi-release.pass)
 GODOT_ANDROID_KEYSTORE_RELEASE_PATH=~/.android_keys/mezvidi-release.keystore GODOT_ANDROID_KEYSTORE_RELEASE_USER=mezvidi \
 GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD=$P ~/tools/godot/godot --headless --path . --export-release Android ../build/MezviduDraugi-<ver>.apk
 ```
+**Release = always the same link** (user wish): tag `android` (moved to the new commit each time), asset `MezviduDraugi.apk`:
+`git tag -f android && git push -f origin android`, `gh release upload android build/MezviduDraugi.apk --clobber`, update the release title/notes
+with the version. Link: https://github.com/ArtisVitols/mezvidu-draugi/releases/download/android/MezviduDraugi.apk
 Before building: re-export web data (`tools/export/export.mjs lands` — land_*.bin/json are git-ignored).

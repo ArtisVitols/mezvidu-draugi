@@ -27,7 +27,7 @@ var road_idx: RoadIndex
 var deer: Array = []
 var skiers: Array = []
 var chairs: MultiMeshInstance3D
-var snow: GPUParticles3D
+var snow: Snowfall
 var amount := 0.0
 var extra: Node3D
 
@@ -157,26 +157,8 @@ func build_dynamic() -> void:
 		if nm.begins_with("target:"):
 			var i := int(nm.substr(7))
 			if i < targets.size(): targets[i].obj = n; targets[i].wob = 0.0
-	# sniegputenis (GPU daļiņas ap kameru)
-	snow = GPUParticles3D.new()
-	snow.amount = 2600
-	snow.lifetime = 6.0
-	snow.visibility_aabb = AABB(Vector3(-40, -20, -40), Vector3(80, 50, 80))
-	var pm := ParticleProcessMaterial.new()
-	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
-	pm.emission_box_extents = Vector3(35, 2, 35)
-	pm.direction = Vector3(0.15, -1, 0.05); pm.spread = 12.0
-	pm.initial_velocity_min = 1.6; pm.initial_velocity_max = 2.6
-	pm.gravity = Vector3(0, -0.6, 0)
-	pm.turbulence_enabled = true; pm.turbulence_noise_strength = 0.6
-	pm.scale_min = 0.5; pm.scale_max = 1.2
-	snow.process_material = pm
-	var qm := QuadMesh.new(); qm.size = Vector2(0.07, 0.07)
-	var sm := StandardMaterial3D.new(); sm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; sm.albedo_color = Color(1, 1, 1, 0.9)
-	sm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; sm.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
-	qm.material = sm
-	snow.draw_pass_1 = qm
-	snow.local_coords = false
+	# sniegputenis: MultiMesh ar ēnotāju (bez GPUParticles3D — tās Android telefonos avarēja)
+	snow = Snowfall.new()
 	g.stage.add_child(snow)
 
 static func snow_amount(ms: float) -> float:
@@ -223,10 +205,9 @@ func update(dt: float, game) -> void:
 			tg.wob = maxf(0.0, float(tg.wob) - dt)
 			tg.obj.rotation.z = sin(tg.wob * 25.0) * tg.wob * 0.5
 	amount = snow_amount(game.now())
+	if Game.arg("snow") != "": amount = float(Game.arg("snow"))   # testiem
 	if snow:
-		snow.global_position = game.camera.global_position + Vector3(0, 12, 0)
-		snow.emitting = amount > 0.02
-		snow.amount_ratio = clampf(amount * game.qualitySnow(), 0.05, 1.0)
+		snow.set_amount(amount * game.qualitySnow() if amount > 0.02 else 0.0)
 	game.winterFog(amount)
 
 func update_skiers(dt: float, t: float, game) -> void:
