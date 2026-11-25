@@ -1,7 +1,11 @@
 // Kopīgais: headless Chromium ar spēli (vajag lokālo serveri: python3 -m http.server 8765 projekta saknē)
 import { chromium } from 'playwright-core';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
+const HERE = dirname(fileURLToPath(import.meta.url));
 export async function launch() {
-  return chromium.launch({ executablePath: process.env.CHROME || process.env.HOME + '/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+  return chromium.launch({ executablePath: process.env.CHROME || process.env.HOME + '/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+    env: { ...process.env, FONTCONFIG_FILE: resolve(HERE, 'fonts.conf') } });
 }
 export async function soloGame(browser, gfx = 'low') {
   const ctx = await browser.newContext({ viewport: { width: 640, height: 360 } });
