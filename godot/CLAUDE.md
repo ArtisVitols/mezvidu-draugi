@@ -38,7 +38,8 @@ DISPLAY=:99 LIBGL_ALWAYS_SOFTWARE=1 $G --path godot --resolution 1280x720 -- --a
 ```
 Xvfb: `X=~/tools/xvfb/root; LD_LIBRARY_PATH=$X/usr/lib/x86_64-linux-gnu $X/usr/bin/Xvfb :99 -screen 0 1600x900x24 -xkbdir $X/usr/share/X11/xkb -nolisten tcp &`
 Tests: `godot/tests/<name>.gd`, run with `-- --autotest=<name>`; excluded from export.
-Full check before a release: `compile farm drive bus winter trail audio glyphs full` (headless; `full` with `--shots=dir` under Xvfb for screenshots),
+Always run tests without sound: `--audio-driver Dummy` (main.gd also mutes the master bus for `--autotest`/`--autosolo`/`--mute`).
+Full check before a release: `compile farm drive bus winter trail audio glyphs full`, `buttons` (Xvfb: every button with real touch events) (headless; `full` with `--shots=dir` under Xvfb for screenshots),
 `menu` (Xvfb), and the two-process tests `lan` and `lanfull` (start `--role=host`, then `--role=join` [--ip=127.0.0.1]).
 `glyphs` checks every character in scripts/data exists in the bundled fonts (system font fallback is off, like on a phone).
 Exported-pack check: `--export-pack Android x.pck`, then `godot --main-pack x.pck -- --autosolo=Name --shot=out.png`.
@@ -54,6 +55,11 @@ Exported-pack check: `--export-pack Android x.pck`, then `godot --main-pack x.pc
 - [x] Menu test, 2-process LAN test (`--autotest=lan --role=host|join [--ip=]`), grass field (scripts/world/grass.gd), team-bar placement, Android export
 - [x] Released **android-2.0.0** (2026-11-25): GitHub release on this branch, asset `MezviduDraugi-2.0.0.apk`
 - [x] 2.0.1: full app test (`full`, `lanfull`, `glyphs`), fixes: panel rebuild freeing the pressed button, missing glyphs (DejaVu symbol subset), grass hidden right at the camera
+- [x] 2.0.2 (user feedback): a phone tap = emulated mouse click THEN the touch event; HUD buttons fired on press and the touch then hit the
+  panel backdrop → panels closed at once (bag, menu, settings tile, map). Fix: HUD panel buttons act on release (`UI.press`, only jump/action on
+  press), backdrop closes only on a full click outside the box ≥ 350 ms after opening, minimap + prize card react to full mouse clicks only.
+  Test `buttons` (fails on the old code). Grass 70 % lower (0.15 m) and denser (`grass.gd` 60 000 tufts in 50 m, 2 quads); low levels thin less.
+  Ground textures now mipmapped + VRAM-compressed; non-photo terrain uses each layer's 1×1 mip colour (was nearly black).
 - Ideas next: real-phone performance check (user feedback), planar water reflection, horizon skirt, smaller APK (compress land bins)
 
 ## Android build

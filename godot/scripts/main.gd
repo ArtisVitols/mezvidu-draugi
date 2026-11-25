@@ -3,6 +3,8 @@ extends Node
 
 func _ready() -> void:
 	var t := Game.arg("autotest")
+	# testos un pārbaudēs — bez skaņas
+	if t != "" or Game.arg("autosolo") != "" or Game.arg("mute") != "": AudioServer.set_bus_mute(0, true)
 	if t != "":
 		var p := "res://tests/%s.gd" % t
 		var scr = load(p) if ResourceLoader.exists(p) else null

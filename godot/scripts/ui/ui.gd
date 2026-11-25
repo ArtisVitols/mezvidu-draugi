@@ -22,6 +22,8 @@ var panel_body: VBoxContainer
 var panel_scroll: ScrollContainer
 var panel_on_close: Callable
 var panel_build: Callable
+var panel_open_t := 0
+var backdrop_down := false
 var loading: Control
 var loading_text: Label
 var loading_bar: ProgressBar
@@ -269,16 +271,24 @@ func set_driving(on: bool) -> void:
 	b["walk-row"].visible = not on
 
 ## nospiešana (pointerdown kā web): fn() tiek izsaukta uzreiz
+## Lēciens un darbība — uzreiz, kad nospiež; pogas, kas atver logus, — kad atlaiž (kā parastas pogas),
+## lai tas pats pieskāriens neaiztiek jauno logu. Ne-pogām (karte) — tikai peles klikšķis (skāriens tiek emulēts kā pele).
+const PRESS_NOW := ["btn-jump", "btn-action"]
 func press(id: String, fn: Callable) -> void:
 	var c: Control = b.get(id)
 	if c is BaseButton:
-		(c as BaseButton).action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
+		(c as BaseButton).action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS if PRESS_NOW.has(id) else BaseButton.ACTION_MODE_BUTTON_RELEASE
 		(c as BaseButton).pressed.connect(func() -> void:
-			if id != "btn-jump" and id != "btn-action": sfx_cb.call("ui_click", {"vol": 0.35, "gap": 50})
+			if not PRESS_NOW.has(id): sfx_cb.call("ui_click", {"vol": 0.35, "gap": 50})
 			fn.call())
 	elif c:
+		var down := [false]
 		c.gui_input.connect(func(e: InputEvent) -> void:
-			if (e is InputEventMouseButton and e.pressed) or (e is InputEventScreenTouch and e.pressed): fn.call())
+			if not (e is InputEventMouseButton) or (e as InputEventMouseButton).button_index != MOUSE_BUTTON_LEFT: return
+			if e.pressed: down[0] = true
+			elif down[0]:
+				down[0] = false
+				if c.get_global_rect().has_point((e as InputEventMouseButton).global_position): fn.call())
 
 # ---------- paziņojumi ----------
 func toast(text: String, kind: String = "", ms: float = 2600.0) -> void:
@@ -311,8 +321,17 @@ func _build_panel(root: Control) -> void:
 	(panel_root as ColorRect).color = Color(0, 0, 0, 0.35)
 	panel_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	panel_root.visible = false
+	# fons aizver paneli tikai ar pilnu pieskārienu (nospiest un atlaist) ārpus loga, ne uzreiz pēc atvēršanas.
+	# Telefonā viens pieskāriens atnāk divreiz (peles emulācija + skāriens) — skārienus te neņem vērā.
 	panel_root.gui_input.connect(func(e: InputEvent) -> void:
-		if (e is InputEventMouseButton and e.pressed) or (e is InputEventScreenTouch and e.pressed): closePanel())
+		if not (e is InputEventMouseButton) or (e as InputEventMouseButton).button_index != MOUSE_BUTTON_LEFT: return
+		var mb := e as InputEventMouseButton
+		var outside := not panel_box.get_global_rect().has_point(mb.global_position)
+		if mb.pressed:
+			backdrop_down = outside and Time.get_ticks_msec() - panel_open_t > 350
+		elif backdrop_down and outside:
+			backdrop_down = false
+			closePanel())
 	root.add_child(panel_root)
 	panel_box = PanelContainer.new()
 	panel_box.set_anchors_preset(Control.PRESET_CENTER)
@@ -369,6 +388,8 @@ func showPanel(title: String, build: Callable, on_close: Callable = Callable(), 
 	panel_build = build
 	build.call(panel_body)
 	sfx_cb.call("ui_open" if not panel_root.visible else "book", {"vol": 0.45})
+	panel_open_t = Time.get_ticks_msec()
+	backdrop_down = false
 	panel_root.visible = true
 	panel_on_close = on_close
 	_fit_panel(wide)

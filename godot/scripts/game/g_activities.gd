@@ -673,7 +673,8 @@ func showPrize(title, iconKey, text, sub = "", svgKey = null) -> void:
 		(prizeOv as ColorRect).color = Color(0, 0, 0, 0.35)
 		prizeOv.set_anchors_preset(Control.PRESET_FULL_RECT)
 		prizeOv.gui_input.connect(func(e: InputEvent) -> void:
-			if (e is InputEventMouseButton and e.pressed) or (e is InputEventScreenTouch and e.pressed): prizeOv.visible = false)
+			# aizver ar atlaišanu, ne ātrāk kā 0,4 s pēc parādīšanās (lai tas pats pieskāriens to neaizver)
+			if e is InputEventMouseButton and not e.pressed and e.button_index == MOUSE_BUTTON_LEFT and Time.get_ticks_msec() - int(prizeOv.get_meta("t", 0)) > 400: prizeOv.visible = false)
 		UI.add_child(prizeOv)
 	for c in prizeOv.get_children(): c.queue_free()
 	var box = PanelContainer.new()
@@ -697,6 +698,10 @@ func showPrize(title, iconKey, text, sub = "", svgKey = null) -> void:
 	box.custom_minimum_size.x = 420 * UI.S * 0.9
 	prizeOv.add_child(box)
 	prizeOv.visible = true
+	prizeOv.set_meta("t", Time.get_ticks_msec())
+	# kartiņa pati pieskārienu nepatur — „Pieskaries, lai turpinātu” strādā arī uz kartiņas
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for c in box.find_children("*", "Control", true, false): (c as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
 	prizeT += 1
 	var my_t = prizeT
 	get_tree().create_timer(6.0).timeout.connect(func(): if prizeT == my_t and is_instance_valid(prizeOv): prizeOv.visible = false)

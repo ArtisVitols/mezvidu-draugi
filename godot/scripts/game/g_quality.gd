@@ -11,8 +11,8 @@ const Q_LABEL := {"auto": "Auto", "high": "Augsta", "mid": "Vidēja", "low": "Ze
 const QUALITY := {
 	"high": {"pr": 1.5, "post": true, "shadow": 2048, "soft": true, "photo": true, "grass": 1.0, "detail": 1.0, "fog": [100, 360], "far": 450, "snow": 1.0},
 	"mid": {"pr": 1.25, "post": false, "shadow": 2048, "soft": true, "photo": true, "grass": 1.0, "detail": 1.0, "fog": [100, 360], "far": 450, "snow": 1.0},
-	"low": {"pr": 1.0, "post": false, "shadow": 1024, "soft": false, "photo": false, "grass": 0.5, "grassR": 0.85, "detail": 0.7, "fog": [80, 280], "far": 340, "cheap": true, "snow": 0.6},
-	"lowest": {"pr": 1.0, "post": false, "shadow": 0, "soft": false, "photo": false, "grass": 0.4, "grassR": 0.6, "detail": 0.5, "fog": [55, 200], "far": 240, "cheap": true, "snow": 0.4},
+	"low": {"pr": 1.0, "post": false, "shadow": 1024, "soft": false, "photo": false, "grass": 0.75, "grassR": 0.9, "detail": 0.7, "fog": [80, 280], "far": 340, "cheap": true, "snow": 0.6},
+	"lowest": {"pr": 1.0, "post": false, "shadow": 0, "soft": false, "photo": false, "grass": 0.6, "grassR": 0.8, "detail": 0.5, "fog": [55, 200], "far": 240, "cheap": true, "snow": 0.4},
 }
 const LS_MODE := "mezvidi_gfx"
 const LS_AUTO := "mezvidi_auto_q"

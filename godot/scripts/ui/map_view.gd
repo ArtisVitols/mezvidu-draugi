@@ -242,10 +242,15 @@ func zoom_at(f: float, p := Vector2(-1, -1)) -> void:
 	cx = mx - (p.x - size.x / 2.0) / (k * size.x); cy = my - (p.y - size.y / 2.0) / (k * size.x); _clamp()
 	queue_redraw()
 
+var mini_down := false
 func _gui_input(e: InputEvent) -> void:
 	if mini:
-		if (e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT) or (e is InputEventScreenTouch and e.pressed):
-			g.openBigMap()
+		# tikai pilns klikšķis (telefonā skāriens tiek emulēts kā pele; pats skāriens te netiek skaitīts)
+		if e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_LEFT:
+			if e.pressed: mini_down = true
+			elif mini_down:
+				mini_down = false
+				if Rect2(Vector2.ZERO, size).has_point(e.position): g.openBigMap()
 			accept_event()
 		return
 	if e is InputEventMouseButton:

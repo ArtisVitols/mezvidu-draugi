@@ -8,6 +8,7 @@ func _ready() -> void:
 	add_child(root)
 	print("[landshot] uzbūvēts %d ms, mezgli %d" % [Time.get_ticks_msec() - t0, ws.j.nodes.size()])
 	Env.make(self)
+	if Game.arg("photo") != "": Mats.terrain().set_shader_parameter("photo", float(Game.arg("photo")))
 	var cam := Camera3D.new()
 	cam.fov = 60; cam.near = 0.2; cam.far = 450
 	add_child(cam)

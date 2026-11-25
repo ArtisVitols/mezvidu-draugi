@@ -1,13 +1,13 @@
 class_name Grass
 extends RefCounted
-## Blīva zāle ap spēlētāju (web world.js grassMesh): 26 000 kušķu, ko GPU novieto pēc reljefa augstuma un zemes krāsas
+## Blīva zāle ap spēlētāju (web world.js grassMesh): 42 000 kušķu, ko GPU novieto pēc reljefa augstuma un zemes krāsas
 ## tekstūrām (512², 760 m). Kušķi „aptinas” 84 m flīzē ap centru; blīvumu maina grafikas līmenis; arumos zāle neaug.
 
 const R := 512
 const SIZE := 760.0
 const HALF := 380.0
-const COUNT := 26000
-const TILE := 84.0
+const COUNT := 60000
+const TILE := 50.0
 
 const SHADER := """
 shader_type spatial;
@@ -31,12 +31,12 @@ void vertex() {
 	gs *= step(fract(o.z * 5.731), keep) * (1.0 + 0.4 * (1.0 - keep));
 	// pie pašas kameras stiebrus noslēpj (citādi zema kamera redz milzu zāli priekšā)
 	vec3 camp = INV_VIEW_MATRIX[3].xyz;
-	gs *= smoothstep(1.0, 2.6, distance(vec3(gp.x, gh, gp.y), camp));
+	gs *= smoothstep(0.3, 0.9, distance(vec3(gp.x, gh, gp.y), camp));
 	vec3 p = VERTEX;
 	float cs = cos(o.z), sn = sin(o.z);
 	p.xz = mat2(vec2(cs, sn), vec2(-sn, cs)) * p.xz;
 	p *= vec3(gs, gs * (0.75 + 0.5 * gc.a), gs);
-	float wk = VERTEX.y * 0.32;
+	float wk = VERTEX.y * 0.6;
 	float ph = gp.x * 0.11 + gp.y * 0.07;
 	float gust = 0.6 + 0.4 * sin(mz_time * 0.35 + gp.x * 0.012);
 	p.x += (sin(mz_time * 1.6 + ph) * 0.7 + sin(mz_time * 3.7 + ph * 2.7) * 0.3) * wk * gust;
@@ -93,14 +93,17 @@ func _init(w) -> void:
 
 func ok() -> bool: return mm != null
 
-## 3 krustoti četrstūri 0,75 × 0,5 m (normāle uz augšu, kā web)
+## Lietotnē (lietotāja vēlme): zāle par 70 % zemāka (0,15 m, web 0,5 m) un biezāka — sīkāki kušķi, vairāk to,
+## 2 krustoti četrstūri 0,32 × 0,15 m (normāle uz augšu); lauks ~30 m ap spēlētāju
+const BLADE_W := 0.32
+const BLADE_H := 0.15
 static func _blades() -> ArrayMesh:
 	if _mesh: return _mesh
 	var st := SurfaceTool.new(); st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for k in 3:
-		var a := k * PI / 3.0
-		var dx := Vector3(cos(a), 0, -sin(a)) * 0.375
-		var q := [[-dx, 0.0, 0.0, 1.0], [dx, 0.0, 1.0, 1.0], [dx, 0.5, 1.0, 0.0], [-dx, 0.5, 0.0, 0.0]]
+	for k in 2:
+		var a := k * PI / 2.0 + 0.4
+		var dx := Vector3(cos(a), 0, -sin(a)) * (BLADE_W / 2.0)
+		var q := [[-dx, 0.0, 0.0, 1.0], [dx, 0.0, 1.0, 1.0], [dx, BLADE_H, 1.0, 0.0], [-dx, BLADE_H, 0.0, 0.0]]
 		for idx in [0, 1, 2, 0, 2, 3]:
 			var v: Array = q[idx]
 			st.set_normal(Vector3.UP); st.set_uv(Vector2(v[2], v[3]))

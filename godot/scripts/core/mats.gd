@@ -203,11 +203,13 @@ void fragment() {
 	float w[5] = float[5](w0, spl.x, spl.y, spl.z, spl.w);
 	vec2 p = wpos.xz;
 	vec3 al[5];
-	al[0] = w[0] > 0.015 ? lay(a0, p, 0.09) : vec3(0.0);
-	al[1] = w[1] > 0.015 ? lay(a1, p, 0.28) * vec3(0.62, 0.62, 0.5) : vec3(0.0);
-	al[2] = w[2] > 0.015 ? lay(a2, p, 0.22) : vec3(0.0);
-	al[3] = w[3] > 0.015 ? lay(a3, p, 0.20) * vec3(0.85, 0.85, 0.8) : vec3(0.0);
-	al[4] = w[4] > 0.015 ? lay(a4, p, 0.14) * 1.15 : vec3(0.0);
+	// bez foto (zemie līmeņi): katras foto faktūras vidējā krāsa (1×1 mip) — tāds pats tonis, tikai bez detaļām
+	bool ph = photo > 0.5;
+	al[0] = w[0] > 0.015 ? (ph ? lay(a0, p, 0.09) : textureLod(a0, vec2(0.5), 10.0).rgb) : vec3(0.0);
+	al[1] = w[1] > 0.015 ? (ph ? lay(a1, p, 0.28) : textureLod(a1, vec2(0.5), 10.0).rgb) * vec3(0.62, 0.62, 0.5) : vec3(0.0);
+	al[2] = w[2] > 0.015 ? (ph ? lay(a2, p, 0.22) : textureLod(a2, vec2(0.5), 10.0).rgb) : vec3(0.0);
+	al[3] = w[3] > 0.015 ? (ph ? lay(a3, p, 0.20) : textureLod(a3, vec2(0.5), 10.0).rgb) * vec3(0.85, 0.85, 0.8) : vec3(0.0);
+	al[4] = w[4] > 0.015 ? (ph ? lay(a4, p, 0.14) : textureLod(a4, vec2(0.5), 10.0).rgb) * 1.15 : vec3(0.0);
 	float ma = 0.0;
 	float hg[5];
 	for (int i = 0; i < 5; i++) { hg[i] = dot(al[i], vec3(0.6)); ma = max(ma, hg[i] + w[i]); }
@@ -220,18 +222,19 @@ void fragment() {
 	float snow = smoothstep(0.6, 0.78, min(vc.r, min(vc.g, vc.b)));
 	vec3 col = alb * mix(vec3(1.0), vc * 3.6, 0.32);
 	col = mix(col, vec3(0.93, 0.95, 0.98), snow);
-	col = mix(vc * 1.05, col, photo);
 	ALBEDO = col;
 	ROUGHNESS = 0.93;
 	SPECULAR = 0.25;
 	vec3 nt = vec3(0.0);
+	if (ph) {
 	if (tw[0] > 0.0) nt += (texture(n0, p * 0.09).xyz * 2.0 - 1.0) * tw[0];
 	if (tw[1] > 0.0) nt += (texture(n1, p * 0.28).xyz * 2.0 - 1.0) * tw[1];
 	if (tw[2] > 0.0) nt += (texture(n2, p * 0.22).xyz * 2.0 - 1.0) * tw[2];
 	if (tw[3] > 0.0) nt += (texture(n3, p * 0.20).xyz * 2.0 - 1.0) * tw[3];
 	if (tw[4] > 0.0) nt += (texture(n4, p * 0.14).xyz * 2.0 - 1.0) * tw[4];
 	nt /= max(tot, 1e-4);
-	nt.xy *= 1.1 * photo;
+	nt.xy *= 1.1;
+	} else { nt = vec3(0.0, 0.0, 1.0); }
 	vec3 N = normalize(wnor);
 	vec3 T = normalize(vec3(1.0, 0.0, 0.0) - N * N.x);
 	vec3 B = cross(T, N);
