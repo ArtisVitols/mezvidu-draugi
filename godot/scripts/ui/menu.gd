@@ -136,6 +136,11 @@ func showName() -> void:
 		showChar()
 	inp.text_submitted.connect(func(_t): ok.call())
 	body.add_child(_primary("Tālāk ➜", ok))
+	# 📋 žurnāls — ja iepriekšējā reize avarēja, poga izceļas
+	var pc := CrashLog.previous_info(1)
+	var crashed: bool = pc.get("exists", false) and pc.get("crashed", false)
+	var lb := UI.btn("⚠️ Iepriekšējā reize avarēja — 📋 kopēt žurnālu" if crashed else "📋 Žurnāls", func(): CrashLog.open_panel(), not crashed)
+	body.add_child(lb)
 	var v := UI.p("Versija %s · Android" % Game.VERSION, 12.0, Color(0.45, 0.45, 0.45)); v.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	body.add_child(v)
 

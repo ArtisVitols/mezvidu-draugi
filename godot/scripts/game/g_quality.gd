@@ -66,6 +66,7 @@ func cval(k: String):
 
 ## aktīvie iestatījumi: līmenis + manuālās izmaiņas
 func applyQuality(level: String) -> void:
+	CrashLog.w("[grafika] %s → %s" % [qLevel, level])
 	qLevel = level
 	var base: Dictionary = QUALITY[level]
 	Q = base.duplicate(true)
@@ -269,3 +270,18 @@ func qualitySettings(b, build) -> void:
 			for k in ["scale", "shadow", "dist", "aa", "glow"]: custom.erase(k)
 			setCustom("fps", custom.get("fps", 0))
 			UI.refreshPanel(build), true))
+
+## 📋 žurnāla stāvokļa rinda (CrashLog ik 2 s)
+func crashState() -> String:
+	if ended or me == null: return ""
+	var p: Vector3 = me.pos
+	var mode := "kājām"
+	if me.veh != null: mode = "vada %s" % str(me.veh.get("id", "?"))
+	elif me.ride != null: mode = "līdzbraucējs"
+	elif me.bus != null: mode = "autobusā"
+	elif me.inKart: mode = "kartā"
+	elif me.lift != null: mode = "pacēlājā"
+	elif me.ski != null: mode = "slēpo"
+	var snowA: float = terr.amount if terr is WinterLand else 0.0
+	return "zeme %s · %.1f, %.1f, %.1f · %s %s · virsma %s · grafika %s · sniegs %.2f · draugi %d%s" % [zone, p.x, p.y, p.z, mode, str(me.state),
+		surfaceAt(p.x, p.z, p.y), qLevel, snowA, remotes.size(), " · panelis" if UI.panelOpen() else ""]

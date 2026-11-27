@@ -259,6 +259,7 @@ func doAction() -> void:
 	if currentAction == null: refreshAction()
 	var a = currentAction
 	if a == null: return
+	CrashLog.w("[darbība] %s" % str(a.get("label", "?")))
 	a.fn.call()
 	timers.action = 0.0
 

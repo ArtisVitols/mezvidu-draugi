@@ -292,6 +292,7 @@ func press(id: String, fn: Callable) -> void:
 
 # ---------- paziņojumi ----------
 func toast(text: String, kind: String = "", ms: float = 2600.0) -> void:
+	CrashLog.w("[ziņa] " + text.replace("\n", " "))
 	ms = minf(ms, 2000.0 + text.length() * 35.0)
 	var p := PanelContainer.new()
 	var col := Color(0, 0, 0, 0.6)
@@ -383,6 +384,7 @@ func _clear_body() -> void:
 		panel_body.remove_child(c); c.queue_free()
 
 func showPanel(title: String, build: Callable, on_close: Callable = Callable(), wide := false) -> void:
+	CrashLog.w("[panelis] " + title)
 	panel_title.text = title
 	_clear_body()
 	panel_build = build

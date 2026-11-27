@@ -196,6 +196,7 @@ func play(nm: String, opts := {}) -> bool:
 	return true
 
 func _start(stream, g: float, rate: float, pan: float, bus: String) -> void:
+	CrashLog.w("[skaņa] %s %.2f" % [stream.resource_path.get_file() if stream is Resource else "?", rate])
 	if absf(pan) > 0.05 and _cam() != null:
 		var p := _player3d()
 		p.stream = stream; p.volume_db = _db(g); p.pitch_scale = maxf(0.05, rate); p.bus = bus
@@ -221,6 +222,7 @@ func loop(id: String, nm: String, gain: float, rate := 1.0, bus := "amb") -> voi
 	var l = loops.get(id)
 	if l == null:
 		if gain <= 0.001 or vol <= 0 or not hasSound(nm): return
+		CrashLog.w("[skaņa] cilpa %s" % nm)
 		var p := AudioStreamPlayer.new()
 		var st = buf[nm][0]
 		if st is AudioStreamMP3:
@@ -249,6 +251,7 @@ func stopAllLoops() -> void:
 
 # ---------- sintezēti dzinēji ----------
 func _make_engine(kind: String) -> Dictionary:
+	CrashLog.w("[skaņa] dzinējs %s" % kind)
 	var gen := AudioStreamGenerator.new(); gen.mix_rate = SR; gen.buffer_length = 0.12
 	var p := AudioStreamPlayer3D.new()
 	p.attenuation_model = AudioStreamPlayer3D.ATTENUATION_DISABLED; p.max_distance = 0.0; p.doppler_tracking = AudioStreamPlayer3D.DOPPLER_TRACKING_DISABLED

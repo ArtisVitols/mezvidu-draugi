@@ -767,6 +767,7 @@ func openMenu() -> void:
 			UI.closePanel(); openBigMap())
 		_tile(grid, "🎲", "Spēles", "Ar draugiem", Color("#d0508a"), func(): openGames())
 		_tile(grid, "🐞", "Kļūdas vieta", "Saglabāt / turpināt", Color("#6b7280"), func(): openBugSpot())
+		_tile(grid, "📋", "Žurnāls", "Kopēt pēc avārijas", Color("#4b5563"), func(): CrashLog.open_panel())
 		b.add_child(grid)
 		b.add_child(UI.row([UI.btn("💾 Saglabāt", func():
 			persist(); UI.toast("💾 Saglabāts!", "good")), UI.btn("🚪 Saglabāt un iziet", func(): quit(), true)]))

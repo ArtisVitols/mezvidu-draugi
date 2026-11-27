@@ -40,7 +40,7 @@ Xvfb: `X=~/tools/xvfb/root; LD_LIBRARY_PATH=$X/usr/lib/x86_64-linux-gnu $X/usr/b
 Tests: `godot/tests/<name>.gd`, run with `-- --autotest=<name>`; excluded from export.
 Always run tests without sound: `--audio-driver Dummy` (main.gd also mutes the master bus for `--autotest`/`--autosolo`/`--mute`).
 Full check before a release: `compile farm drive bus winter trail audio glyphs full`, `buttons` (Xvfb: every button with real touch events) (headless; `full` with `--shots=dir` under Xvfb for screenshots),
-`menu` (Xvfb), and the two-process tests `lan` and `lanfull` (start `--role=host`, then `--role=join` [--ip=127.0.0.1]).
+`menu`, `winterwalk`, `zonemem`, `crashlog` (Xvfb), and the two-process tests `lan` and `lanfull` (start `--role=host`, then `--role=join` [--ip=127.0.0.1]).
 `glyphs` checks every character in scripts/data exists in the bundled fonts (system font fallback is off, like on a phone).
 Exported-pack check: `--export-pack Android x.pck`, then `godot --main-pack x.pck -- --autosolo=Name --shot=out.png`.
 
@@ -63,6 +63,13 @@ Exported-pack check: `--export-pack Android x.pck`, then `godot --main-pack x.pc
 - [x] 2.0.3: the app crashed in the winter land on the phone — the snowfall was the only `GPUParticles3D` (crashes on some Android GPUs
   in Compatibility). Now `scripts/world/snowfall.gd` (MultiMesh, the vertex shader moves the flakes around the camera). Never use GPUParticles.
   Test `zonemem` (Xvfb: walks over the border into winter and between lands, memory). **Fixed download link** from 2.0.3 on (see below).
+- [ ] Winter crash NOT solved by 2.0.3: user says it crashes when walking on snow, not on the road (only code difference: the
+  `st_snow` footstep sound; desktop can't reproduce — `winterwalk` test passes, sounds decode fine). User refused adb.
+- [x] 2.0.4: **📋 crash log** (autoload `CrashLog`, scripts/core/crashlog.gd, first autoload): every line flushed to `user://zurnals/now.txt`,
+  rotated to prev1..3 on start; device/GPU, all errors/warnings/prints (Logger), state line every 2 s (`crashState()` in g_quality.gd),
+  sounds, land changes, actions, panels, toasts, quality. Unclean end = last line without `[beigas]`/`[fonā]`. Start screen button
+  (highlighted „⚠️ Iepriekšējā reize avarēja”) + ☰ tile 📋 Žurnāls → copy to clipboard. Test `crashlog` (Xvfb, `--step=1` crashes with
+  OS.crash, then `--step=2`). **When the user pastes a log: read the last lines before the end to find the crash.**
 - Ideas next: real-phone performance check (user feedback), planar water reflection, horizon skirt, smaller APK (compress land bins)
 
 ## Android build

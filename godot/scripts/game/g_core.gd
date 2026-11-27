@@ -148,6 +148,7 @@ func landWorld(id: String) -> WorldLand:
 ## Noņem iepriekšējo zemi un ieliek jauno (web switchZone). step — ielādes progresa funkcija (var būt null).
 func switchZone(id: String, pos: Vector2, heading, step = null, f0 := 0.0) -> void:
 	var prev = zone
+	CrashLog.w("[zeme] %s → %s (%.0f, %.0f)" % [prev, id, pos.x, pos.y])
 	if fishing: stopFishing()
 	if me.carry != null and (id != FARM or prev != FARM): stowCarry()
 	if prev != id or land_node == null:
@@ -164,6 +165,7 @@ func switchZone(id: String, pos: Vector2, heading, step = null, f0 := 0.0) -> vo
 	if id == "s" and prev != "s": enterTrail()
 	if heading != null:
 		me.heading = float(heading); cam.yaw = float(heading) + PI
+	CrashLog.w("[zeme] %s gatava" % id)
 	camInit = false
 	if pet: pet.init = false
 	timers.vis = 0.0; timers.send = 0.0; timers.map = 0.0; timers.action = 0.0
@@ -296,6 +298,8 @@ func start_game() -> void:
 		hostInitTrail()
 	net.toHost({"t": "hello", "prof": myProf(), "weekly": save.weekly})
 	UI.hud.visible = true
+	CrashLog.w("[spēle] sākas: %s, zeme %s, %s" % [save.name, zone, "viens" if net.offline else ("saimnieks" if net.is_host else "viesis")])
+	CrashLog.state_fn = Callable(self, "crashState")
 	UI.toast("Sveiks, %s! Šī ir tava sēta 🏡 — uzar zemi un sēj. Mežs ar sēnēm un tirgu ir austrumos 🌲" % save.name, "good", 6000)
 	set_process(true)
 
@@ -997,6 +1001,7 @@ func checkQuests() -> void:
 			UI.toast("📜 Uzdevums izpildīts: %s! +%d🪙" % [q.text, int(q.reward)], "good", 4000)
 
 func quit() -> void:
+	CrashLog.w("[spēle] iziet uz izvēlni")
 	persist()
 	Game.flush()
 	ended = true
